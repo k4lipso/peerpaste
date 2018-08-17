@@ -11,12 +11,10 @@ class Peer
 {
 public:
     Peer();
-    Peer(size_t id, std::string ip,
-                 std::chrono::milliseconds rtt,
-                 std::chrono::milliseconds uptime) :
-                 m_id(id), m_ip(ip), m_rtt(rtt), m_uptime(uptime)
+    Peer(size_t id, std::string ip) :
+                m_id(id), m_ip(ip)
                 {}
-    ~Peer();
+    ~Peer() {}
 
     size_t getID()
     {
@@ -49,8 +47,6 @@ private:
     //TODO eva if timestamp of creation would be enough..
     std::chrono::milliseconds m_uptime;
 
-
 };
 
 #endif /* PEER_H */
-
