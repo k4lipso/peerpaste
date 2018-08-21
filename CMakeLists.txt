@@ -57,11 +57,17 @@ target_include_directories(node
 target_link_libraries(node
     PUBLIC
         libserver
-        # ${Boost_LIBRARIES}
-        # ${Boost_LIBRARY_DIRS}
-        # ${PROTOBUF_LIBRARIES}
-        # ${Boost_LIBRARIES}
-        # ${CMAKE_THREAD_LIBS_INIT}
+)
+
+add_executable(peer main2.cpp)
+
+target_include_directories(peer
+    PUBLIC
+)
+
+target_link_libraries(peer
+    PUBLIC
+        libserver
 )
 
 add_executable(msg_test msg_test.cpp)
@@ -74,9 +80,4 @@ target_include_directories(msg_test
 target_link_libraries(msg_test
     PUBLIC
         libserver
-        # ${Boost_LIBRARIES}
-        # ${Boost_LIBRARY_DIRS}
-        # ${PROTOBUF_LIBRARIES}
-        # ${Boost_LIBRARIES}
-        # ${CMAKE_THREAD_LIBS_INIT}
 )

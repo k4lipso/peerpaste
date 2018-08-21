@@ -1,9 +1,12 @@
 #ifndef SERVER_H
 #define SERVER_H
 
+#define VERSION "0.0.1"
+
 #include "routingTable.hpp"
 #include "session.hpp"
 #include "peer.hpp"
+#include "message.hpp"
 
 #include <string>
 #include <functional>
@@ -16,7 +19,9 @@ class server
 {
 public:
     server(boost::asio::io_context& io_context, short port)
-        : acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
+        : m_io_context(io_context),
+          m_socket(io_context),
+          acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
     {
         BOOST_LOG_TRIVIAL(info) << "Server Initialized";
         create();
@@ -24,10 +29,13 @@ public:
         do_accept();
     }
 
-    server(boost::asio::io_context& io_context, short port, std::string ip)
-        : acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
+    server(boost::asio::io_context& io_context, short port, 
+           const tcp::resolver::results_type& endpoints)
+        : m_io_context(io_context),
+          m_socket(io_context),
+          acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
     {
-        join(ip);
+        join(endpoints);
         do_accept();
     }
 
@@ -62,10 +70,48 @@ private:
      * that Node will lookup and return a successor Recursively
      * returns -1 when failed
     */
-    int join(std::string ip)
+    bool join(const tcp::resolver::results_type& endpoints)
     {
+        boost::asio::async_connect(m_socket, endpoints,
+                [this](boost::system::error_code ec, tcp::endpoint)
+                {
+                    if(!ec)
+                    {
+                        if(!query())
+                        {
+                            BOOST_LOG_TRIVIAL(error) << "Query Request failed";
+                            return false;
+                        }
+
+                    }
+                });
         m_predecessor = nullptr;
-        return 0;
+        return true;
+    }
+
+    /**
+     * A node MUST send a Query request to a discovered node before a join request.
+     * Query request is used to determine overlay parameters such as overlay-ID, 
+     * peer-to-peer and hash algo, request routing method (recur vs iter).
+     */
+    bool query()
+    {
+        Message message;
+        if(!message.encode_common_header(true,
+                                         0,
+                                         0,
+                                         "query",
+                                         "transaction_id",
+                                         VERSION))
+        {
+            BOOST_LOG_TRIVIAL(error) << "Encoding Header Failed!";
+            return false;
+        }
+
+        boost::asio::write(m_socket, *message.output());
+        /* size_t reply_length = boost::asio::read(s, */
+        /*                 boost::asio::buffer(reply, request_length)); */
+        return true;
     }
 
     void stabilize();
@@ -106,6 +152,10 @@ private:
     //Fingertable containing multiple peers,
     //used to lookup keys
     std::shared_ptr<RoutingTable> m_fingerTable;
+
+    boost::asio::io_context& m_io_context;
+    tcp::socket m_socket;
+
 };
 
 #endif /* SERVER_H */

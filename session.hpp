@@ -17,13 +17,12 @@ public:
     session(tcp::socket socket)
         : socket_(std::move(socket))
     {
-        std::cout << "SESSION CREATED" << std::endl;
+        BOOST_LOG_TRIVIAL(info) << "SESSION CREATED";
     }
 
     void start()
     {
-        std::cout << "Session started" << std::endl;
-        /* m_message.encode_common_header(true, 12, 16, "join", "id1928Aedru29", "1.0.9"); */
+        BOOST_LOG_TRIVIAL(info) << "Session started";
         do_read_header();
     }
 
