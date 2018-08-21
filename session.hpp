@@ -2,9 +2,11 @@
 #define SESSION_H
 
 #include "message.hpp"
+/* #include "proto/messages.pb.h" */
 
 #include <string>
 #include <boost/asio.hpp>
+#include <google/protobuf/util/delimited_message_util.h>
 
 using boost::asio::ip::tcp;
 
@@ -21,6 +23,7 @@ public:
     void start()
     {
         std::cout << "Session started" << std::endl;
+        /* m_message.encode_common_header(true, 12, 16, "join", "id1928Aedru29", "1.0.9"); */
         do_read_header();
     }
 
@@ -29,12 +32,20 @@ private:
     {
         auto self(shared_from_this());
         boost::asio::async_read(socket_,
-                *m_message.data(), boost::asio::transfer_exactly(84),
+                //Read 1 Byte which is an Varint
+                *m_message.data(), boost::asio::transfer_exactly(1),
                 [this, self](boost::system::error_code ec, std::size_t)
                 {
                     if(!ec){
-                        m_message.decode_header();
-                        do_read_header();
+                        uint32_t size;
+                        if(!m_message.get_varint(size))
+                        {
+                            do_read_header();
+                            return;
+                        }
+
+                        //everything worked, read body using the size extraced from the varint
+                        do_read_body(size);
                     }
                 });
     }
@@ -43,7 +54,28 @@ private:
 
     void check_precending_node(/*ID*/);
 
-    void do_read_body();
+    void do_read_body(uint32_t& size)
+    {
+        auto self(shared_from_this());
+        boost::asio::async_read(socket_,
+                *m_message.data(), boost::asio::transfer_exactly(size),
+                [this, self, size](boost::system::error_code ec, std::size_t)
+                {
+                    if(!ec){
+                        if(!m_message.decode_header(size))
+                        {
+                            do_read_header();
+                            return;
+                        }
+                        //TODO: Change method to accept further message objects
+                        //other than common header
+                        do_read_header();
+                    }
+
+                });
+
+
+    }
 
     std::string Put(int level_of_decryption);
 
