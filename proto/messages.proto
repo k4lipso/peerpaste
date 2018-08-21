@@ -1,0 +1,192 @@
+syntax = "proto2";
+
+message CommonHeader
+{
+    //If set (T=1), the message is a request. Otherwise, it is a response.
+    required bool t_flag = 1;
+
+    //A hop count for the number of peers this request can traverse.
+    //(Open Issue: Upper limit of 256 maybe too stringent.
+    //If TTL becomes zero, a node replies with a 410 TTL hops exceeded response.
+    //The request can then be reissued to the node generating 410 response.)
+    required uint32 ttl = 2;
+
+    //The byte length of the message after the common header itself.
+    required uint64 message_length = 3;
+
+    //The request message type such as join and leave.
+    required string request_type = 4;
+
+    //A unique number to match responses with the originated requests.
+    required string transaction_id = 5;
+
+    required string version = 6;
+    optional string response_code = 7;
+}
+
+//message gerneral_object
+//{
+//    /*
+//     * AB=00 "(Mandatory)":
+//            If the object is not understood, the entire message containing it
+//            MUST be rejected with an "Object Type Error" message
+//            with sub code 1 ("Unrecognized Object").
+//       AB=01 "(Ignore)":
+//            If the object is not understood, it MUST be deleted
+//            and the rest of the message processed as usual.
+//     */
+//    required bool A = 1;
+//    required bool B = 2;
+//
+//    //An IANA-assigned identifier for the type of the object.
+//    required string object_type = 3;
+//
+//    //The byte length of the object.
+//    required fixed32 length = 4;
+//}
+//
+//message peer_info
+//{
+//    required string peer_id = 1;
+//    //various additional fields.. thinking..
+//}
+//
+////additional information fields:
+//
+//message uptime
+//{
+//    required fixed64 uptime = 1;
+//}
+//
+//message resource_info
+//{
+//    required fixed32 number_of_neighbors = 1;
+//    required int32 cpu_utilization = 2;
+//    required int32 bandwith_utilization = 3;
+//    required fixed64 peer_bandwidth = 4;
+//}
+//
+//message address_info
+//{
+//    required int32 ip_version = 1; //4 or 6
+//
+//    //Number of peer IP address, port, transport and address type 4-tuples
+//    //gathered using Interactive Connectivity Establishment (ICE)
+//    required int32 num = 2;
+//
+//    //The address type of the peer as defined in ICE.
+//    //One of host (0000), server reflexive (0001), peer reflexive (0010),
+//    //or relayed candidate (0011).
+//    required bytes HT = 3;
+//
+//    //The IP address of the peer. Its length depends on the IP-Ver field
+//    required string peer_address = 4;
+//    required fixed32 port = 5;
+//}
+//
+////end oaf additional information fiels
+//
+//message request_options
+//{
+///*
+//I (1 bit):
+//    If set (I=1), then insert this peer in the overlay at join.
+//    A P2PSIP client MUST set this bit to zero.
+//P (1 bit):
+//    If set (P=1), designate one copy as primary for parallel lookups.
+//R (1 bit) request-routing-table:
+//    If set (R=1), send a copy of the routing table to the peer issuing the request.
+//    The transmission of routing-table copy is governed by the
+//    in-separate-request and partial-copy flags.
+//N (1 bit) request-neighbor-table:
+//    If set (N=1), send a copy of the neighbor table to the peer issuing
+//    the request using the mechanism described for routing-table.
+//E (1 bit) in-separate-request:
+//    If set (E=1), and if P or R are also set, the peer is requesting to receive
+//    routing or neighbor table in an Update request.
+//    If not set (E=0), and the request was received over TCP, each peer along
+//    the request path can add a copy of its routing or neighbor table
+//    before forwarding the response.
+//A (1 bit) partial-reply:
+//    If set (A=1), the peer generating the definite response sends a copy of the
+//    routing or neighbor table as determined by the P and N flags in its response
+//    as permitted by the UDP MTU. If E (in-separate-request) is also set,
+//    the rest of the routing or neighbor table is sent in a separate Update request.
+//S (1 bit):
+//    If set (S=1) and if I flag is also set, the request is being sent to
+//    the immediate neighbors of the newly joining peer.
+//*/
+//    required bytes request_options = 1;
+//}
+//
+//message p2p_options
+//{
+//    //If set (R=1), the peers in the overlay use recursive request forwarding.
+//    required bool r_flag = 1;
+//
+//    //An IANA-assigned identifier for the hash algorithm.
+//    required string algorithm = 2;
+//
+//    //The byte length of the hash algorithm. If set to zero,
+//    //then no hash algorithm is used.
+//    required int32 algorithm_length = 3;
+//
+//    //An IANA-assigned identifier for the P2P algorithm being used.
+//    required string p2p_algorithm = 4;
+//
+//
+//    required int32 overlay_id_length = 5;
+//    required string overlay_id = 6;
+//}
+//
+//message plookup
+//{
+//    //Number of peers to look for.
+//    required int32 num = 1;
+//
+//    //If set (R=1), then it is a range lookup.
+//    required bool r = 2;
+//
+//    //Peer-ID. If Algorithm-Len queried at join is zero,
+//    //then a length field of 16 bits MUST be present before Peer-ID.
+//    required string peer_id = 3;
+//
+//    //Peer-ID. Included only if R is set. If Algorithm-Len queried
+//    //at join is zero, then a length field of 16 bits MUST be
+//    //present before Peer-ID.
+//    optional string peer_id_ = 4;
+//}
+//
+//message resource_object
+//{
+//    //If set (I=1), the resource-object is included.
+//    required bool l_flag = 1;
+//
+//    //The ID of the resource object. For DHT-based overlays,
+//    //its length is equal to the length of the hash algorithm.
+//    //If Algorithm-Len field negotiated at join is zero,
+//    //a length field of 16-bits must precede resource-ID.
+//    required string resource_id = 2;
+//
+//    //resource object
+//}
+//
+//message expires
+//{
+//    required fixed64 expires = 1;
+//}
+//
+//message owner
+//{
+//    required string owner = 1;
+//}
+//
+//message credentials
+//{
+//    required string credentials = 1;
+//}
+//
+//message error_object
+//{
+//    required int32 link_mtu = 1;
+//}
