@@ -34,10 +34,8 @@ public:
      *  +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
      */
 
-    enum { header_length = 84 };
-
     Message()
-        : m_input_stream(&m_input), 
+        : m_input_stream(&m_input),
           m_output_stream(&m_output)
     {
     }
@@ -50,6 +48,16 @@ public:
     boost::asio::streambuf* output()
     {
         return &m_output;
+    }
+
+    std::ostream* output_stream()
+    {
+        return &m_output_stream;
+    }
+
+    const uint64_t get_message_length()
+    {
+        return m_header.message_length();
     }
 
     bool get_varint(uint32_t& size)
@@ -67,17 +75,15 @@ public:
             return false;
         }
 
-        return true;
+        BOOST_LOG_TRIVIAL(info) << "Varint: " << size;
 
+        return true;
     }
 
     //Decodes streambuf into a Common Header Object if possible
     //TODO: Maybe pass CommonHeader*
     bool decode_header(uint32_t size)
     {
-        //Create a CommonHeader object
-        CommonHeader common_header;
-
         //Convert message into CodedInputStream for reading varint
         std::istream reader(data());
         google::protobuf::io::IstreamInputStream zstream(&reader);
@@ -87,7 +93,7 @@ public:
         google::protobuf::io::CodedInputStream::Limit limit = coded_input.PushLimit(size);
 
         //Merge Stream into CommonHeader Object
-        if(!common_header.MergeFromCodedStream(&coded_input))
+        if(!m_header.MergeFromCodedStream(&coded_input))
         {
             BOOST_LOG_TRIVIAL(error) << "MergeFromCodedStream Failed";
             return false;
@@ -102,8 +108,29 @@ public:
         coded_input.PopLimit(limit);
 
         //Print CommanHeader Information
-        log_common_header(common_header);
+        log_common_header(m_header);
 
+        return true;
+    }
+
+    bool decode_peerinfo(uint32_t size)
+    {
+        PeerInfo peerinfo;
+        peerinfo.set_peer_id("Foo");
+
+        //TODO: this deletes all data from input_stream.
+        //if 2 Message Object are Cached only the first one can be merged
+        std::istream reader(data());
+        google::protobuf::io::IstreamInputStream zstream(&reader);
+        bool clean_eof;
+
+        if(!google::protobuf::util::ParseDelimitedFromZeroCopyStream(&peerinfo, &zstream, &clean_eof))
+        {
+            BOOST_LOG_TRIVIAL(error) << "ParseDelimitedFromZeroCopyStream failed";
+            return false;
+        }
+
+        BOOST_LOG_TRIVIAL(info) << "PeerInfo PeerID: " << peerinfo.peer_id();
         return true;
     }
 
@@ -140,14 +167,54 @@ public:
         if(!google::protobuf::util::SerializeDelimitedToOstream(header,
                                                                &m_output_stream))
         {
-            BOOST_LOG_TRIVIAL(error) << "SerializeDelimitedToOstream failed";
+            BOOST_LOG_TRIVIAL(error) << "encode_common_header(..) SerializeDelimitedToOstream failed";
             return false;
         }
 
         return true;
     }
 
-private:
+    bool serialize_object(const google::protobuf::MessageLite& msg){
+        if(!google::protobuf::util::SerializeDelimitedToOstream(msg,
+                                                               &m_output_stream))
+        {
+            BOOST_LOG_TRIVIAL(error) << "encode_peer_info(..) SerializeDelimitedToOstream failed";
+            return false;
+        }
+
+        return true;
+    }
+
+    bool encode_peer_info(const std::string peer_id, uint32_t& size)
+    {
+        PeerInfo peerinfo;
+        peerinfo.set_peer_id(peer_id);
+        // + 1 for size of varint
+        size = peerinfo.ByteSize() + 1;
+        std::cout << "JOJO " << size << std::endl;
+        if(!google::protobuf::util::SerializeDelimitedToOstream(peerinfo,
+                                                               &m_output_stream))
+        {
+            BOOST_LOG_TRIVIAL(error) << "encode_peer_info(..) SerializeDelimitedToOstream failed";
+            return false;
+        }
+
+        return true;
+    }
+
+    bool encode_peer_info(const std::string peer_id, std::ostream& output_stream)
+    {
+        PeerInfo peerinfo;
+        peerinfo.set_peer_id(peer_id);
+        if(!google::protobuf::util::SerializeDelimitedToOstream(peerinfo,
+                                                               &output_stream))
+        {
+            BOOST_LOG_TRIVIAL(error) << "encode_peer_info(..) SerializeDelimitedToOstream failed";
+            return false;
+        }
+
+        return true;
+    }
 
     std::string data_to_string()
     {
@@ -155,6 +222,21 @@ private:
         std::string data(std::istreambuf_iterator<char>(response_stream), {});
         return data;
     }
+
+private:
+
+    /**
+     *  We define seven messages for service interface namely, join, leave, keep-alive,
+     *  routing-peer-lookup, update, query, replicate
+     *  and three messages for data interface namely, insert, lookup and remove.
+     */
+    enum MessageType { JOIN,
+                       LEAVE,
+                       KEEPALIVE,
+                       ROUTINGPEERLOOKUP,
+                       UPDATE,
+                       QUERY,
+                       REPLICATE };
 
     bool isGet(const char b)
     {
@@ -179,4 +261,3 @@ private:
 };
 
 #endif // MESSAGE_HPP
-

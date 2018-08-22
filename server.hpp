@@ -7,8 +7,10 @@
 #include "session.hpp"
 #include "peer.hpp"
 #include "message.hpp"
+#include "proto/messages.pb.h"
 
 #include <string>
+#include <sstream>
 #include <functional>
 #include <boost/asio.hpp>
 #include <boost/log/trivial.hpp>
@@ -91,26 +93,36 @@ private:
 
     /**
      * A node MUST send a Query request to a discovered node before a join request.
-     * Query request is used to determine overlay parameters such as overlay-ID, 
+     * Query request is used to determine overlay parameters such as overlay-ID,
      * peer-to-peer and hash algo, request routing method (recur vs iter).
      */
     bool query()
     {
+        //Creating PeerInfo with empty ID
+        uint32_t message_length(0);
+        PeerInfo peerinfo;
+        peerinfo.set_peer_id("W");
+        message_length += peerinfo.ByteSize() + 1;
+
+        //Create Message and add CommonHeader with request type "query"
         Message message;
+
         if(!message.encode_common_header(true,
                                          0,
-                                         0,
+                                         message_length,
                                          "query",
-                                         "transaction_id",
+                                         "top_secret_transaction_id",
                                          VERSION))
         {
-            BOOST_LOG_TRIVIAL(error) << "Encoding Header Failed!";
             return false;
         }
 
+        //Add PeerInfo Object to the Message
+        message.serialize_object(peerinfo);
+
+        //Send the message
         boost::asio::write(m_socket, *message.output());
-        /* size_t reply_length = boost::asio::read(s, */
-        /*                 boost::asio::buffer(reply, request_length)); */
+
         return true;
     }
 
@@ -155,6 +167,8 @@ private:
 
     boost::asio::io_context& m_io_context;
     tcp::socket m_socket;
+
+    //TODO: timestamp for uptime (part of peerinfo)
 
 };
 

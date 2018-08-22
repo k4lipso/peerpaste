@@ -24,6 +24,12 @@ message CommonHeader
     optional string response_code = 7;
 }
 
+message PeerInfo
+{
+    required string peer_id = 1;
+    //various additional fields.. thinking..
+}
+
 //message gerneral_object
 //{
 //    /*
@@ -45,11 +51,6 @@ message CommonHeader
 //    required fixed32 length = 4;
 //}
 //
-//message peer_info
-//{
-//    required string peer_id = 1;
-//    //various additional fields.. thinking..
-//}
 //
 ////additional information fields:
 //

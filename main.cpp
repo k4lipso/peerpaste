@@ -20,15 +20,6 @@ int main(int argc, char* argv[])
       return 1;
     }
 
-    /* std::cout << sizeof(char) << std::endl; */
-    /* std::cout << sizeof(char[8]) << std::endl; */
-    /* std::cout << sizeof(char[32]) << std::endl; */
-    /* std::cout << sizeof(bool) << std::endl; */
-    /* std::cout << sizeof(int8_t) << std::endl; */
-    /* std::cout << sizeof(int16_t) << std::endl; */
-    /* std::cout << sizeof(int32_t) << std::endl; */
-    /* std::cout << sizeof(int64_t) << std::endl; */
-    /* std::cout << sizeof(size_t) << std::endl; */
     boost::asio::io_context io_context;
 
     server s(io_context, std::atoi(argv[1]));

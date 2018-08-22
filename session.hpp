@@ -2,11 +2,9 @@
 #define SESSION_H
 
 #include "message.hpp"
-/* #include "proto/messages.pb.h" */
 
 #include <string>
 #include <boost/asio.hpp>
-#include <google/protobuf/util/delimited_message_util.h>
 
 using boost::asio::ip::tcp;
 
@@ -23,11 +21,11 @@ public:
     void start()
     {
         BOOST_LOG_TRIVIAL(info) << "Session started";
-        do_read_header();
+        do_read_varint();
     }
 
 private:
-    void do_read_header()
+    void do_read_varint()
     {
         auto self(shared_from_this());
         boost::asio::async_read(socket_,
@@ -39,12 +37,12 @@ private:
                         uint32_t size;
                         if(!m_message.get_varint(size))
                         {
-                            do_read_header();
+                            do_read_varint();
                             return;
                         }
 
                         //everything worked, read body using the size extraced from the varint
-                        do_read_body(size);
+                        do_read_common_header(size);
                     }
                 });
     }
@@ -53,7 +51,7 @@ private:
 
     void check_precending_node(/*ID*/);
 
-    void do_read_body(uint32_t& size)
+    void do_read_common_header(const uint32_t& size)
     {
         auto self(shared_from_this());
         boost::asio::async_read(socket_,
@@ -63,17 +61,45 @@ private:
                     if(!ec){
                         if(!m_message.decode_header(size))
                         {
-                            do_read_header();
+                            do_read_varint();
+                            return;
+                        }
+                        //TODO: Change method to accept further message objects
+                        //other than common header,
+                        //a message evaluation chain has do be developed to receive
+                        //a sequence of different objects depending on the
+                        //common_header request_tpe
+                        do_read_objects(m_message.get_message_length());
+                    }
+
+                });
+    }
+
+    void do_read_objects(const uint32_t& size)
+    {
+        auto self(shared_from_this());
+        boost::asio::async_read(socket_,
+                *m_message.data(), boost::asio::transfer_exactly(size),
+                [this, self, size](boost::system::error_code ec, std::size_t)
+                {
+                    if(!ec){
+                        if(!m_message.decode_peerinfo(size))
+                        {
+                            do_read_varint();
+                            return;
+                        }
+                        std::cout << m_message.data_to_string() << std::endl;
+                        if(!m_message.decode_peerinfo(size))
+                        {
+                            do_read_varint();
                             return;
                         }
                         //TODO: Change method to accept further message objects
                         //other than common header
-                        do_read_header();
+                        do_read_varint();
                     }
 
                 });
-
-
     }
 
     std::string Put(int level_of_decryption);
@@ -84,9 +110,6 @@ private:
 
     Message m_message;
     tcp::socket socket_;
-    /* char data_[paste::header_length + paste::max_body_length]; */
-    /* std::string hash_; */
-    /* char msg_[paste::max_body_length]; */
 };
 
 #endif /* SESSION_H */
