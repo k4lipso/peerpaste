@@ -80,6 +80,11 @@ public:
         return true;
     }
 
+    const std::string get_request_type() const
+    {
+        return m_header.request_type();
+    }
+
     bool decode_request(uint32_t size)
     {
         //Convert message into CodedInputStream for reading varint

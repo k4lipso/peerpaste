@@ -77,9 +77,44 @@ private:
                         //that only one object has to be transmitted each time
                         /* do_read_objects(m_message.get_message_length()); */
                         std::cout << "And NOW???" << std::endl;
+                        std::cout << "Request Type: " << m_message.get_request_type() << std::endl;
+
+                        if(!handle_message())
+                        {
+                            do_read_varint();
+                            return;
+                        }
+
+                        send_response();
                     }
 
                 });
+    }
+
+    bool handle_message()
+    {
+        //determine request type
+        auto request_type = m.message.get_request_type();
+        //handle request type
+        if(request_type == "query")
+        {
+            if(!handle_query()) return false;
+        } else {
+            BOOST_LOG_TRIVIAL(debug) << "Unknown Request Type";
+            return false;
+        }
+
+        return true;
+    }
+
+    bool handle_query()
+    {
+
+    }
+
+    bool send_response()
+    {
+        return false;
     }
 
     void do_read_common_header(const uint32_t& size)
