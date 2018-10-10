@@ -5,6 +5,7 @@ project("PeerPaste" CXX)
 find_package (Threads REQUIRED)
 
 find_package(Protobuf REQUIRED)
+# add_subdirectory(proto)
 
 SET(Boost_USE_STATIC_LIBS ON)
 SET(Boost_USE_MULTITHREAD ON)

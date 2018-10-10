@@ -29,7 +29,7 @@ private:
     {
         auto self(shared_from_this());
         boost::asio::async_read(socket_,
-                //Read 1 Byte which is an Varint
+                //Read 1 Byte which should be an Varint
                 *m_message.data(), boost::asio::transfer_exactly(1),
                 [this, self](boost::system::error_code ec, std::size_t)
                 {
@@ -42,14 +42,45 @@ private:
                         }
 
                         //everything worked, read body using the size extraced from the varint
-                        do_read_common_header(size);
+                        do_read_message(size);
+                        return;
                     }
+
+                    do_read_varint();
                 });
     }
 
     void find_successor(/*ID*/);
 
     void check_precending_node(/*ID*/);
+
+    void do_read_message(const uint32_t& size)
+    {
+        auto self(shared_from_this());
+        boost::asio::async_read(socket_,
+                *m_message.data(), boost::asio::transfer_exactly(size),
+                [this, self, size](boost::system::error_code ec, std::size_t)
+                {
+                    if(!ec){
+                        if(!m_message.decode_request(size))
+                        {
+                            do_read_varint();
+                            return;
+                        }
+                        //TODO: Change method to accept further message objects
+                        //other than common header,
+                        //a message evaluation chain has do be developed to receive
+                        //a sequence of different objects depending on the
+                        //common_header request_tpe
+                        //
+                        //idea is to create request/response objects using protobuf so
+                        //that only one object has to be transmitted each time
+                        /* do_read_objects(m_message.get_message_length()); */
+                        std::cout << "And NOW???" << std::endl;
+                    }
+
+                });
+    }
 
     void do_read_common_header(const uint32_t& size)
     {
@@ -69,6 +100,9 @@ private:
                         //a message evaluation chain has do be developed to receive
                         //a sequence of different objects depending on the
                         //common_header request_tpe
+                        //
+                        //idea is to create request/response objects using protobuf so
+                        //that only one object has to be transmitted each time
                         do_read_objects(m_message.get_message_length());
                     }
 
@@ -101,6 +135,9 @@ private:
 
                 });
     }
+
+    //TODO: think about holding some std::vector<std::shared_ptr<google::protobuf::MessageLite>>
+    //which is used to set the order of objects to read
 
     std::string Put(int level_of_decryption);
 

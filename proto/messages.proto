@@ -1,5 +1,20 @@
 syntax = "proto2";
 
+//TODO: Create general request and response object where a CommonHeader is required and other
+//message objects are optional. Those should be the only objects send,
+//so that per each request and response just one object will bet ransmitted
+//
+//evantually file will be transmitted afterwards
+
+message Request
+{
+    required CommonHeader commonheader = 1;
+
+    /* optional request_options = 2; */
+
+    repeated PeerInfo peerinfo = 2;
+}
+
 message CommonHeader
 {
     //If set (T=1), the message is a request. Otherwise, it is a response.

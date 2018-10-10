@@ -80,6 +80,37 @@ public:
         return true;
     }
 
+    bool decode_request(uint32_t size)
+    {
+        //Convert message into CodedInputStream for reading varint
+        std::istream reader(data());
+        google::protobuf::io::IstreamInputStream zstream(&reader);
+        google::protobuf::io::CodedInputStream coded_input(&zstream);
+
+        //Limit the CodedInputStream
+        google::protobuf::io::CodedInputStream::Limit limit = coded_input.PushLimit(size);
+
+        //Merge Stream into CommonHeader Object
+        if(!m_request.MergeFromCodedStream(&coded_input))
+        {
+            BOOST_LOG_TRIVIAL(error) << "MergeFromCodedStream Failed";
+            return false;
+        }
+
+        if(!coded_input.ConsumedEntireMessage())
+        {
+            BOOST_LOG_TRIVIAL(error) << "ConsumedEntireMessage returned false";
+            return false;
+        }
+
+        coded_input.PopLimit(limit);
+
+        //Print CommanHeader Information
+        log_common_header(m_header);
+
+        return true;
+    }
+
     //Decodes streambuf into a Common Header Object if possible
     //TODO: Maybe pass CommonHeader*
     bool decode_header(uint32_t size)
@@ -134,7 +165,12 @@ public:
         return true;
     }
 
-    void log_common_header(CommonHeader& common_header)
+    void log_request(const Request& request)
+    {
+        log_common_header(request.commonheader());
+    }
+
+    void log_common_header(const CommonHeader& common_header)
     {
         BOOST_LOG_TRIVIAL(info) << "START OBJECT COMMONDHEADER:";
         BOOST_LOG_TRIVIAL(info) << "\t" << "T Flag: " << common_header.t_flag();
@@ -147,6 +183,25 @@ public:
     }
 
     char handle_body();
+
+    //TODO: return shrd ptr?
+    bool set_common_header(CommonHeader* header,
+                                    const bool t_flag,
+                                    const uint32_t ttl,
+                                    const uint64_t message_length,
+                                    const std::string request_type,
+                                    const std::string transaction_id,
+                                    const std::string version )
+    {
+        header->set_t_flag(t_flag);
+        header->set_ttl(ttl);
+        header->set_message_length(message_length);
+        header->set_request_type(request_type);
+        header->set_transaction_id(transaction_id);
+        header->set_version(version);
+
+        return true;
+    }
 
     //TODO: Provide interface where own streambuf is passed by ref or ptr
     bool encode_common_header(const bool t_flag,
@@ -258,6 +313,7 @@ private:
     std::ostream m_output_stream;
 
     CommonHeader m_header;
+    Request m_request;
 };
 
 #endif // MESSAGE_HPP

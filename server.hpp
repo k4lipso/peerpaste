@@ -31,7 +31,7 @@ public:
         do_accept();
     }
 
-    server(boost::asio::io_context& io_context, short port, 
+    server(boost::asio::io_context& io_context, short port,
            const tcp::resolver::results_type& endpoints)
         : m_io_context(io_context),
           m_socket(io_context),
@@ -99,26 +99,28 @@ private:
     bool query()
     {
         //Creating PeerInfo with empty ID
+        //This must be done before creating the CommonHeader because message_length
+        //must be known when it gets encoded
         uint32_t message_length(0);
-        PeerInfo peerinfo;
-        peerinfo.set_peer_id("W");
-        message_length += peerinfo.ByteSize() + 1;
+        //Create a Request
+        Request request;
+
+        auto peerinfo = request.add_peerinfo();
+        peerinfo->set_peer_id("UNKNOWN");
+        message_length += peerinfo->ByteSize() + 1;
 
         //Create Message and add CommonHeader with request type "query"
         Message message;
 
-        if(!message.encode_common_header(true,
-                                         0,
-                                         message_length,
-                                         "query",
-                                         "top_secret_transaction_id",
-                                         VERSION))
-        {
-            return false;
-        }
+        message.set_common_header(request.mutable_commonheader(),
+                                     true,
+                                     0,
+                                     message_length,
+                                     "query",
+                                     "top_secret_transaction_id",
+                                     VERSION);
 
-        //Add PeerInfo Object to the Message
-        message.serialize_object(peerinfo);
+        message.serialize_object(request);
 
         //Send the message
         boost::asio::write(m_socket, *message.output());
