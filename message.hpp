@@ -105,6 +105,8 @@ public:
 
         coded_input.PopLimit(limit);
 
+        m_header = m_request.commonheader();
+
         //Print CommanHeader Information
         log_common_header(m_header);
 
