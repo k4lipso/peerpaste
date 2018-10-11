@@ -2,6 +2,7 @@
 #define SESSION_H
 
 #include "message.hpp"
+#include "cryptowrapper.hpp"
 
 #include <string>
 #include <boost/asio.hpp>
@@ -62,7 +63,7 @@ private:
                 [this, self, size](boost::system::error_code ec, std::size_t)
                 {
                     if(!ec){
-                        if(!m_message.decode_request(size))
+                        if(!m_message.decode_message(size))
                         {
                             do_read_varint();
                             return;
@@ -76,25 +77,36 @@ private:
                         //idea is to create request/response objects using protobuf so
                         //that only one object has to be transmitted each time
                         /* do_read_objects(m_message.get_message_length()); */
-                        std::cout << "And NOW???" << std::endl;
-                        std::cout << "Request Type: " << m_message.get_request_type() << std::endl;
 
-                        if(!handle_message())
+                        std::string type("RESPONSE");
+                        if(m_message.get_t_flag()) type = "REQUEST";
+                        BOOST_LOG_TRIVIAL(info) << type << " Received";
+
+
+                        if(m_message.get_t_flag()){
+                            if(!handle_request())
+                            {
+                                do_read_varint();
+                                return;
+                            }
+                        }
+
+                        if(!handle_response())
                         {
                             do_read_varint();
                             return;
                         }
 
-                        send_response();
                     }
 
                 });
     }
 
-    bool handle_message()
+    bool handle_request()
     {
         //determine request type
-        auto request_type = m.message.get_request_type();
+        auto request_type = m_message.get_request_type();
+        BOOST_LOG_TRIVIAL(debug) << "[Session] handle_request() request_type: " << request_type;
         //handle request type
         if(request_type == "query")
         {
@@ -107,8 +119,49 @@ private:
         return true;
     }
 
+    bool handle_response()
+    {
+        return false;
+    }
+
     bool handle_query()
     {
+        //Query Request contains PeerInfo peer_id = "UNKNOWN";
+        //this has to be updated to a hash of the ip addr of that peer
+        //also P2P-options containing hash-algo , DHT-algo ect should be contained in the response
+
+        //check if peerinfo has exactly one member
+        if(m_message.m_request.peerinfo_size() != 1){
+            return false;
+        }
+
+        //TODO: create hashing helper class that handles hashing of files and strings
+        std::string client_ip = socket_.remote_endpoint().address().to_string();
+        auto client_hash = util::generate_sha256(client_ip);
+
+        BOOST_LOG_TRIVIAL(info) << "Query Received";
+        BOOST_LOG_TRIVIAL(info) << "Client IP: " << client_ip;
+        BOOST_LOG_TRIVIAL(info) << "New Client HASH: " << client_hash;
+
+        //create response message
+        //TODO: Change "Request" to "Message" in .proto
+        Message message; //needed to generate common header?! -.-
+        Request request;
+        auto peerinfo = request.add_peerinfo();
+        peerinfo->set_peer_id(client_hash);
+
+        message.set_common_header(request.mutable_commonheader(),
+                                     false,
+                                     0,
+                                     0,
+                                     "query",
+                                     "top_secret_transaction_id",
+                                     VERSION);
+
+        message.serialize_object(request);
+        boost::asio::write(socket_, *message.output());
+
+        return true;
 
     }
 

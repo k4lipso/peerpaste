@@ -1,4 +1,6 @@
 cmake_minimum_required (VERSION 3.2.2)
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
+
 
 project("PeerPaste" CXX)
 
@@ -6,6 +8,12 @@ find_package (Threads REQUIRED)
 
 find_package(Protobuf REQUIRED)
 # add_subdirectory(proto)
+
+find_package(CryptoPP REQUIRED)
+message("${CRYPTOPP_INCLUDE_DIR}")
+message("${CRYPTOPP_INCLUDE_DIRS}")
+message("${CRYPTOPP_ROOT_DIR}")
+message("${CRYPTOPP_FOUND}")
 
 SET(Boost_USE_STATIC_LIBS ON)
 SET(Boost_USE_MULTITHREAD ON)
@@ -37,6 +45,8 @@ target_include_directories(libserver
     PUBLIC
         ${BOOST_INCLUDE_DIRS}
         ${PROTOBUF_INCLUDE_DIRS}
+        ${CRYPTOPP_INCLUDE_DIR}
+        "/usr/include/cryptopp"
     )
 
 target_link_libraries(libserver
@@ -46,6 +56,7 @@ target_link_libraries(libserver
         # ${USED_LIBS}
         ${Boost_LIBRARY_DIRS}
         ${PROTOBUF_LIBRARIES}
+        ${CRYPTOPP_LIBRARIES}
     )
 
 add_executable(node main.cpp)

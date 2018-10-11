@@ -37,8 +37,8 @@ public:
           m_socket(io_context),
           acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
     {
-        join(endpoints);
         do_accept();
+        join(endpoints);
     }
 
 private:

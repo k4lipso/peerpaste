@@ -85,7 +85,12 @@ public:
         return m_header.request_type();
     }
 
-    bool decode_request(uint32_t size)
+    const bool get_t_flag() const
+    {
+        return m_header.t_flag();
+    }
+
+    bool decode_message(uint32_t size)
     {
         //Convert message into CodedInputStream for reading varint
         std::istream reader(data());
@@ -285,6 +290,8 @@ public:
         return data;
     }
 
+    //TODO: make private
+    Request m_request;
 private:
 
     /**
@@ -320,7 +327,6 @@ private:
     std::ostream m_output_stream;
 
     CommonHeader m_header;
-    Request m_request;
 };
 
 #endif // MESSAGE_HPP
