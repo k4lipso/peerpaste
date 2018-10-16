@@ -25,6 +25,7 @@ public:
           m_socket(io_context),
           acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
     {
+        //TODO: initialize m_self (Peer)
         BOOST_LOG_TRIVIAL(info) << "Server Initialized";
         create();
         BOOST_LOG_TRIVIAL(info) << "Start listening on Port " << port;
@@ -37,8 +38,8 @@ public:
           m_socket(io_context),
           acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
     {
-        do_accept();
         join(endpoints);
+        do_accept();
     }
 
 private:
@@ -74,21 +75,16 @@ private:
     */
     bool join(const tcp::resolver::results_type& endpoints)
     {
-        boost::asio::async_connect(m_socket, endpoints,
-                [this](boost::system::error_code ec, tcp::endpoint)
-                {
-                    if(!ec)
-                    {
-                        if(!query())
-                        {
-                            BOOST_LOG_TRIVIAL(error) << "Query Request failed";
-                            return false;
-                        }
+        /* m_predecessor = nullptr; */
+        boost::asio::io_context io_con;
+        tcp::socket session_socket(io_con);
 
-                    }
-                });
-        m_predecessor = nullptr;
-        return true;
+        auto sesh = std::make_shared<session>(std::move(session_socket));
+        sesh->start();
+        sesh->join(endpoints);
+        io_con.run();
+
+        return false;
     }
 
     /**
@@ -98,34 +94,34 @@ private:
      */
     bool query()
     {
-        //Creating PeerInfo with empty ID
-        //This must be done before creating the CommonHeader because message_length
-        //must be known when it gets encoded
-        uint32_t message_length(0);
-        //Create a Request
-        Request request;
+        /* //Creating PeerInfo with empty ID */
+        /* //This must be done before creating the CommonHeader because message_length */
+        /* //must be known when it gets encoded */
+        /* uint32_t message_length(0); */
+        /* //Create a Request */
+        /* Request request; */
 
-        auto peerinfo = request.add_peerinfo();
-        peerinfo->set_peer_id("UNKNOWN");
-        message_length += peerinfo->ByteSize() + 1;
+        /* auto peerinfo = request.add_peerinfo(); */
+        /* peerinfo->set_peer_id("UNKNOWN"); */
+        /* message_length += peerinfo->ByteSize() + 1; */
 
-        //Create Message and add CommonHeader with request type "query"
-        Message message;
+        /* //Create Message and add CommonHeader with request type "query" */
+        /* Message message; */
 
-        message.set_common_header(request.mutable_commonheader(),
-                                     true,
-                                     0,
-                                     message_length,
-                                     "query",
-                                     "top_secret_transaction_id",
-                                     VERSION);
+        /* message.set_common_header(request.mutable_commonheader(), */
+        /*                              true, */
+        /*                              0, */
+        /*                              message_length, */
+        /*                              "query", */
+        /*                              "top_secret_transaction_id", */
+        /*                              VERSION); */
 
-        message.serialize_object(request);
+        /* message.serialize_object(request); */
 
-        //Send the message
-        boost::asio::write(m_socket, *message.output());
+        /* //Send the message */
+        /* boost::asio::write(m_socket, *message.output()); */
 
-        return true;
+        return false;
     }
 
     void stabilize();
