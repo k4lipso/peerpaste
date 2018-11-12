@@ -85,6 +85,16 @@ public:
         return m_header.request_type();
     }
 
+    const std::string get_peer_id() const
+    {
+        return m_request.peerinfo(0).peer_id();
+    }
+
+    const std::shared_ptr<Request> get_Message() const
+    {
+        return std::make_shared<Request>(m_request);
+    }
+
     const bool get_t_flag() const
     {
         return m_header.t_flag();
@@ -290,8 +300,6 @@ public:
         return data;
     }
 
-    //TODO: make private
-    Request m_request;
 private:
 
     /**
@@ -327,6 +335,9 @@ private:
     std::ostream m_output_stream;
 
     CommonHeader m_header;
+    //TODO: Better naming for request, request object could also be a response for now oO
+    //TODO: make private
+    Request m_request;
 };
 
 #endif // MESSAGE_HPP

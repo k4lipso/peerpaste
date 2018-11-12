@@ -3,6 +3,7 @@
 
 #include "message.hpp"
 #include "cryptowrapper.hpp"
+#include "routingTable.hpp"
 
 #include <string>
 #include <boost/asio.hpp>
@@ -16,6 +17,15 @@ public:
     session(tcp::socket socket)
         : socket_(std::move(socket))
     {}
+
+    session(tcp::socket socket, std::shared_ptr<RoutingTable> routingTable)
+        : socket_(std::move(socket)),
+          m_routingTable(std::move(routingTable))
+    {
+        BOOST_LOG_TRIVIAL(info) << "Session Created";
+        BOOST_LOG_TRIVIAL(info) << "m_self ID: "
+                                << m_routingTable->get_self()->getID();
+    }
 
     /**
      * using this constructor an "outgoing" session will be created.
@@ -57,7 +67,6 @@ public:
                         }
                         return true;
                     }
-                    std::cout << "FOO" << std::endl;
                     join(endpoints);
                 });
         /* m_predecessor = nullptr; */
@@ -132,7 +141,7 @@ private:
                         } else {
                             if(!handle_response())
                             {
-                                do_read_varint();
+                                /* do_read_varint(); */
                                 return;
                             }
                         }
@@ -171,17 +180,30 @@ private:
         //handle request type
         if(request_type == "query")
         {
+            /* BOOST_LOG_TRIVIAL(info) << "m_self ID: " */
+            /*                         << m_routingTable->get_self()->getID(); */
             if(!handle_query_respone()) return false;
         } else {
             BOOST_LOG_TRIVIAL(debug) << "Unknown Request Type";
             return false;
         }
-        return false;
+        return true;
     }
 
     bool handle_query_respone()
     {
         //TODO: extract peerinfo from Request and update own Peer information (Hash)
+
+        //get own Peer object
+        auto self = m_routingTable->get_self();
+        //set new ID
+        self->setID(m_message.get_peer_id());
+
+        if(self->getID() != "UNKNOWN"){
+            return true;
+        }
+
+        return false;
     }
 
     bool handle_query()
@@ -192,7 +214,7 @@ private:
         //DHT-algo ect should be contained in the response
 
         //check if peerinfo has exactly one member
-        if(m_message.m_request.peerinfo_size() != 1){
+        if(m_message.get_Message()->peerinfo_size() != 1){
             return false;
         }
 
@@ -206,7 +228,7 @@ private:
 
         //create response message
         //TODO: extra fctn
-        //TODO: Change "Request" to "Message" in .proto
+        //TODO: Change "Request" to something like "Message" in .proto
         Message message; //needed to generate common header?! -.-
         Request request;
         auto peerinfo = request.add_peerinfo();
@@ -232,6 +254,7 @@ private:
         return false;
     }
 
+    [[deprecated]]
     void do_read_common_header(const uint32_t& size)
     {
         auto self(shared_from_this());
@@ -259,6 +282,7 @@ private:
                 });
     }
 
+    [[deprecated]]
     void do_read_objects(const uint32_t& size)
     {
         auto self(shared_from_this());
@@ -272,7 +296,6 @@ private:
                             do_read_varint();
                             return;
                         }
-                        std::cout << m_message.data_to_string() << std::endl;
                         if(!m_message.decode_peerinfo(size))
                         {
                             do_read_varint();
@@ -333,6 +356,8 @@ private:
     std::string Get(size_t hash);
 
     void do_write(std::size_t length);
+
+    std::shared_ptr<RoutingTable> m_routingTable;
 
     Message m_message;
     tcp::socket socket_;

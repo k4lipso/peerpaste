@@ -12,21 +12,44 @@
 class RoutingTable
 {
 public:
-    RoutingTable();
-    ~RoutingTable();
+    RoutingTable(std::shared_ptr<Peer> self,
+                 std::shared_ptr<Peer> predecessor,
+                 std::shared_ptr<Peer> successor)
+        : m_self(self), m_predecessor(predecessor), m_successor(successor)
+    {}
+
+    ~RoutingTable() {}
 
     //Should be const!
     const std::shared_ptr<const Peer> get(const size_t index) const
     {
         //check if index is in range
-        if(m_table.size() > index)
+        if(m_fingerTable.size() > index)
         {
-            const std::shared_ptr<const Peer> p = m_table.at(index);
+            const std::shared_ptr<const Peer> p = m_fingerTable.at(index);
             return p;
         }
         //TODO Implement proper logging
-        std::cout << "Peer with index" << index
-                  << " not found." << std::endl;
+    }
+
+    void set_self(std::shared_ptr<Peer> self)
+    {
+        m_self = self;
+    }
+
+    std::shared_ptr<Peer> get_self()
+    {
+        return m_self;
+    }
+
+    void set_predecessor(std::shared_ptr<Peer> predecessor)
+    {
+        m_predecessor = predecessor;
+    }
+
+    void set_successor(std::shared_ptr<Peer> successor)
+    {
+        m_successor = successor;
     }
 
     void append();
@@ -34,7 +57,21 @@ public:
     void set();
 
 private:
-    std::vector<std::shared_ptr<Peer>> m_table;
+    //Fingertable containing multiple peers,
+    //used to lookup keys
+    std::vector<std::shared_ptr<Peer>> m_fingerTable;
+
+    //Peer Object holding information about itself
+    std::shared_ptr<Peer> m_self;
+
+    //Peer Object holding information about
+    //the next peer in the Ring
+    std::shared_ptr<Peer> m_successor;
+
+    //Peer Object holding information about
+    //the previous Peer in the Ring
+    std::shared_ptr<Peer> m_predecessor;
+
 
 };
 

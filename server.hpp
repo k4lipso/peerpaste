@@ -38,7 +38,11 @@ public:
           m_socket(io_context),
           acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
     {
+        create();
         join(endpoints);
+        BOOST_LOG_TRIVIAL(info) << "OWN ID: " << m_routingTable->get_self()->getID();
+        BOOST_LOG_TRIVIAL(info) << "Server Initialized";
+        BOOST_LOG_TRIVIAL(info) << "Start listening on Port " << port;
         do_accept();
     }
 
@@ -52,7 +56,7 @@ private:
         auto endpoint = acceptor_.local_endpoint();
         const boost::asio::ip::address ip_ = endpoint.address();
         const std::string ip = ip_.to_string();
-        const size_t id = std::hash<std::string>{}(ip);
+        const std::string id = "UNKNOWN";
         BOOST_LOG_TRIVIAL(info) << "IP: " << ip;
         BOOST_LOG_TRIVIAL(info) << "ID: " << id;
         return Peer(id, ip);
@@ -62,10 +66,11 @@ private:
     //NAT :(
     void create()
     {
-        m_predecessor = nullptr;
         auto p = std::make_shared<Peer>(createPeer());
-        m_self = p;
-        m_successor = p;
+        m_routingTable = std::make_shared<RoutingTable>(p, nullptr, nullptr);
+        BOOST_LOG_TRIVIAL(info) << "m_self ID: "
+                                << m_routingTable->get_self()->getID();
+
     }
 
     /**
@@ -79,7 +84,7 @@ private:
         boost::asio::io_context io_con;
         tcp::socket session_socket(io_con);
 
-        auto sesh = std::make_shared<session>(std::move(session_socket));
+        auto sesh = std::make_shared<session>(std::move(session_socket), m_routingTable);
         sesh->start();
         sesh->join(endpoints);
         io_con.run();
@@ -139,7 +144,7 @@ private:
             {
                 if (!ec)
                 {
-                    std::make_shared<session>(std::move(socket))->start();
+                    std::make_shared<session>(std::move(socket), m_routingTable)->start();
                 }
 
                 do_accept();
@@ -161,7 +166,11 @@ private:
 
     //Fingertable containing multiple peers,
     //used to lookup keys
-    std::shared_ptr<RoutingTable> m_fingerTable;
+    //TODO: successer,predecessor,self and fingertable all in one RoutingTable object
+    //MAKE READs/WRITEs ATOMIC
+    //pass shared_ptr of routing table to each session
+    //ATOMIC READS AND WRITES
+    std::shared_ptr<RoutingTable> m_routingTable;
 
     boost::asio::io_context& m_io_context;
     tcp::socket m_socket;

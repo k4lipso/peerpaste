@@ -11,19 +11,29 @@ class Peer
 {
 public:
     Peer();
-    Peer(size_t id, std::string ip) :
+    Peer(std::string id, std::string ip) :
                 m_id(id), m_ip(ip)
                 {}
     ~Peer() {}
 
-    size_t getID()
+    std::string getID()
     {
         return m_id;
+    }
+
+    void setID(std::string hashed)
+    {
+        m_id = hashed;
     }
 
     std::string getIP()
     {
         return m_ip;
+    }
+
+    void setIP(std::string ip)
+    {
+        m_ip = ip;
     }
 
     auto getRTT()
@@ -38,7 +48,7 @@ public:
 
 private:
     //The ID of the peer. Typically the hash of the IP Addr
-    size_t m_id;
+    std::string m_id;
     //IP Addr
     std::string m_ip;
     //round-trip-time of the peer.
