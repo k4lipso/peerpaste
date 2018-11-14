@@ -7,6 +7,7 @@
 
 #include <string>
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -14,13 +15,16 @@ class session
     : public std::enable_shared_from_this<session>
 {
 public:
+    typedef std::shared_ptr<session> SessionPtr;
+    typedef std::shared_ptr<RoutingTable> RoutingPtr;
+    typedef std::shared_ptr<Request> RequestPtr;
     session(tcp::socket socket)
         : socket_(std::move(socket))
     {}
 
-    session(tcp::socket socket, std::shared_ptr<RoutingTable> routingTable)
-        : socket_(std::move(socket)),
-          m_routingTable(std::move(routingTable))
+    session(boost::asio::io_context& io_context, RoutingPtr routingTable)
+        : socket_(io_context),
+          m_routingTable(routingTable)
     {
         BOOST_LOG_TRIVIAL(info) << "Session Created";
         BOOST_LOG_TRIVIAL(info) << "m_self ID: "
@@ -39,6 +43,18 @@ public:
     /*         std::string request_type) */
     /*     : socket_(std::move(socket)) */
     /* {} */
+
+    static SessionPtr create(boost::asio::io_context& io_context, RoutingPtr routingTable)
+    {
+        /* return std::make_shared<session>(socket, routingTable); */
+        return SessionPtr(new session(io_context, routingTable));
+    }
+
+    tcp::socket& get_socket()
+    {
+        //TODO:: change to m_socket
+        return socket_;
+    }
 
     void start()
     {
@@ -80,80 +96,70 @@ public:
     }
 
 private:
+    void handle_read_header(const boost::system::error_code& error)
+    {
+        if(!error)
+        {
+            unsigned msg_len = m_packed_request.decode_header(m_readbuf);
+            do_read_message(msg_len);
+            do_read_varint();
+            return;
+
+        }
+    }
+
     void do_read_varint()
     {
-        auto self(shared_from_this());
-        boost::asio::async_read(socket_,
-                //Read 1 Byte which should be an Varint
-                *m_message.data(), boost::asio::transfer_exactly(1),
-                [this, self](boost::system::error_code ec, std::size_t)
-                {
-                    if(!ec){
-                        uint32_t size;
-                        if(!m_message.get_varint(size))
-                        {
-                            do_read_varint();
-                            return;
-                        }
-
-                        //everything worked, read body using the size
-                        //extraced from the varint
-                        do_read_message(size);
-                        return;
-                    }
-
-                    do_read_varint();
-                });
+        m_readbuf.resize(HEADER_SIZE);
+        boost::asio::async_read(socket_, boost::asio::buffer(m_readbuf),
+                boost::bind(&session::handle_read_header, shared_from_this(),
+                boost::asio::placeholders::error));
     }
 
     bool check_precending_node(/*ID*/);
 
-    void do_read_message(const uint32_t& size)
+    void handle_message()
     {
-        auto self(shared_from_this());
-        boost::asio::async_read(socket_,
-                *m_message.data(), boost::asio::transfer_exactly(size),
-                [this, self, size](boost::system::error_code ec, std::size_t)
-                {
-                    if(!ec){
-                        if(!m_message.decode_message(size))
-                        {
-                            do_read_varint();
-                            return;
-                        }
-                        //TODO: Change method to accept further message objects
-                        //other than common header,
-                        //a message evaluation chain has do be developed to receive
-                        //a sequence of different objects depending on the
-                        //common_header request_tpe
-                        //
-                        //idea is to create request/response objects using protobuf so
-                        //that only one object has to be transmitted each time
-                        /* do_read_objects(m_message.get_message_length()); */
+        if(m_packed_request.unpack(m_readbuf))
+        {
+            RequestPtr req = m_packed_request.get_msg();
+        /* std::string type("RESPONSE"); */
+        /* if(m_message.get_t_flag()) type = "REQUEST"; */
+        /* BOOST_LOG_TRIVIAL(info) << type << " Received"; */
 
-                        std::string type("RESPONSE");
-                        if(m_message.get_t_flag()) type = "REQUEST";
-                        BOOST_LOG_TRIVIAL(info) << type << " Received";
+        /* //TODO: recheck if else is neccessarry */
+        /* if(m_message.get_t_flag()){ */
+        /*     if(!handle_request()) */
+        /*     { */
+        /*         do_read_varint(); */
+        /*         return; */
+        /*     } */
+        /* } else { */
+        /*     if(!handle_response()) */
+        /*     { */
+        /*         /1* do_read_varint(); *1/ */
+        /*         return; */
+        /*     } */
+        /* } */
+        }
+    }
 
-                        //TODO: recheck if else is neccessarry
-                        if(m_message.get_t_flag()){
-                            if(!handle_request())
-                            {
-                                do_read_varint();
-                                return;
-                            }
-                        } else {
-                            if(!handle_response())
-                            {
-                                /* do_read_varint(); */
-                                return;
-                            }
-                        }
+    void handle_read_message(const boost::system::error_code& ec)
+    {
+        if(!ec){
+            handle_message();
+            do_read_varint();
+        }
+    }
 
+    void do_read_message(unsigned msg_len)
+    {
+        m_readbuf.resize(HEADER_SIZE + msg_len);
 
-                    }
-
-                });
+        boost::asio::mutable_buffers_1 buf = boost::asio::buffer(&m_readbuf[HEADER_SIZE], msg_len);
+        boost::asio::async_read(socket_, boost::asio::buffer(m_readbuf),
+                boost::bind(&session::handle_read_message, shared_from_this(),
+                    boost::asio::placeholders::error));
     }
 
     bool handle_request()
@@ -406,6 +412,7 @@ private:
      */
     bool query()
     {
+        //TODO:: CHANGE TO USE MSG.PACK()!!!!!
         BOOST_LOG_TRIVIAL(info) << "SESSION::query";
         //Creating PeerInfo with empty ID
         //This must be done before creating the CommonHeader because message_length
@@ -417,34 +424,42 @@ private:
         /* auto repeated_field_ptr = request.mutable_peerinfo(); */
 
         std::shared_ptr<PeerInfo> peerinfo_ = m_routingTable->get_self()->getPeer();
-        auto peerinfo = request.add_peerinfo();
-        /* *peerinfo = *peerinfo_; */
-        /* PeerInfo peerinfo2 = *peerinfo; */
-        /* PeerInfo peerinfo; */
+        /* auto peerinfo = request.add_peerinfo(); */
+        /* /1* *peerinfo = *peerinfo_; *1/ */
+        /* /1* PeerInfo peerinfo2 = *peerinfo; *1/ */
+        /* /1* PeerInfo peerinfo; *1/ */
 
-        /* repeated_field_ptr->Add(peerinfo); */
-        /* request.add_peerinfo(peerinfo); */
+        /* /1* repeated_field_ptr->Add(peerinfo); *1/ */
+        /* /1* request.add_peerinfo(peerinfo); *1/ */
+        /* message_length += peerinfo->ByteSize() + 1; */
+
+        /* //Create Message and add CommonHeader with request type "query" */
+        /* Message message; */
+
+        /* message.set_common_header(request.mutable_commonheader(), */
+        /*                              true, */
+        /*                              0, */
+        /*                              message_length, */
+        /*                              "query", */
+        /*                              "top_secret_transaction_id", */
+        /*                              VERSION); */
+
+        /* message.serialize_object(request); */
+
+        //Send the message
+        std::vector<uint8_t> writebuf;
+        PackedMessage<Request> msg = PackedMessage<Request>();
+        auto message = msg.get_msg();
+        auto peerinfo = message->add_peerinfo();
         peerinfo->set_peer_id(peerinfo_->peer_id());
         peerinfo->set_peer_ip(peerinfo_->peer_ip());
         peerinfo->set_peer_rtt(peerinfo_->peer_ip());
         peerinfo->set_peer_uptime(peerinfo_->peer_ip());
-        message_length += peerinfo->ByteSize() + 1;
 
-        //Create Message and add CommonHeader with request type "query"
-        Message message;
 
-        message.set_common_header(request.mutable_commonheader(),
-                                     true,
-                                     0,
-                                     message_length,
-                                     "query",
-                                     "top_secret_transaction_id",
-                                     VERSION);
-
-        message.serialize_object(request);
-
-        //Send the message
-        boost::asio::write(socket_, *message.output());
+        msg.pack(writebuf);
+        
+        boost::asio::write(socket_, boost::asio::buffer(writebuf));
 
         return true;
     }
@@ -455,10 +470,13 @@ private:
 
     void do_write(std::size_t length);
 
-    std::shared_ptr<RoutingTable> m_routingTable;
+    RoutingPtr m_routingTable;
 
     Message m_message;
     tcp::socket socket_;
+
+    std::vector<uint8_t> m_readbuf;
+    PackedMessage<Request> m_packed_request;
 };
 
 #endif /* SESSION_H */

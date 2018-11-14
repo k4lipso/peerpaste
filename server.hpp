@@ -13,6 +13,7 @@
 #include <sstream>
 #include <functional>
 #include <boost/asio.hpp>
+#include <boost/bind.hpp>
 #include <boost/log/trivial.hpp>
 
 using boost::asio::ip::tcp;
@@ -80,14 +81,9 @@ private:
     */
     bool join(const tcp::resolver::results_type& endpoints)
     {
-        /* m_predecessor = nullptr; */
-        boost::asio::io_context io_con;
-        tcp::socket session_socket(io_con);
-
-        auto sesh = std::make_shared<session>(std::move(session_socket), m_routingTable);
+        auto sesh = session::create(m_io_context, m_routingTable);
         sesh->start();
         sesh->join(endpoints);
-        io_con.run();
 
         return false;
     }
@@ -139,16 +135,22 @@ private:
 
     void do_accept()
     {
-        acceptor_.async_accept(
-            [this](boost::system::error_code ec, tcp::socket socket)
-            {
-                if (!ec)
-                {
-                    std::make_shared<session>(std::move(socket), m_routingTable)->start();
-                }
+        session::SessionPtr new_connection =
+            session::create(m_io_context, m_routingTable);
 
-                do_accept();
-            });
+        acceptor_.async_accept(new_connection->get_socket(),
+                boost::bind(&server::handle_accept, this, new_connection,
+                    boost::asio::placeholders::error));
+    }
+
+    void handle_accept(session::SessionPtr session,
+            const boost::system::error_code& ec)
+    {
+        if(!ec) {
+            session->start();
+
+            do_accept();
+        }
     }
 
     tcp::acceptor acceptor_;
