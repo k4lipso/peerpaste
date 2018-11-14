@@ -42,6 +42,9 @@ message CommonHeader
 message PeerInfo
 {
     required string peer_id = 1;
+    required string peer_ip = 2;
+    optional string peer_rtt = 3;
+    optional string peer_uptime = 4;
     //various additional fields.. thinking..
 }
 

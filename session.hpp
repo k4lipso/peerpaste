@@ -57,7 +57,6 @@ public:
         boost::asio::async_connect(socket_, endpoints,
                 [this, endpoints](boost::system::error_code ec, tcp::endpoint)
                 {
-                    BOOST_LOG_TRIVIAL(info) << "SESSION::join Async Connect";
                     if(!ec)
                     {
                         if(!query())
@@ -65,8 +64,15 @@ public:
                             BOOST_LOG_TRIVIAL(info) << "Query Request failed";
                             return false;
                         }
+
+                        /* if(!find_successor()) */
+                        /* { */
+                        /*     BOOST_LOG_TRIVIAL(info) << "Could find Successor"; */
+                        /*     return false; */
+                        /* } */
                         return true;
                     }
+                    //Add timeout functionality
                     join(endpoints);
                 });
         /* m_predecessor = nullptr; */
@@ -99,8 +105,6 @@ private:
                     do_read_varint();
                 });
     }
-
-    bool find_successor(/*ID*/);
 
     bool check_precending_node(/*ID*/);
 
@@ -183,12 +187,84 @@ private:
             /* BOOST_LOG_TRIVIAL(info) << "m_self ID: " */
             /*                         << m_routingTable->get_self()->getID(); */
             if(!handle_query_respone()) return false;
+            /* if(!find_successor(m_routingTable->get_self()->getID())) return false; */
         } else {
             BOOST_LOG_TRIVIAL(debug) << "Unknown Request Type";
             return false;
         }
         return true;
     }
+
+    const std::shared_ptr<Peer> find_successor(const std::string& id)
+    {
+        /*
+        ask node n to find the successor of id
+        n.find successor(id)
+            if (id ∈ (n, successor])
+                return successor;
+            else
+                n0 = closest preceding node(id );
+                return n0.find successor(id);
+        */
+
+        //TODO: check if id is in reange (n, successor) by comparing strings using str.compare(str)
+        auto self = m_routingTable->get_self();
+        auto successor = m_routingTable->get_successor();
+
+        //if(id in range(self, successor))
+        //TODO: check if comparision is okay since it is '(n, successor]' in the paper:
+        //what means '(' and what means '['
+        if(id.compare(self->getID()) >= 0 && id.compare(successor->getID()) <= 0)
+        {
+            //return successor
+            return successor;
+        } else {
+            auto predecessor = closest_preceding_node(id);
+            return remote_find_successor(predecessor);
+        }
+    }
+
+    const std::shared_ptr<Peer> remote_find_successor(std::shared_ptr<Peer> peer)
+    {
+        //This fct sends a find_successor request which will trigger find_successor
+        //on the remote peer
+
+        //TODO: generate find_successor request
+        //find a way that we handle the response in this function so that we can return
+        //the peer object in this function
+        BOOST_LOG_TRIVIAL(info) << "SESSION::remote_find_successor";
+
+        uint32_t message_length(0);
+
+        Request request;
+
+    }
+
+    std::shared_ptr<Peer> closest_preceding_node(const std::string& id)
+    {
+        /*
+        // search the local table for the highest predecessor of id
+        n.closest preceding node(id)
+        for i = m downto 1
+            if (finger[i] ∈ (n, id))
+                return finger[i];
+        return n;
+        */
+        auto self = m_routingTable->get_self();
+        auto finger = m_routingTable->get_fingerTable();
+        for(int i = finger->size(); i <= 0; i--)
+        /* for(auto finger = m_routingTable->m_fingerTable.end(); */
+        /*          finger >= m_routingTable->m_fingerTable.begin(); */
+        /*          finger--) */
+        {
+            std::string finger_id = finger->at(i)->getID();
+            if(finger_id.compare(self->getID()) >= 0 && finger_id.compare(id) <= 0){
+                return finger->at(i);
+            }
+        }
+        return self;
+    }
+
 
     bool handle_query_respone()
     {
@@ -199,6 +275,13 @@ private:
         //set new ID
         self->setID(m_message.get_peer_id());
 
+        //get predecessor/successor object
+        auto predecessor = m_routingTable->get_predecessor();
+        auto successor = m_routingTable->get_successor();
+
+        //TODO: WHY/? WHY ERROR?
+        /* auto predecessor = nullptr; */
+
         if(self->getID() != "UNKNOWN"){
             return true;
         }
@@ -208,6 +291,7 @@ private:
 
     bool handle_query()
     {
+        BOOST_LOG_TRIVIAL(info) << "SESSION::handle_query";
         //Query Request contains PeerInfo peer_id = "UNKNOWN";
         //this has to be updated to a hash of the ip addr of that peer
         //also P2P-options containing hash-algo,
@@ -219,7 +303,7 @@ private:
         }
 
         //TODO: create hashing helper class that handles hashing of files and strings
-        std::string client_ip = socket_.remote_endpoint().address().to_string();
+        auto client_ip = socket_.remote_endpoint().address().to_string();
         auto client_hash = util::generate_sha256(client_ip);
 
         BOOST_LOG_TRIVIAL(info) << "Query Received";
@@ -229,11 +313,16 @@ private:
         //create response message
         //TODO: extra fctn
         //TODO: Change "Request" to something like "Message" in .proto
-        Message message; //needed to generate common header?! -.-
         Request request;
         auto peerinfo = request.add_peerinfo();
+        peerinfo->set_peer_ip(client_ip);
         peerinfo->set_peer_id(client_hash);
+        peerinfo->set_peer_uptime(client_hash);
+        peerinfo->set_peer_rtt(client_hash);
 
+        std::cout << "peerinfo hash: " << peerinfo->peer_id() << std::endl;
+
+        Message message; //needed to generate common header?! -.-
         message.set_common_header(request.mutable_commonheader(),
                                      false,
                                      0,
@@ -245,8 +334,9 @@ private:
         message.serialize_object(request);
         boost::asio::write(socket_, *message.output());
 
-        return true;
+        BOOST_LOG_TRIVIAL(info) << "Sent query_response";
 
+        return true;
     }
 
     bool send_response()
@@ -320,12 +410,24 @@ private:
         //Creating PeerInfo with empty ID
         //This must be done before creating the CommonHeader because message_length
         //must be known when it gets encoded
+        //TODO: still needed?
         uint32_t message_length(0);
         //Create a Request
         Request request;
+        /* auto repeated_field_ptr = request.mutable_peerinfo(); */
 
+        std::shared_ptr<PeerInfo> peerinfo_ = m_routingTable->get_self()->getPeer();
         auto peerinfo = request.add_peerinfo();
-        peerinfo->set_peer_id("UNKNOWN");
+        /* *peerinfo = *peerinfo_; */
+        /* PeerInfo peerinfo2 = *peerinfo; */
+        /* PeerInfo peerinfo; */
+
+        /* repeated_field_ptr->Add(peerinfo); */
+        /* request.add_peerinfo(peerinfo); */
+        peerinfo->set_peer_id(peerinfo_->peer_id());
+        peerinfo->set_peer_ip(peerinfo_->peer_ip());
+        peerinfo->set_peer_rtt(peerinfo_->peer_ip());
+        peerinfo->set_peer_uptime(peerinfo_->peer_ip());
         message_length += peerinfo->ByteSize() + 1;
 
         //Create Message and add CommonHeader with request type "query"
@@ -346,10 +448,6 @@ private:
 
         return true;
     }
-
-    //TODO: think about holding some
-    //std::vector<std::shared_ptr<google::protobuf::MessageLite>>
-    //which is used to set the order of objects to read
 
     std::string Put(int level_of_decryption);
 

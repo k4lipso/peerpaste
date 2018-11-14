@@ -64,19 +64,36 @@ public:
     {
         //Convert message into CodedInputStream for reading varint
         //TODO: eva if google (CodedInputStream) independent code is possible
-        std::istream reader(data());
+        boost::asio::streambuf::const_buffers_type bufs = m_input.data();
+        boost::asio::streambuf::const_buffers_type bufs2 = m_input.data();
+        std::string str2(boost::asio::buffers_begin(bufs2),
+                         boost::asio::buffers_begin(bufs2) + m_input.size());
+        std::cout << str2 << std::endl;
+
+        std::istream reader(&m_input);
         google::protobuf::io::IstreamInputStream zstream(&reader);
         google::protobuf::io::CodedInputStream coded_input(&zstream);
 
         //Try to read Varint, if fails start all over again
         if(!coded_input.ReadVarint32(&size))
         {
+            /* boost::asio::streambuf source, target; */
+/* ... */
+/* std::size_t bytes_copied = buffer_copy( */
+  /* target.prepare(source.size()), // target's output sequence */
+  /* source.data());                // source's input sequence */
+/* // Explicitly move target's output sequence to its input sequence. */
+/* target.commit(bytes_copied); */
+
+            m_input.commit(buffer_copy(
+                                    m_input.prepare(bufs.size()), // target's output sequence
+                                    m_input.data()));
+
             BOOST_LOG_TRIVIAL(error) << "ReadVarint32(&size) failed";
             return false;
         }
 
         BOOST_LOG_TRIVIAL(info) << "Varint: " << size;
-
         return true;
     }
 

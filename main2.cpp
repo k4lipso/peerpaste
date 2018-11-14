@@ -14,9 +14,9 @@ int main(int argc, char* argv[])
 {
   try
   {
-    if (argc != 3)
+    if (argc != 4)
     {
-      std::cerr << "Usage: chat_client <host> <port>\n";
+      std::cerr << "Usage: chat_client <node_addr> <node_port> <own_port>\n";
       return 1;
     }
 
@@ -25,7 +25,7 @@ int main(int argc, char* argv[])
     tcp::resolver resolver(io_context);
     auto endpoints = resolver.resolve(argv[1], argv[2]);
 
-    server s(io_context, std::atoi(argv[1]), endpoints);
+    server s(io_context, std::atoi(argv[3]), endpoints);
 
     io_context.run();
   }

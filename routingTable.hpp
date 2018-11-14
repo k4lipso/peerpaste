@@ -47,19 +47,34 @@ public:
         m_predecessor = predecessor;
     }
 
+    std::shared_ptr<Peer> get_predecessor()
+    {
+        return m_predecessor;
+    }
+
     void set_successor(std::shared_ptr<Peer> successor)
     {
         m_successor = successor;
+    }
+
+    std::shared_ptr<Peer> get_successor()
+    {
+        return m_successor;
+    }
+
+    std::shared_ptr<std::vector<std::shared_ptr<Peer>>> get_fingerTable()
+    {
+        return std::make_shared<std::vector<std::shared_ptr<Peer>>>(m_fingerTable);
     }
 
     void append();
 
     void set();
 
+    std::vector<std::shared_ptr<Peer>> m_fingerTable;
 private:
     //Fingertable containing multiple peers,
     //used to lookup keys
-    std::vector<std::shared_ptr<Peer>> m_fingerTable;
 
     //Peer Object holding information about itself
     std::shared_ptr<Peer> m_self;
