@@ -37,6 +37,10 @@ public:
         return m_msg;
     }
 
+    size_t size() {
+        return 0;
+    }
+
     bool pack(data_buffer& buf) const
     {
         if(!m_msg)
@@ -54,15 +58,36 @@ public:
             return 0;
         unsigned msg_size = 0;
         for(unsigned i = 0; i < HEADER_SIZE; ++i){
-            msg_size - msg_size * 256 + (static_cast<unsigned>(buf[i]) & 0xFF);
+            msg_size = msg_size * 256 + (static_cast<unsigned>(buf[i]) & 0xFF);
         }
         return msg_size;
     }
 
     bool unpack(const data_buffer& buf)
     {
+        BOOST_LOG_TRIVIAL(debug) << "unpack()";
         return m_msg->ParseFromArray(&buf[HEADER_SIZE], buf.size() - HEADER_SIZE);
     }
+
+    bool init_header(const bool t_flag,
+                     const uint32_t ttl,
+                     const uint64_t message_length,
+                     const std::string request_type,
+                     const std::string transaction_id,
+                     const std::string version )
+    {
+        auto header = m_msg->mutable_commonheader();
+        header->set_t_flag(t_flag);
+        header->set_ttl(ttl);
+        header->set_message_length(message_length);
+        header->set_request_type(request_type);
+        header->set_transaction_id(transaction_id);
+        header->set_version(version);
+
+        return true;
+    }
+
+
 
 private:
 

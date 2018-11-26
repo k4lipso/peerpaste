@@ -28,7 +28,8 @@ public:
 
     void setID(std::string hashed)
     {
-        m_id = hashed;
+        m_peer->set_peer_id(hashed);
+        /* m_id = hashed; */
     }
 
     std::string getIP()
@@ -38,7 +39,7 @@ public:
 
     void setIP(std::string ip)
     {
-        m_ip = ip;
+        m_peer->set_peer_ip(ip);
     }
 
     auto getRTT()

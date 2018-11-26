@@ -27,9 +27,9 @@ public:
           acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
     {
         //TODO: initialize m_self (Peer)
-        BOOST_LOG_TRIVIAL(info) << "Server Initialized";
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] Server Initialized";
         create();
-        BOOST_LOG_TRIVIAL(info) << "Start listening on Port " << port;
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] Start listening on Port " << port;
         do_accept();
     }
 
@@ -41,9 +41,9 @@ public:
     {
         create();
         join(endpoints);
-        BOOST_LOG_TRIVIAL(info) << "OWN ID: " << m_routingTable->get_self()->getID();
-        BOOST_LOG_TRIVIAL(info) << "Server Initialized";
-        BOOST_LOG_TRIVIAL(info) << "Start listening on Port " << port;
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] OWN ID: " << m_routingTable->get_self()->getID();
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] Server Initialized";
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] Start listening on Port " << port;
         do_accept();
     }
 
@@ -58,8 +58,8 @@ private:
         const boost::asio::ip::address ip_ = endpoint.address();
         const std::string ip = ip_.to_string();
         const std::string id = "UNKNOWN";
-        BOOST_LOG_TRIVIAL(info) << "IP: " << ip;
-        BOOST_LOG_TRIVIAL(info) << "ID: " << id;
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] IP: " << ip;
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] ID: " << id;
         return Peer(id, ip);
     }
 
@@ -69,7 +69,7 @@ private:
     {
         auto p = std::make_shared<Peer>(createPeer());
         m_routingTable = std::make_shared<RoutingTable>(p, nullptr, nullptr);
-        BOOST_LOG_TRIVIAL(info) << "m_self ID: "
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] m_self ID: "
                                 << m_routingTable->get_self()->getID();
 
     }
@@ -82,8 +82,17 @@ private:
     bool join(const tcp::resolver::results_type& endpoints)
     {
         auto sesh = session::create(m_io_context, m_routingTable);
-        sesh->start();
+        /* sesh->start(); */
         sesh->join(endpoints);
+
+        //TODO: somehow block here
+        /* boost::asio::steady_timer timer{m_io_context, std::chrono::seconds{3}}; */
+        /* timer.async_wait([](const boost::system::error_code &ec) */
+        /*     { std::cout << "3 sec\n"; }); */
+
+        /* while(m_routingTable->get_self()->getID() == "UNKNOWN") { */
+        /*     std::cout << "wait for foo" << std::endl; */
+        /* } */
 
         return false;
     }
@@ -135,6 +144,7 @@ private:
 
     void do_accept()
     {
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] do_accept";
         session::SessionPtr new_connection =
             session::create(m_io_context, m_routingTable);
 
@@ -147,10 +157,14 @@ private:
             const boost::system::error_code& ec)
     {
         if(!ec) {
+            BOOST_LOG_TRIVIAL(info) << "[SERVER] handle_accept with no error";
             session->start();
+            std::cout << "MY ID U FOOL: " << m_routingTable->get_self()->getID() << std::endl;
 
             do_accept();
         }
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] handle_accept with error: " << ec;
+        do_accept();
     }
 
     tcp::acceptor acceptor_;

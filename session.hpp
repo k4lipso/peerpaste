@@ -26,9 +26,11 @@ public:
         : socket_(io_context),
           m_routingTable(routingTable)
     {
-        BOOST_LOG_TRIVIAL(info) << "Session Created";
-        BOOST_LOG_TRIVIAL(info) << "m_self ID: "
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] Session Created";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] m_self ID: "
                                 << m_routingTable->get_self()->getID();
+
+        m_packed_request = PackedMessage<Request>(std::make_shared<Request>());
     }
 
     /**
@@ -58,8 +60,8 @@ public:
 
     void start()
     {
-        BOOST_LOG_TRIVIAL(info) << "Session started";
-        do_read_varint();
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] Session started";
+        do_read_header();
     }
 
     /**
@@ -69,7 +71,7 @@ public:
     */
     bool join(const tcp::resolver::results_type& endpoints)
     {
-        BOOST_LOG_TRIVIAL(info) << "SESSION::join";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::join";
         boost::asio::async_connect(socket_, endpoints,
                 [this, endpoints](boost::system::error_code ec, tcp::endpoint)
                 {
@@ -77,13 +79,14 @@ public:
                     {
                         if(!query())
                         {
-                            BOOST_LOG_TRIVIAL(info) << "Query Request failed";
+                            BOOST_LOG_TRIVIAL(info) << "[SESSION] Query Request failed";
                             return false;
                         }
 
+                        do_read_header();
                         /* if(!find_successor()) */
                         /* { */
-                        /*     BOOST_LOG_TRIVIAL(info) << "Could find Successor"; */
+                        /*     BOOST_LOG_TRIVIAL(info) << "[SESSION] Could find Successor"; */
                         /*     return false; */
                         /* } */
                         return true;
@@ -98,18 +101,24 @@ public:
 private:
     void handle_read_header(const boost::system::error_code& error)
     {
+        BOOST_LOG_TRIVIAL(debug) << "handle_read_header()";
         if(!error)
         {
             unsigned msg_len = m_packed_request.decode_header(m_readbuf);
             do_read_message(msg_len);
-            do_read_varint();
             return;
 
+        } else {
+            BOOST_LOG_TRIVIAL(error) << "[SESSION] error occured: " << error;
+            do_read_header();
         }
+
+        return;
     }
 
-    void do_read_varint()
+    void do_read_header()
     {
+        BOOST_LOG_TRIVIAL(debug) << "do_read_header()";
         m_readbuf.resize(HEADER_SIZE);
         boost::asio::async_read(socket_, boost::asio::buffer(m_readbuf),
                 boost::bind(&session::handle_read_header, shared_from_this(),
@@ -120,58 +129,61 @@ private:
 
     void handle_message()
     {
+        BOOST_LOG_TRIVIAL(debug) << "handle_read_message()";
         if(m_packed_request.unpack(m_readbuf))
         {
             RequestPtr req = m_packed_request.get_msg();
-        /* std::string type("RESPONSE"); */
-        /* if(m_message.get_t_flag()) type = "REQUEST"; */
-        /* BOOST_LOG_TRIVIAL(info) << type << " Received"; */
+            auto commonheader = req->commonheader();
+            /* m_message = &req.get(); */
 
-        /* //TODO: recheck if else is neccessarry */
-        /* if(m_message.get_t_flag()){ */
-        /*     if(!handle_request()) */
-        /*     { */
-        /*         do_read_varint(); */
-        /*         return; */
-        /*     } */
-        /* } else { */
-        /*     if(!handle_response()) */
-        /*     { */
-        /*         /1* do_read_varint(); *1/ */
-        /*         return; */
-        /*     } */
-        /* } */
+            /* //TODO: recheck if else is neccessarry */
+            if(commonheader.t_flag()){
+                if(!handle_request(req))
+                {
+                    do_read_header();
+                    return;
+                }
+            } else {
+                if(!handle_response(req))
+                {
+                    do_read_header();
+                    return;
+                }
+            }
         }
     }
 
     void handle_read_message(const boost::system::error_code& ec)
     {
+        BOOST_LOG_TRIVIAL(debug) << "handle_read_message()";
         if(!ec){
             handle_message();
-            do_read_varint();
         }
     }
 
     void do_read_message(unsigned msg_len)
     {
-        m_readbuf.resize(HEADER_SIZE + msg_len);
+        BOOST_LOG_TRIVIAL(debug) << "do_read_message()";
 
+        m_readbuf.resize(HEADER_SIZE + msg_len);
         boost::asio::mutable_buffers_1 buf = boost::asio::buffer(&m_readbuf[HEADER_SIZE], msg_len);
-        boost::asio::async_read(socket_, boost::asio::buffer(m_readbuf),
+        boost::asio::async_read(socket_, buf,
                 boost::bind(&session::handle_read_message, shared_from_this(),
                     boost::asio::placeholders::error));
     }
 
-    bool handle_request()
+    bool handle_request(RequestPtr req)
     {
         //determine request type
-        auto request_type = m_message.get_request_type();
+        auto commonheader = req->commonheader();
+        auto request_type = commonheader.request_type();
         BOOST_LOG_TRIVIAL(debug) << "[Session] handle_request() request_type: "
                                  << request_type;
         //handle request type
         if(request_type == "query")
         {
-            if(!handle_query()) return false;
+            /* if(!handle_query()) return false; */
+            return handle_query(req);
         } else {
             BOOST_LOG_TRIVIAL(debug) << "Unknown Request Type";
             return false;
@@ -180,19 +192,20 @@ private:
         return true;
     }
 
-    bool handle_response()
+    bool handle_response(RequestPtr req)
     {
         //determine request type
         //TODO: change get_request_type to more general name
-        auto request_type = m_message.get_request_type();
+        auto commonheader = req->commonheader();
+        auto request_type = commonheader.request_type();
         BOOST_LOG_TRIVIAL(debug) << "[Session] handle_response() request_type: "
                                  << request_type;
         //handle request type
         if(request_type == "query")
         {
-            /* BOOST_LOG_TRIVIAL(info) << "m_self ID: " */
+            /* BOOST_LOG_TRIVIAL(info) << "[SESSION] m_self ID: " */
             /*                         << m_routingTable->get_self()->getID(); */
-            if(!handle_query_respone()) return false;
+            if(!handle_query_respone(req)) return false;
             /* if(!find_successor(m_routingTable->get_self()->getID())) return false; */
         } else {
             BOOST_LOG_TRIVIAL(debug) << "Unknown Request Type";
@@ -238,7 +251,7 @@ private:
         //TODO: generate find_successor request
         //find a way that we handle the response in this function so that we can return
         //the peer object in this function
-        BOOST_LOG_TRIVIAL(info) << "SESSION::remote_find_successor";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::remote_find_successor";
 
         uint32_t message_length(0);
 
@@ -272,14 +285,15 @@ private:
     }
 
 
-    bool handle_query_respone()
+    bool handle_query_respone(RequestPtr req)
     {
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] handle_query_response";
         //TODO: extract peerinfo from Request and update own Peer information (Hash)
 
         //get own Peer object
         auto self = m_routingTable->get_self();
         //set new ID
-        self->setID(m_message.get_peer_id());
+        self->setID(req->peerinfo(0).peer_id());
 
         //get predecessor/successor object
         auto predecessor = m_routingTable->get_predecessor();
@@ -289,22 +303,26 @@ private:
         /* auto predecessor = nullptr; */
 
         if(self->getID() != "UNKNOWN"){
+            /* boost::system::error_code ec; */
+            /* socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec); */
+            /* //closing socket */
+            /* socket_.close(); */
             return true;
         }
 
         return false;
     }
 
-    bool handle_query()
+    bool handle_query(RequestPtr req)
     {
-        BOOST_LOG_TRIVIAL(info) << "SESSION::handle_query";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::handle_query";
         //Query Request contains PeerInfo peer_id = "UNKNOWN";
         //this has to be updated to a hash of the ip addr of that peer
         //also P2P-options containing hash-algo,
         //DHT-algo ect should be contained in the response
 
         //check if peerinfo has exactly one member
-        if(m_message.get_Message()->peerinfo_size() != 1){
+        if(req->peerinfo_size() != 1){
             return false;
         }
 
@@ -312,35 +330,51 @@ private:
         auto client_ip = socket_.remote_endpoint().address().to_string();
         auto client_hash = util::generate_sha256(client_ip);
 
-        BOOST_LOG_TRIVIAL(info) << "Query Received";
-        BOOST_LOG_TRIVIAL(info) << "Client IP: " << client_ip;
-        BOOST_LOG_TRIVIAL(info) << "New Client HASH: " << client_hash;
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] Query Received";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] Client IP: " << client_ip;
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] New Client HASH: " << client_hash;
+
+        Request request;
+
+        std::vector<uint8_t> writebuf;
+        PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
+        auto message = msg.get_msg();
+        auto peerinfo = message->add_peerinfo();
+
+        peerinfo->set_peer_id(client_hash);
+        peerinfo->set_peer_ip(client_ip);
+        peerinfo->set_peer_rtt(client_ip);
+        peerinfo->set_peer_uptime(client_ip);
+
+        msg.init_header(false, 0, 0, "query", "top_secret_id", VERSION);
+        msg.pack(writebuf);
+        boost::asio::write(socket_, boost::asio::buffer(writebuf));
 
         //create response message
         //TODO: extra fctn
         //TODO: Change "Request" to something like "Message" in .proto
-        Request request;
-        auto peerinfo = request.add_peerinfo();
-        peerinfo->set_peer_ip(client_ip);
-        peerinfo->set_peer_id(client_hash);
-        peerinfo->set_peer_uptime(client_hash);
-        peerinfo->set_peer_rtt(client_hash);
+        /* Request request; */
+        /* auto peerinfo = request.add_peerinfo(); */
+        /* peerinfo->set_peer_ip(client_ip); */
+        /* peerinfo->set_peer_id(client_hash); */
+        /* peerinfo->set_peer_uptime(client_hash); */
+        /* peerinfo->set_peer_rtt(client_hash); */
 
-        std::cout << "peerinfo hash: " << peerinfo->peer_id() << std::endl;
+        /* std::cout << "peerinfo hash: " << peerinfo->peer_id() << std::endl; */
 
-        Message message; //needed to generate common header?! -.-
-        message.set_common_header(request.mutable_commonheader(),
-                                     false,
-                                     0,
-                                     0,
-                                     "query",
-                                     "top_secret_transaction_id",
-                                     VERSION);
+        /* Message message; //needed to generate common header?! -.- */
+        /* message.set_common_header(request.mutable_commonheader(), */
+        /*                              false, */
+        /*                              0, */
+        /*                              0, */
+        /*                              "query", */
+        /*                              "top_secret_transaction_id", */
+        /*                              VERSION); */
 
-        message.serialize_object(request);
-        boost::asio::write(socket_, *message.output());
+        /* message.serialize_object(request); */
+        /* boost::asio::write(socket_, *message.output()); */
 
-        BOOST_LOG_TRIVIAL(info) << "Sent query_response";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] Sent query_response";
 
         return true;
     }
@@ -361,7 +395,7 @@ private:
                     if(!ec){
                         if(!m_message.decode_header(size))
                         {
-                            do_read_varint();
+                            do_read_header();
                             return;
                         }
                         //TODO: Change method to accept further message objects
@@ -389,17 +423,17 @@ private:
                     if(!ec){
                         if(!m_message.decode_peerinfo(size))
                         {
-                            do_read_varint();
+                            do_read_header();
                             return;
                         }
                         if(!m_message.decode_peerinfo(size))
                         {
-                            do_read_varint();
+                            do_read_header();
                             return;
                         }
                         //TODO: Change method to accept further message objects
                         //other than common header
-                        do_read_varint();
+                        do_read_header();
                     }
 
                 });
@@ -413,7 +447,7 @@ private:
     bool query()
     {
         //TODO:: CHANGE TO USE MSG.PACK()!!!!!
-        BOOST_LOG_TRIVIAL(info) << "SESSION::query";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::query";
         //Creating PeerInfo with empty ID
         //This must be done before creating the CommonHeader because message_length
         //must be known when it gets encoded
@@ -421,34 +455,13 @@ private:
         uint32_t message_length(0);
         //Create a Request
         Request request;
-        /* auto repeated_field_ptr = request.mutable_peerinfo(); */
 
+        //TODO: rename
         std::shared_ptr<PeerInfo> peerinfo_ = m_routingTable->get_self()->getPeer();
-        /* auto peerinfo = request.add_peerinfo(); */
-        /* /1* *peerinfo = *peerinfo_; *1/ */
-        /* /1* PeerInfo peerinfo2 = *peerinfo; *1/ */
-        /* /1* PeerInfo peerinfo; *1/ */
 
-        /* /1* repeated_field_ptr->Add(peerinfo); *1/ */
-        /* /1* request.add_peerinfo(peerinfo); *1/ */
-        /* message_length += peerinfo->ByteSize() + 1; */
-
-        /* //Create Message and add CommonHeader with request type "query" */
-        /* Message message; */
-
-        /* message.set_common_header(request.mutable_commonheader(), */
-        /*                              true, */
-        /*                              0, */
-        /*                              message_length, */
-        /*                              "query", */
-        /*                              "top_secret_transaction_id", */
-        /*                              VERSION); */
-
-        /* message.serialize_object(request); */
-
-        //Send the message
+        //Set the message
         std::vector<uint8_t> writebuf;
-        PackedMessage<Request> msg = PackedMessage<Request>();
+        PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
         auto message = msg.get_msg();
         auto peerinfo = message->add_peerinfo();
         peerinfo->set_peer_id(peerinfo_->peer_id());
@@ -456,9 +469,20 @@ private:
         peerinfo->set_peer_rtt(peerinfo_->peer_ip());
         peerinfo->set_peer_uptime(peerinfo_->peer_ip());
 
+        /* auto commonheader = message->mutable_commonheader(); */
+        /* commonheader->set_t_flag = 1; */
+        /* commonheader->set_ttl = 0; */
+        /* commonheader->set_message_length = 0; */
+        /* commonheader->set_request_type = "query"; */
+        /* commonheader->set_t_flag = 1; */
+        /* commonheader->set_t_flag = 1; */
+
+
+        /* auto header = message->mutable_commonheader(); */
+        msg.init_header(true, 0, 0, "query", "top_secret_id", VERSION);
 
         msg.pack(writebuf);
-        
+
         boost::asio::write(socket_, boost::asio::buffer(writebuf));
 
         return true;
