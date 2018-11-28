@@ -13,6 +13,7 @@
 #include <string>
 #include <sstream>
 #include <functional>
+#include <thread>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/log/trivial.hpp>
@@ -22,33 +23,101 @@ using boost::asio::ip::tcp;
 class server
 {
 public:
-    server(boost::asio::io_context& io_context, short port)
-        : m_io_context(io_context),
-          m_socket(io_context),
-          acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
+    server(int thread_count = 1, short port = 1337)
+        : thread_count_(thread_count), acceptor_(m_io_context), m_routingTable()
+    {}
+
+    //global IP is needed for creating own PeerObject
+    //NAT :(
+    void start_server(uint16_t port)
     {
-        //TODO: initialize m_self (Peer)
-        BOOST_LOG_TRIVIAL(info) << "[SERVER] Server Initialized";
-        create();
-        BOOST_LOG_TRIVIAL(info) << "[SERVER] Start listening on Port " << port;
-        do_accept();
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] setting up endpoint...";
+        tcp::endpoint endpoint(tcp::v4(), port);
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] setting port to " << port;
+        acceptor_.open(endpoint.protocol());
+        acceptor_.set_option(tcp::acceptor::reuse_address(true));
+        acceptor_.bind(endpoint);
+        acceptor_.listen();
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] started listening...";
+
+        init_routingtable();
+
+        auto handler =
+            std::make_shared<session>(m_io_context, m_routingTable);
+
+
+        acceptor_.async_accept( handler->socket(),
+                                [=] (auto ec)
+                                {
+                                    handle_new_connection(handler, ec);
+                                }
+                              );
+
+        for(int i=0; i < thread_count_; ++i)
+        {
+            thread_pool_.emplace_back( [=]{ m_io_context.run(); } );
+        }
     }
 
-    server(boost::asio::io_context& io_context, short port,
-           const tcp::resolver::results_type& endpoints)
-        : m_io_context(io_context),
-          m_socket(io_context),
-          acceptor_(io_context, tcp::endpoint(tcp::v4(), port))
+    void start_client(std::string addr, uint16_t server_port, uint16_t own_port)
     {
-        create();
-        join(endpoints);
-        BOOST_LOG_TRIVIAL(info) << "[SERVER] OWN ID: " << m_routingTable->get_self()->getID();
-        BOOST_LOG_TRIVIAL(info) << "[SERVER] Server Initialized";
-        BOOST_LOG_TRIVIAL(info) << "[SERVER] Start listening on Port " << port;
-        do_accept();
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] setting up endpoint...";
+        tcp::endpoint endpoint(tcp::v4(), own_port);
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] setting port to " << own_port;
+        acceptor_.open(endpoint.protocol());
+        acceptor_.set_option(tcp::acceptor::reuse_address(true));
+        acceptor_.bind(endpoint);
+        acceptor_.listen();
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] started listening...";
+
+        init_routingtable();
+
+        auto join_handler =
+            std::make_shared<session>(m_io_context, m_routingTable);
+        tcp::resolver resolver(m_io_context);
+        auto endpoints = resolver.resolve(addr, std::to_string(server_port));
+        auto old_id = m_routingTable->get_self()->getID();
+        join_handler->join(endpoints);
+
+        auto handler =
+            std::make_shared<session>(m_io_context, m_routingTable);
+
+
+        acceptor_.async_accept( handler->socket(),
+                                [=] (auto ec)
+                                {
+                                    handle_new_connection(handler, ec);
+                                }
+                              );
+
+
+
+        for(int i=0; i < thread_count_; ++i)
+        {
+            thread_pool_.emplace_back( [=]{ m_io_context.run(); } );
+        }
     }
 
 private:
+
+    void handle_new_connection(session::SessionPtr handler,
+            const boost::system::error_code& ec)
+    {
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] handle_accept with error";
+        if(ec) { return; }
+
+        BOOST_LOG_TRIVIAL(info) << "[SERVER] handle_accept with no error";
+        handler->start();
+
+        auto new_handler = std::make_shared<session>(m_io_context, m_routingTable);
+
+        acceptor_.async_accept( new_handler->socket(),
+                                [=] (auto ec)
+                                {
+                                    handle_new_connection( new_handler, ec);
+                                }
+                              );
+    }
 
     /**
      * Creates on Peer Object based on the own IP
@@ -64,16 +133,14 @@ private:
         return Peer(id, ip);
     }
 
-    //global IP is needed for creating own PeerObject
-    //NAT :(
-    void create()
+    void init_routingtable()
     {
         auto p = std::make_shared<Peer>(createPeer());
         m_routingTable = std::make_shared<RoutingTable>(p, nullptr, nullptr);
         BOOST_LOG_TRIVIAL(info) << "[SERVER] m_self ID: "
                                 << m_routingTable->get_self()->getID();
-
     }
+
 
     /**
      * Joins a Ring using a known Node inside of that ring
@@ -85,15 +152,6 @@ private:
         auto sesh = session::create(m_io_context, m_routingTable);
         sesh->join(endpoints);
 
-        //TODO: somehow block here
-        /* boost::asio::steady_timer timer{m_io_context, std::chrono::seconds{3}}; */
-        /* timer.async_wait([](const boost::system::error_code &ec) */
-        /*     { std::cout << "3 sec\n"; }); */
-
-        /* while(m_routingTable->get_self()->getID() == "UNKNOWN") { */
-        /*     std::cout << "wait for foo" << std::endl; */
-        /* } */
-
         return false;
     }
 
@@ -104,33 +162,6 @@ private:
      */
     bool query()
     {
-        /* //Creating PeerInfo with empty ID */
-        /* //This must be done before creating the CommonHeader because message_length */
-        /* //must be known when it gets encoded */
-        /* uint32_t message_length(0); */
-        /* //Create a Request */
-        /* Request request; */
-
-        /* auto peerinfo = request.add_peerinfo(); */
-        /* peerinfo->set_peer_id("UNKNOWN"); */
-        /* message_length += peerinfo->ByteSize() + 1; */
-
-        /* //Create Message and add CommonHeader with request type "query" */
-        /* Message message; */
-
-        /* message.set_common_header(request.mutable_commonheader(), */
-        /*                              true, */
-        /*                              0, */
-        /*                              message_length, */
-        /*                              "query", */
-        /*                              "top_secret_transaction_id", */
-        /*                              VERSION); */
-
-        /* message.serialize_object(request); */
-
-        /* //Send the message */
-        /* boost::asio::write(m_socket, *message.output()); */
-
         return false;
     }
 
@@ -142,57 +173,19 @@ private:
 
     void check_predecessor();
 
-    void do_accept()
-    {
-        BOOST_LOG_TRIVIAL(info) << "[SERVER] do_accept";
-        session::SessionPtr new_connection =
-            session::create(m_io_context, m_routingTable);
-
-        acceptor_.async_accept(new_connection->get_socket(),
-                boost::bind(&server::handle_accept, this, new_connection,
-                    boost::asio::placeholders::error));
-    }
-
-    void handle_accept(session::SessionPtr session,
-            const boost::system::error_code& ec)
-    {
-        if(!ec) {
-            BOOST_LOG_TRIVIAL(info) << "[SERVER] handle_accept with no error";
-            session->start();
-            std::cout << "MY ID U FOOL: " << m_routingTable->get_self()->getID() << std::endl;
-
-            do_accept();
-        }
-        BOOST_LOG_TRIVIAL(info) << "[SERVER] handle_accept with error: " << ec;
-        do_accept();
-    }
-
-    tcp::acceptor acceptor_;
-
-    //Peer Object holding information about itself
-    std::shared_ptr<Peer> m_self;
-
-    //Peer Object holding information about
-    //the next peer in the Ring
-    std::shared_ptr<Peer> m_successor;
-
-    //Peer Object holding information about
-    //the previous Peer in the Ring
-    std::unique_ptr<const Peer> m_predecessor;
-
+    //TODO:
+    //MAKE READs/WRITEs ATOMIC
+    //ATOMIC READS AND WRITES
     //Fingertable containing multiple peers,
     //used to lookup keys
-    //TODO: successer,predecessor,self and fingertable all in one RoutingTable object
-    //MAKE READs/WRITEs ATOMIC
-    //pass shared_ptr of routing table to each session
-    //ATOMIC READS AND WRITES
     std::shared_ptr<RoutingTable> m_routingTable;
 
-    boost::asio::io_context& m_io_context;
-    tcp::socket m_socket;
-
+    boost::asio::io_context m_io_context;
+    /* tcp::socket m_socket; */
+    int thread_count_;
+    std::vector<std::thread> thread_pool_;
+    boost::asio::ip::tcp::acceptor acceptor_;
     //TODO: timestamp for uptime (part of peerinfo)
-
 };
 
 #endif /* SERVER_H */

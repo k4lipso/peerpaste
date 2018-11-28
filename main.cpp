@@ -20,19 +20,25 @@ int main(int argc, char* argv[])
       return 1;
     }
 
+    /* boost::asio::io_context io_context; */
     boost::asio::io_context io_context;
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> foo
+        = boost::asio::make_work_guard(io_context);
 
-    server s(io_context, std::atoi(argv[1]));
+    server s;
+    s.start_server(1337);
 
-    std::thread thread([&io_context](){ io_context.run(); });
-    thread.join();
-    /* io_context.run(); */
+    /* std::thread thread([&io_context](){ io_context.run(); }); */
+    /* thread.join(); */
+    io_context.run();
+    std::cout << "CLEANING UP" << std::endl;
   }
   catch (std::exception& e)
   {
     std::cerr << "Exception: " << e.what() << "\n";
   }
 
+  std::cout << "FINISH" << std::endl;
   return 0;
 }
 

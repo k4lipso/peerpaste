@@ -47,6 +47,7 @@ public:
             return false;
 
         unsigned msg_size = m_msg->ByteSize();
+        std::cout << "Message size: " << (HEADER_SIZE + m_msg->ByteSize()) << std::endl;
         buf.resize(HEADER_SIZE + msg_size);
         encode_header(buf, msg_size);
         return m_msg->SerializeToArray(&buf[HEADER_SIZE], msg_size);

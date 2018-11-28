@@ -21,11 +21,11 @@ int main(int argc, char* argv[])
     }
 
     boost::asio::io_context io_context;
+    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> foo
+        = boost::asio::make_work_guard(io_context);
 
-    tcp::resolver resolver(io_context);
-    auto endpoints = resolver.resolve(argv[1], argv[2]);
-
-    server s(io_context, std::atoi(argv[3]), endpoints);
+    server s;
+    s.start_client(argv[1], std::stoi(argv[2]), std::atoi(argv[3]));
 
     io_context.run();
   }

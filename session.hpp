@@ -14,6 +14,7 @@
 #include <boost/thread/future.hpp>
 
 using boost::asio::ip::tcp;
+static int naming = 0;
 
 class session
     : public std::enable_shared_from_this<session>
@@ -22,19 +23,28 @@ public:
     typedef std::shared_ptr<session> SessionPtr;
     typedef std::shared_ptr<RoutingTable> RoutingPtr;
     typedef std::shared_ptr<Request> RequestPtr;
-    session(tcp::socket socket)
-        : socket_(std::move(socket))
-    {}
+    /* session(tcp::socket socket) */
+    /*     : socket_(std::move(socket)) */
+    /* {} */
 
     session(boost::asio::io_context& io_context, RoutingPtr routingTable)
-        : socket_(io_context),
-          m_routingTable(routingTable)
+        : service_(io_context),
+          socket_(io_context),
+          write_strand_(io_context),
+          m_routingTable(routingTable),
+          name(std::to_string(++naming))
     {
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] Session Created";
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] m_self ID: "
+        m_readbuf = { 0 };
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] Session Created";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] m_self ID: "
                                 << m_routingTable->get_self()->getID();
 
         m_packed_request = PackedMessage<Request>(std::make_shared<Request>());
+    }
+
+    boost::asio::ip::tcp::socket& socket()
+    {
+        return socket_;
     }
 
     /**
@@ -56,16 +66,59 @@ public:
         return SessionPtr(new session(io_context, routingTable));
     }
 
-    tcp::socket& get_socket()
-    {
-        //TODO:: change to m_socket
-        return socket_;
-    }
-
     void start()
     {
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] Session started";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] Session started";
         do_read_header();
+    }
+
+    void send(const std::vector<uint8_t>& writebuf)
+    {
+        std::cout << "[SESSION " << name << "] send()" << std::endl;
+        service_.post( write_strand_.wrap( [me = shared_from_this(), writebuf] ()
+                                            {
+                                                me->queue_message(writebuf);
+                                            } ) );
+        std::cout << "[SESSION " << name << "] send() end" << std::endl;
+    }
+
+    void queue_message(const std::vector<uint8_t>& message)
+    {
+        std::cout << "[SESSION " << name << "] queue_message()" << std::endl;
+        bool write_in_progress = !send_packet_queue.empty();
+        send_packet_queue.push_back(std::move(message));
+
+        if(!write_in_progress)
+        {
+            start_packet_send();
+        }
+    }
+
+    void start_packet_send()
+    {
+        std::cout << "[SESSION " << name << "] start_packet_send()" << std::endl;
+        std::cout << "[SESSION " << name << "] buffer_size: " << send_packet_queue.front().size() << std::endl;
+        async_write(socket_,
+                    boost::asio::buffer(send_packet_queue.front()),
+                    write_strand_.wrap( [me = shared_from_this()]
+                                        ( boost::system::error_code const & ec,
+                                          std::size_t )
+                                        {
+                                            me->packet_send_done(ec);
+                                        }
+                    ));
+    }
+
+    void packet_send_done(boost::system::error_code const & error)
+    {
+        std::cout << "[SESSION " << name << "] packet_send_done()" << std::endl;
+        if(!error)
+        {
+            auto vec = send_packet_queue.front();
+            send_packet_queue.pop_front();
+
+            if(!send_packet_queue.empty()){ start_packet_send(); }
+        }
     }
 
     /**
@@ -75,68 +128,36 @@ public:
     */
     bool join(const tcp::resolver::results_type& endpoints)
     {
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::join";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] SESSION::join";
         boost::asio::async_connect(socket_, endpoints,
-                [this, endpoints](boost::system::error_code ec, tcp::endpoint)
+                [this, me = shared_from_this(), endpoints](boost::system::error_code ec, tcp::endpoint)
                 {
                     if(!ec)
                     {
-                        if(!query())
-                        {
-                            BOOST_LOG_TRIVIAL(info) << "[SESSION] Query Request failed";
-                            return false;
-                        }
-
-                        /* auto self = m_routingTable->get_self(); */
-                        /* auto id = self->getID(); */
-                        do_read_header();
-
-                        /* std::cout << "wait for id to bet setted" << std::endl; */
-                        /* /1* while(id == self->getID()){ *1/ */
-                        /* /1*     //wait *1/ */
-                        /* /1* } *1/ */
-
-
-
-                        /* std::this_thread::sleep_for(std::chrono::seconds(2)); */
-                        /* std::cout << "slept 2 seconds" << std::endl; */
-
-                        /* auto successor = m_routingTable->get_successor(); */
-
-                        /* successor = remote_find_successor(self); */
-
-                        /* /1* if(!find_successor(m_routingTable->get_self()->getID())) *1/ */
-                        /* /1* { *1/ */
-                        /* /1*     BOOST_LOG_TRIVIAL(info) << "[SESSION] Could not find Successor"; *1/ */
-                        /* /1*     return false; *1/ */
-                        /* /1* } *1/ */
-
-                        /* /1* do_read_header(); *1/ */
-                        /* std::this_thread::sleep_for(std::chrono::seconds(2)); */
-                        /* std::cout << "slept 2 seconds" << std::endl; */
+                        std::cout << "do query" << std::endl;
+                        service_.post( write_strand_.wrap( [=] ()
+                                            {
+                                                me->query();
+                                            } ) );
+                        std::cout << "remote find succe" << std::endl;
+                        service_.post( write_strand_.wrap( [=] ()
+                                            {
+                                                me->remote_find_successor(m_routingTable->get_self());
+                                            } ) );
 
                         return true;
+                    } else {
+                        std::cout << "error happend..." << std::endl;
                     }
                     //Add timeout functionality
-                    join(endpoints);
+                    /* me->join(endpoints); */
                 });
-        /* m_predecessor = nullptr; */
         return true;
     }
 
     //peer is peer object to update
     const std::shared_ptr<Peer> find_successor(const std::string& id)
     {
-        /*
-        ask node n to find the successor of id
-        n.find successor(id)
-            if (id ∈ (n, successor])
-                return successor;
-            else
-                n0 = closest preceding node(id );
-                return n0.find successor(id);
-        */
-
         //TODO: check if id is in reange (n, successor) by comparing strings using str.compare(str)
         auto self = m_routingTable->get_self();
         auto successor = m_routingTable->get_successor();
@@ -169,11 +190,10 @@ public:
     {
         //This fct sends a find_successor request which will trigger find_successor
         //on the remote peer
-
         //TODO: generate find_successor request
         //find a way that we handle the response in this function so that we can return
         //the peer object in this function
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::remote_find_successor";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] SESSION::remote_find_successor";
 
         Request request;
 
@@ -190,11 +210,8 @@ public:
 
         msg.pack(writebuf);
 
-        /* tcp::resolver resolver(m_io_context); */
-        /* auto endpoints = resolver.resolve(peer->getIP(), 1337); */
-
-        //new connection
-        boost::asio::write(socket_, boost::asio::buffer(writebuf));
+        //TODO: send in new session to new host
+        send(writebuf);
 
         peer_to_wait_for = nullptr;
         do_read_header();
@@ -216,19 +233,12 @@ public:
 
 
         //TODO: FIND BETTER WAY WTF!
-        while(peer_to_wait_for == nullptr){
-            //waiting
-        }
-        /* peer_to_wait_for.wait(); */
-        /* return std::make_shared<Peer>(peer_to_wait_for.get()); */
         return std::make_shared<Peer>(*peer_to_wait_for);
     }
 
-private:
-
     const std::shared_ptr<Peer> remote_find_successor(std::shared_ptr<Peer> peer)
     {
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::remote_find_successor()";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] SESSION::remote_find_successor()";
 
         Request request;
 
@@ -245,38 +255,30 @@ private:
 
         msg.pack(writebuf);
 
-        /* tcp::resolver resolver(m_io_context); */
-        /* auto endpoints = resolver.resolve(peer->getIP(), 1337); */
-
-        //new connection
-        boost::asio::write(socket_, boost::asio::buffer(writebuf));
+        //TODO: send in new session to new host
+        send(writebuf);
 
         /* peer_to_wait_for = nullptr; */
         do_read_header();
 
-        std::this_thread::sleep_for(std::chrono::seconds(2));
-
-        //TODO: FIND BETTER WAY WTF!
-        /* while(peer_to_wait_for == nullptr){ */
-
-        /*     //waiting */
-        /* } */
-        /* peer_to_wait_for.wait(); */
-        /* return std::make_shared<Peer>(peer_to_wait_for.get()); */
         return peer;
     }
+
+private:
+
     void handle_read_header(const boost::system::error_code& error)
     {
-        BOOST_LOG_TRIVIAL(debug) << "handle_read_header()";
+        BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]handle_read_header()";
         if(!error)
         {
             unsigned msg_len = m_packed_request.decode_header(m_readbuf);
+            std::cout << "MESSAGE LENGHT: " << msg_len << std::endl;
             do_read_message(msg_len);
             return;
 
         } else {
-            BOOST_LOG_TRIVIAL(error) << "[SESSION] error occured: " << error;
-            do_read_header();
+            BOOST_LOG_TRIVIAL(error) << "[SESSION " << name << "] error occured: " << error;
+            /* do_read_header(); */
         }
 
         return;
@@ -284,12 +286,19 @@ private:
 
     int do_read_header()
     {
-        BOOST_LOG_TRIVIAL(debug) << "do_read_header()";
+        BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]do_read_header()";
         m_readbuf.resize(HEADER_SIZE);
-        boost::asio::async_read(socket_, boost::asio::buffer(m_readbuf),
-            boost::bind(&session::handle_read_header, shared_from_this(),
-            boost::asio::placeholders::error));
+        for(const auto& foo : m_readbuf){
+            std::cout << foo;
+        }
 
+        boost::asio::async_read(socket_,
+                                boost::asio::buffer(m_readbuf),
+                                [me = shared_from_this()]
+                                (boost::system::error_code const &error, std::size_t)
+                                {
+                                    me->handle_read_header(error);
+                                });
         return 1;
     }
 
@@ -297,7 +306,7 @@ private:
 
     void handle_message()
     {
-        BOOST_LOG_TRIVIAL(debug) << "handle_read_message()";
+        BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]handle_message()";
         if(m_packed_request.unpack(m_readbuf))
         {
             std::cout << "unpacked" << std::endl;
@@ -320,26 +329,35 @@ private:
                 }
             }
         }
-        std::cout << "Could not unpack" << std::endl;
     }
 
     void handle_read_message(const boost::system::error_code& ec)
     {
-        BOOST_LOG_TRIVIAL(debug) << "handle_read_message()";
+        BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]handle_read_message()";
         if(!ec){
             handle_message();
+        } else {
+            BOOST_LOG_TRIVIAL(error) << "Error in handle_read_message: " << ec;
+            do_read_header();
         }
     }
 
     void do_read_message(unsigned msg_len)
     {
-        BOOST_LOG_TRIVIAL(debug) << "do_read_message()";
+        BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]do_read_message()";
 
         m_readbuf.resize(HEADER_SIZE + msg_len);
         boost::asio::mutable_buffers_1 buf = boost::asio::buffer(&m_readbuf[HEADER_SIZE], msg_len);
-        boost::asio::async_read(socket_, buf,
-                boost::bind(&session::handle_read_message, shared_from_this(),
-                    boost::asio::placeholders::error));
+        /* boost::asio::async_read(socket_, buf, */
+        /*         boost::bind(&session::handle_read_message, shared_from_this(), */
+        /*             boost::asio::placeholders::error)); */
+        boost::asio::async_read(socket_,
+                                buf,
+                                [me = shared_from_this()]
+                                (boost::system::error_code const &error, std::size_t)
+                                {
+                                    me->handle_read_message(error);
+                                });
     }
 
     bool handle_request(RequestPtr req)
@@ -358,7 +376,7 @@ private:
         if(request_type == "find_successor"){
             return handle_find_successor(req);
         } else {
-            BOOST_LOG_TRIVIAL(debug) << "Unknown Request Type";
+            BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]Unknown Request Type";
             return false;
         }
 
@@ -371,18 +389,22 @@ private:
         //TODO: change get_request_type to more general name
         auto commonheader = req->commonheader();
         auto request_type = commonheader.request_type();
-        BOOST_LOG_TRIVIAL(debug) << "[Session] handle_response() request_type: "
+        BOOST_LOG_TRIVIAL(debug) << "[Session " << name << "] handle_response() request_type: "
                                  << request_type;
         //handle request type
         if(request_type == "query")
         {
-            /* BOOST_LOG_TRIVIAL(info) << "[SESSION] m_self ID: " */
+            /* BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] m_self ID: " */
             /*                         << m_routingTable->get_self()->getID(); */
             if(!handle_query_respone(req)) return false;
             /* if(!find_successor(m_routingTable->get_self()->getID())) return false; */
             /* find_successor(m_routingTable->get_self()->getID()); */
+        } if (request_type == "find_successor") {
+
+            if(!handle_find_successor_response(req)) return false;
+
         } else {
-            BOOST_LOG_TRIVIAL(debug) << "Unknown Request Type";
+            BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]Unknown Request Type";
             return false;
         }
         return true;
@@ -392,20 +414,9 @@ private:
     {
         BOOST_LOG_TRIVIAL(info) << "[Session] closest_preceding_node()";
 
-        /*
-        // search the local table for the highest predecessor of id
-        n.closest preceding node(id)
-        for i = m downto 1
-            if (finger[i] ∈ (n, id))
-                return finger[i];
-        return n;
-        */
         auto self = m_routingTable->get_self();
         auto finger = m_routingTable->get_fingerTable();
         for(int i = finger->size() - 1; i >= 0; i--)
-        /* for(auto finger = m_routingTable->m_fingerTable.end(); */
-        /*          finger >= m_routingTable->m_fingerTable.begin(); */
-        /*          finger--) */
         {
             std::string finger_id = finger->at(i)->getID();
             if(finger_id.compare(self->getID()) >= 0 && finger_id.compare(id) <= 0){
@@ -418,7 +429,7 @@ private:
 
     bool handle_query_respone(RequestPtr req)
     {
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] handle_query_response";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] handle_query_response";
         //TODO: extract peerinfo from Request and update own Peer information (Hash)
 
         //get own Peer object
@@ -431,29 +442,45 @@ private:
         auto predecessor = m_routingTable->get_predecessor();
         auto successor = m_routingTable->get_successor();
 
-        //TODO: WHY/? WHY ERROR?
-        /* auto predecessor = nullptr; */
-
         if(self->getID() != "UNKNOWN"){
-            /* boost::system::error_code ec; */
-            /* socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both, ec); */
-            /* //closing socket */
-            /* socket_.close(); */
+            std::cout << "New ID: " << self->getID() << std::endl;
+            /* remote_find_successor(self); */
             return true;
         }
 
         return false;
     }
 
+    bool handle_find_successor_response(RequestPtr req)
+    {
+        if(req->peerinfo_size() != 1){
+            BOOST_LOG_TRIVIAL(error) << "[SESSION " << name << "] error: handle_find_successor_response";
+            return false;
+        }
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] handle_find_successor_response";
+        auto new_id = req->peerinfo(0).peer_id();
+        auto new_ip = req->peerinfo(0).peer_ip();
+
+        //TODO: dont set successor, let remote_find_suc return it!!!
+        m_routingTable->set_successor(std::make_shared<Peer>(new_id, new_ip));
+
+        /* peer_to_wait_for = std::make_shared<Peer>(new_id, new_ip); */
+
+        std::cout << "NEW SUCC ID: " << new_id << std::endl;
+        std::cout << "NEW SUCC ID: " << new_ip << std::endl;
+        return true;
+    }
+
     bool handle_find_successor(RequestPtr req)
     {
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::handle_find_successor";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] SESSION::handle_find_successor";
         //check if peerinfo has exactly one member
         if(req->peerinfo_size() != 1){
             return false;
         }
 
         auto peer = find_successor(req->peerinfo(0).peer_id());
+        //->somehow wait till finished
 
         Request request;
 
@@ -469,14 +496,15 @@ private:
 
         msg.init_header(false, 0, 0, "find_successor", "top_secret_id", VERSION);
         msg.pack(writebuf);
-        boost::asio::write(socket_, boost::asio::buffer(writebuf));
+        /* boost::asio::write(socket_, boost::asio::buffer(writebuf)); */
+        send(writebuf);
         std::cout << "Wrote find_successor response" << std::endl;
 
     }
 
     bool handle_query(RequestPtr req)
     {
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::handle_query";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] SESSION::handle_query";
         //Query Request contains PeerInfo peer_id = "UNKNOWN";
         //this has to be updated to a hash of the ip addr of that peer
         //also P2P-options containing hash-algo,
@@ -491,9 +519,9 @@ private:
         auto client_ip = socket_.remote_endpoint().address().to_string();
         auto client_hash = util::generate_sha256(client_ip);
 
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] Query Received";
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] Client IP: " << client_ip;
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] New Client HASH: " << client_hash;
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] Query Received";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] Client IP: " << client_ip;
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] New Client HASH: " << client_hash;
 
         Request request;
 
@@ -509,34 +537,10 @@ private:
 
         msg.init_header(false, 0, 0, "query", "top_secret_id", VERSION);
         msg.pack(writebuf);
-        boost::asio::write(socket_, boost::asio::buffer(writebuf));
+        send(writebuf);
 
-        //create response message
-        //TODO: extra fctn
-        //TODO: Change "Request" to something like "Message" in .proto
-        /* Request request; */
-        /* auto peerinfo = request.add_peerinfo(); */
-        /* peerinfo->set_peer_ip(client_ip); */
-        /* peerinfo->set_peer_id(client_hash); */
-        /* peerinfo->set_peer_uptime(client_hash); */
-        /* peerinfo->set_peer_rtt(client_hash); */
-
-        /* std::cout << "peerinfo hash: " << peerinfo->peer_id() << std::endl; */
-
-        /* Message message; //needed to generate common header?! -.- */
-        /* message.set_common_header(request.mutable_commonheader(), */
-        /*                              false, */
-        /*                              0, */
-        /*                              0, */
-        /*                              "query", */
-        /*                              "top_secret_transaction_id", */
-        /*                              VERSION); */
-
-        /* message.serialize_object(request); */
-        /* boost::asio::write(socket_, *message.output()); */
-
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] Sent query_response";
-        /* do_read_header(); */
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] Sent query_response";
+        do_read_header();
 
         return true;
     }
@@ -545,62 +549,6 @@ private:
     {
         return false;
     }
-
-    [[deprecated]]
-    void do_read_common_header(const uint32_t& size)
-    {
-        auto self(shared_from_this());
-        boost::asio::async_read(socket_,
-                *m_message.data(), boost::asio::transfer_exactly(size),
-                [this, self, size](boost::system::error_code ec, std::size_t)
-                {
-                    if(!ec){
-                        if(!m_message.decode_header(size))
-                        {
-                            do_read_header();
-                            return;
-                        }
-                        //TODO: Change method to accept further message objects
-                        //other than common header,
-                        //a message evaluation chain has do be developed to receive
-                        //a sequence of different objects depending on the
-                        //common_header request_tpe
-                        //
-                        //idea is to create request/response objects using protobuf so
-                        //that only one object has to be transmitted each time
-                        do_read_objects(m_message.get_message_length());
-                    }
-
-                });
-    }
-
-    [[deprecated]]
-    void do_read_objects(const uint32_t& size)
-    {
-        auto self(shared_from_this());
-        boost::asio::async_read(socket_,
-                *m_message.data(), boost::asio::transfer_exactly(size),
-                [this, self, size](boost::system::error_code ec, std::size_t)
-                {
-                    if(!ec){
-                        if(!m_message.decode_peerinfo(size))
-                        {
-                            do_read_header();
-                            return;
-                        }
-                        if(!m_message.decode_peerinfo(size))
-                        {
-                            do_read_header();
-                            return;
-                        }
-                        //TODO: Change method to accept further message objects
-                        //other than common header
-                        do_read_header();
-                    }
-
-                });
-    }
-
     /**
      * A node MUST send a Query request to a discovered node before a join request.
      * Query request is used to determine overlay parameters such as overlay-ID,
@@ -609,7 +557,7 @@ private:
     bool query()
     {
         //TODO:: CHANGE TO USE MSG.PACK()!!!!!
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::query";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] SESSION::query";
         //Creating PeerInfo with empty ID
         //This must be done before creating the CommonHeader because message_length
         //must be known when it gets encoded
@@ -630,22 +578,10 @@ private:
         peerinfo->set_peer_ip(peerinfo_->peer_ip());
         peerinfo->set_peer_rtt(peerinfo_->peer_ip());
         peerinfo->set_peer_uptime(peerinfo_->peer_ip());
-
-        /* auto commonheader = message->mutable_commonheader(); */
-        /* commonheader->set_t_flag = 1; */
-        /* commonheader->set_ttl = 0; */
-        /* commonheader->set_message_length = 0; */
-        /* commonheader->set_request_type = "query"; */
-        /* commonheader->set_t_flag = 1; */
-        /* commonheader->set_t_flag = 1; */
-
-
-        /* auto header = message->mutable_commonheader(); */
         msg.init_header(true, 0, 0, "query", "top_secret_id", VERSION);
 
         msg.pack(writebuf);
-
-        boost::asio::write(socket_, boost::asio::buffer(writebuf));
+        send(writebuf);
 
         return true;
     }
@@ -656,15 +592,22 @@ private:
 
     void do_write(std::size_t length);
 
+    std::string name;
     RoutingPtr m_routingTable;
 
     Message m_message;
-    tcp::socket socket_;
 
-    Peer *peer_to_wait_for;
+    std::shared_ptr<Peer> peer_to_wait_for;
 
     std::vector<uint8_t> m_readbuf;
     PackedMessage<Request> m_packed_request;
+
+    //////NEW
+    boost::asio::io_service& service_;
+    tcp::socket socket_;
+    boost::asio::io_service::strand write_strand_;
+    std::deque<std::vector<uint8_t>> send_packet_queue;
+
 };
 
 #endif /* SESSION_H */
