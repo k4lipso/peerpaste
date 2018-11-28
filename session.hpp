@@ -2,12 +2,16 @@
 #define SESSION_H
 
 #include "message.hpp"
-#include "cryptowrapper.hpp"
+/* #include "cryptowrapper.hpp" */
 #include "routingTable.hpp"
 
 #include <string>
+#include <future>
+#include <thread>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/future.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -83,12 +87,34 @@ public:
                             return false;
                         }
 
+                        /* auto self = m_routingTable->get_self(); */
+                        /* auto id = self->getID(); */
                         do_read_header();
-                        /* if(!find_successor()) */
-                        /* { */
-                        /*     BOOST_LOG_TRIVIAL(info) << "[SESSION] Could find Successor"; */
-                        /*     return false; */
-                        /* } */
+
+                        /* std::cout << "wait for id to bet setted" << std::endl; */
+                        /* /1* while(id == self->getID()){ *1/ */
+                        /* /1*     //wait *1/ */
+                        /* /1* } *1/ */
+
+
+
+                        /* std::this_thread::sleep_for(std::chrono::seconds(2)); */
+                        /* std::cout << "slept 2 seconds" << std::endl; */
+
+                        /* auto successor = m_routingTable->get_successor(); */
+
+                        /* successor = remote_find_successor(self); */
+
+                        /* /1* if(!find_successor(m_routingTable->get_self()->getID())) *1/ */
+                        /* /1* { *1/ */
+                        /* /1*     BOOST_LOG_TRIVIAL(info) << "[SESSION] Could not find Successor"; *1/ */
+                        /* /1*     return false; *1/ */
+                        /* /1* } *1/ */
+
+                        /* /1* do_read_header(); *1/ */
+                        /* std::this_thread::sleep_for(std::chrono::seconds(2)); */
+                        /* std::cout << "slept 2 seconds" << std::endl; */
+
                         return true;
                     }
                     //Add timeout functionality
@@ -98,7 +124,147 @@ public:
         return true;
     }
 
+    //peer is peer object to update
+    const std::shared_ptr<Peer> find_successor(const std::string& id)
+    {
+        /*
+        ask node n to find the successor of id
+        n.find successor(id)
+            if (id ∈ (n, successor])
+                return successor;
+            else
+                n0 = closest preceding node(id );
+                return n0.find successor(id);
+        */
+
+        //TODO: check if id is in reange (n, successor) by comparing strings using str.compare(str)
+        auto self = m_routingTable->get_self();
+        auto successor = m_routingTable->get_successor();
+        if(successor == nullptr){
+            auto predecessor = closest_preceding_node(id);
+            if(predecessor->getID() == self->getID()){
+                std::cout << "find_successor() returns self" << std::endl;
+                return self;
+            }
+            std::cout << "closest_preceding_node: " << predecessor->getID() << std::endl;
+            std::cout << "self id: " << self->getID() << std::endl;
+            return remote_find_successor(predecessor, id);
+        }
+
+        //if(id in range(self, successor))
+        //TODO: check if comparision is okay since it is '(n, successor]' in the paper:
+        //what means '(' and what means '['
+        if(id.compare(self->getID()) >= 0 && id.compare(successor->getID()) <= 0)
+        {
+            //return successor
+            return successor;
+        } else {
+            auto predecessor = closest_preceding_node(id);
+            return remote_find_successor(predecessor, id);
+        }
+    }
+
+
+    const std::shared_ptr<Peer> remote_find_successor(std::shared_ptr<Peer> peer, const std::string& id)
+    {
+        //This fct sends a find_successor request which will trigger find_successor
+        //on the remote peer
+
+        //TODO: generate find_successor request
+        //find a way that we handle the response in this function so that we can return
+        //the peer object in this function
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::remote_find_successor";
+
+        Request request;
+
+        std::vector<uint8_t> writebuf;
+        PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
+        auto message = msg.get_msg();
+        auto peerinfo = message->add_peerinfo();
+        peerinfo->set_peer_id(id);
+        peerinfo->set_peer_ip("");
+        peerinfo->set_peer_rtt("");
+        peerinfo->set_peer_uptime("");
+
+        msg.init_header(true, 0, 0, "find_successor", "top_secret_id", VERSION);
+
+        msg.pack(writebuf);
+
+        /* tcp::resolver resolver(m_io_context); */
+        /* auto endpoints = resolver.resolve(peer->getIP(), 1337); */
+
+        //new connection
+        boost::asio::write(socket_, boost::asio::buffer(writebuf));
+
+        peer_to_wait_for = nullptr;
+        do_read_header();
+        /* boost::packaged_task<int> pt(&session::do_read_header); */
+        /* boost:: future<int> fi=pt.get_future(); */
+        /* std::packaged_task<int()> task(&session::do_read_header); */
+        /* std::future<int> f1 = task.get_future(); */
+        /* std::thread(std::move(task)).detach(); */
+
+        /* f1.wait(); */
+        /* std::cout << "F1: " << f1.get() << std::endl; */
+        /* do_read_header(); */
+
+        /* boost::system::error_code error; */
+        /* m_readbuf.resize(HEADER_SIZE); */
+        /* socket_.read_some(boost::asio::buffer(m_readbuf), error); */
+        /* unsigned msg_len = m_packed_request.decode_header(m_readbuf); */
+        /* std::cout << "MSG_LEN: " << msg_len << std::endl; */
+
+
+        //TODO: FIND BETTER WAY WTF!
+        while(peer_to_wait_for == nullptr){
+            //waiting
+        }
+        /* peer_to_wait_for.wait(); */
+        /* return std::make_shared<Peer>(peer_to_wait_for.get()); */
+        return std::make_shared<Peer>(*peer_to_wait_for);
+    }
+
 private:
+
+    const std::shared_ptr<Peer> remote_find_successor(std::shared_ptr<Peer> peer)
+    {
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::remote_find_successor()";
+
+        Request request;
+
+        std::vector<uint8_t> writebuf;
+        PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
+        auto message = msg.get_msg();
+        auto peerinfo = message->add_peerinfo();
+        peerinfo->set_peer_id(peer->getID());
+        peerinfo->set_peer_ip(peer->getIP());
+        peerinfo->set_peer_rtt("");
+        peerinfo->set_peer_uptime("");
+
+        msg.init_header(true, 0, 0, "find_successor", "top_secret_id", VERSION);
+
+        msg.pack(writebuf);
+
+        /* tcp::resolver resolver(m_io_context); */
+        /* auto endpoints = resolver.resolve(peer->getIP(), 1337); */
+
+        //new connection
+        boost::asio::write(socket_, boost::asio::buffer(writebuf));
+
+        /* peer_to_wait_for = nullptr; */
+        do_read_header();
+
+        std::this_thread::sleep_for(std::chrono::seconds(2));
+
+        //TODO: FIND BETTER WAY WTF!
+        /* while(peer_to_wait_for == nullptr){ */
+
+        /*     //waiting */
+        /* } */
+        /* peer_to_wait_for.wait(); */
+        /* return std::make_shared<Peer>(peer_to_wait_for.get()); */
+        return peer;
+    }
     void handle_read_header(const boost::system::error_code& error)
     {
         BOOST_LOG_TRIVIAL(debug) << "handle_read_header()";
@@ -116,13 +282,15 @@ private:
         return;
     }
 
-    void do_read_header()
+    int do_read_header()
     {
         BOOST_LOG_TRIVIAL(debug) << "do_read_header()";
         m_readbuf.resize(HEADER_SIZE);
         boost::asio::async_read(socket_, boost::asio::buffer(m_readbuf),
-                boost::bind(&session::handle_read_header, shared_from_this(),
-                boost::asio::placeholders::error));
+            boost::bind(&session::handle_read_header, shared_from_this(),
+            boost::asio::placeholders::error));
+
+        return 1;
     }
 
     bool check_precending_node(/*ID*/);
@@ -132,6 +300,7 @@ private:
         BOOST_LOG_TRIVIAL(debug) << "handle_read_message()";
         if(m_packed_request.unpack(m_readbuf))
         {
+            std::cout << "unpacked" << std::endl;
             RequestPtr req = m_packed_request.get_msg();
             auto commonheader = req->commonheader();
             /* m_message = &req.get(); */
@@ -151,6 +320,7 @@ private:
                 }
             }
         }
+        std::cout << "Could not unpack" << std::endl;
     }
 
     void handle_read_message(const boost::system::error_code& ec)
@@ -184,6 +354,9 @@ private:
         {
             /* if(!handle_query()) return false; */
             return handle_query(req);
+        }
+        if(request_type == "find_successor"){
+            return handle_find_successor(req);
         } else {
             BOOST_LOG_TRIVIAL(debug) << "Unknown Request Type";
             return false;
@@ -207,6 +380,7 @@ private:
             /*                         << m_routingTable->get_self()->getID(); */
             if(!handle_query_respone(req)) return false;
             /* if(!find_successor(m_routingTable->get_self()->getID())) return false; */
+            /* find_successor(m_routingTable->get_self()->getID()); */
         } else {
             BOOST_LOG_TRIVIAL(debug) << "Unknown Request Type";
             return false;
@@ -214,53 +388,10 @@ private:
         return true;
     }
 
-    const std::shared_ptr<Peer> find_successor(const std::string& id)
-    {
-        /*
-        ask node n to find the successor of id
-        n.find successor(id)
-            if (id ∈ (n, successor])
-                return successor;
-            else
-                n0 = closest preceding node(id );
-                return n0.find successor(id);
-        */
-
-        //TODO: check if id is in reange (n, successor) by comparing strings using str.compare(str)
-        auto self = m_routingTable->get_self();
-        auto successor = m_routingTable->get_successor();
-
-        //if(id in range(self, successor))
-        //TODO: check if comparision is okay since it is '(n, successor]' in the paper:
-        //what means '(' and what means '['
-        if(id.compare(self->getID()) >= 0 && id.compare(successor->getID()) <= 0)
-        {
-            //return successor
-            return successor;
-        } else {
-            auto predecessor = closest_preceding_node(id);
-            return remote_find_successor(predecessor);
-        }
-    }
-
-    const std::shared_ptr<Peer> remote_find_successor(std::shared_ptr<Peer> peer)
-    {
-        //This fct sends a find_successor request which will trigger find_successor
-        //on the remote peer
-
-        //TODO: generate find_successor request
-        //find a way that we handle the response in this function so that we can return
-        //the peer object in this function
-        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::remote_find_successor";
-
-        uint32_t message_length(0);
-
-        Request request;
-
-    }
-
     std::shared_ptr<Peer> closest_preceding_node(const std::string& id)
     {
+        BOOST_LOG_TRIVIAL(info) << "[Session] closest_preceding_node()";
+
         /*
         // search the local table for the highest predecessor of id
         n.closest preceding node(id)
@@ -271,7 +402,7 @@ private:
         */
         auto self = m_routingTable->get_self();
         auto finger = m_routingTable->get_fingerTable();
-        for(int i = finger->size(); i <= 0; i--)
+        for(int i = finger->size() - 1; i >= 0; i--)
         /* for(auto finger = m_routingTable->m_fingerTable.end(); */
         /*          finger >= m_routingTable->m_fingerTable.begin(); */
         /*          finger--) */
@@ -294,7 +425,8 @@ private:
         auto self = m_routingTable->get_self();
         //set new ID
         self->setID(req->peerinfo(0).peer_id());
-
+        self->setIP(req->peerinfo(0).peer_ip());
+        std::cout << "GETIP: " << self->getIP() << std::endl;
         //get predecessor/successor object
         auto predecessor = m_routingTable->get_predecessor();
         auto successor = m_routingTable->get_successor();
@@ -311,6 +443,35 @@ private:
         }
 
         return false;
+    }
+
+    bool handle_find_successor(RequestPtr req)
+    {
+        BOOST_LOG_TRIVIAL(info) << "[SESSION] SESSION::handle_find_successor";
+        //check if peerinfo has exactly one member
+        if(req->peerinfo_size() != 1){
+            return false;
+        }
+
+        auto peer = find_successor(req->peerinfo(0).peer_id());
+
+        Request request;
+
+        std::vector<uint8_t> writebuf;
+        PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
+        auto message = msg.get_msg();
+        auto peerinfo = message->add_peerinfo();
+
+        peerinfo->set_peer_id(peer->getID());
+        peerinfo->set_peer_ip(peer->getIP());
+        peerinfo->set_peer_rtt(peer->getIP());
+        peerinfo->set_peer_uptime(peer->getIP());
+
+        msg.init_header(false, 0, 0, "find_successor", "top_secret_id", VERSION);
+        msg.pack(writebuf);
+        boost::asio::write(socket_, boost::asio::buffer(writebuf));
+        std::cout << "Wrote find_successor response" << std::endl;
+
     }
 
     bool handle_query(RequestPtr req)
@@ -375,6 +536,7 @@ private:
         /* boost::asio::write(socket_, *message.output()); */
 
         BOOST_LOG_TRIVIAL(info) << "[SESSION] Sent query_response";
+        /* do_read_header(); */
 
         return true;
     }
@@ -498,6 +660,8 @@ private:
 
     Message m_message;
     tcp::socket socket_;
+
+    Peer *peer_to_wait_for;
 
     std::vector<uint8_t> m_readbuf;
     PackedMessage<Request> m_packed_request;

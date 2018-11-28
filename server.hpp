@@ -3,6 +3,7 @@
 
 #define VERSION "0.0.1"
 
+#include "cryptowrapper.hpp"
 #include "routingTable.hpp"
 #include "session.hpp"
 #include "peer.hpp"
@@ -57,7 +58,7 @@ private:
         auto endpoint = acceptor_.local_endpoint();
         const boost::asio::ip::address ip_ = endpoint.address();
         const std::string ip = ip_.to_string();
-        const std::string id = "UNKNOWN";
+        const std::string id = util::generate_sha256(ip);
         BOOST_LOG_TRIVIAL(info) << "[SERVER] IP: " << ip;
         BOOST_LOG_TRIVIAL(info) << "[SERVER] ID: " << id;
         return Peer(id, ip);
@@ -82,7 +83,6 @@ private:
     bool join(const tcp::resolver::results_type& endpoints)
     {
         auto sesh = session::create(m_io_context, m_routingTable);
-        /* sesh->start(); */
         sesh->join(endpoints);
 
         //TODO: somehow block here

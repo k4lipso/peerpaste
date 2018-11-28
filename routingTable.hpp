@@ -15,7 +15,8 @@ public:
     RoutingTable(std::shared_ptr<Peer> self,
                  std::shared_ptr<Peer> predecessor,
                  std::shared_ptr<Peer> successor)
-        : m_self(self), m_predecessor(predecessor), m_successor(successor)
+        : m_self(self), m_predecessor(predecessor), m_successor(successor),
+          m_fingerTable()
     {}
 
     ~RoutingTable() {}

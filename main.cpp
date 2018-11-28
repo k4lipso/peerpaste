@@ -24,7 +24,9 @@ int main(int argc, char* argv[])
 
     server s(io_context, std::atoi(argv[1]));
 
-    io_context.run();
+    std::thread thread([&io_context](){ io_context.run(); });
+    thread.join();
+    /* io_context.run(); */
   }
   catch (std::exception& e)
   {
