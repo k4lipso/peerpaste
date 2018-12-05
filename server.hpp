@@ -72,7 +72,7 @@ private:
      * that Node will lookup and return a successor Recursively
      * returns -1 when failed
     */
-    bool join(std::string addr, uint16_t server_port)
+    void join(std::string addr, uint16_t server_port)
     {
         //create endpoint
         tcp::resolver resolver(m_io_context);
@@ -84,8 +84,6 @@ private:
 
         //join the network using the given endpoint
         join_handler->join(endpoint);
-
-        return false;
     }
 
     /**
