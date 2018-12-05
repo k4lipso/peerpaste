@@ -14,6 +14,8 @@
 #include <boost/thread/future.hpp>
 
 using boost::asio::ip::tcp;
+
+//TODO: will overflow!!!!!!!!!!!!
 static int naming = 0;
 
 class session
@@ -139,34 +141,30 @@ public:
     {
         BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] SESSION::join";
         boost::asio::async_connect(socket_, endpoints,
-                [this, me = shared_from_this(), endpoints](boost::system::error_code ec, tcp::endpoint)
+                [this, me = shared_from_this(), endpoints]
+                (boost::system::error_code ec, tcp::endpoint)
                 {
                     if(!ec)
                     {
-                        std::cout << "do query" << std::endl;
                         service_.post( read_strand_.wrap( [=] ()
                                             {
                                                 me->query();
                                             } ) );
 
-                        std::cout << "do read header" << std::endl;
-                        /* do_read_header(); */
-                        std::cout << "future_query.get()" << std::endl;
                         future_query.get();
-                        std::cout << "remote find succe" << std::endl;
-                        /* me->m_routingTable->get_successor() = */
-                                        /* me->remote_find_successor(m_routingTable->get_self()); */
+
                         service_.post( read_strand_.wrap( [=] ()
                                             {
-                        me->remote_find_successor(m_routingTable->get_self());
+                                                me->remote_find_successor(
+                                                        m_routingTable->get_self());
                                             } ) );
 
+                        //TODO: does this actually return something???????
                         return true;
-                    } else {
-                        std::cout << "error happend..." << std::endl;
                     }
-                    //Add timeout functionality
-                    /* me->join(endpoints); */
+                        BOOST_LOG_TRIVIAL(error) << "[SESSION " << name
+                                                 << "] join failed: " << ec;
+                        return false;
                 });
         return true;
     }
@@ -536,7 +534,6 @@ private:
         /* boost::asio::write(socket_, boost::asio::buffer(writebuf)); */
         send(writebuf);
         std::cout << "Wrote find_successor response" << std::endl;
-
     }
 
     bool handle_query(RequestPtr req)
