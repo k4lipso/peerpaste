@@ -29,10 +29,14 @@ public:
 
     session(boost::asio::io_context& io_context, RoutingPtr routingTable)
         : service_(io_context),
+          /* m_io_context(io_context), */
           socket_(io_context),
           write_strand_(io_context),
+          read_strand_(io_context),
           m_routingTable(routingTable),
-          name(std::to_string(++naming))
+          name(std::to_string(++naming)),
+          future(promise.get_future()),
+          future_query(promise_query.get_future())
     {
         m_readbuf = { 0 };
         BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] Session Created";
@@ -40,6 +44,11 @@ public:
                                 << m_routingTable->get_self()->getID();
 
         m_packed_request = PackedMessage<Request>(std::make_shared<Request>());
+    }
+
+    ~session()
+    {
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] Session Destroyed";
     }
 
     boost::asio::ip::tcp::socket& socket()
@@ -135,14 +144,21 @@ public:
                     if(!ec)
                     {
                         std::cout << "do query" << std::endl;
-                        service_.post( write_strand_.wrap( [=] ()
+                        service_.post( read_strand_.wrap( [=] ()
                                             {
                                                 me->query();
                                             } ) );
+
+                        std::cout << "do read header" << std::endl;
+                        /* do_read_header(); */
+                        std::cout << "future_query.get()" << std::endl;
+                        future_query.get();
                         std::cout << "remote find succe" << std::endl;
-                        service_.post( write_strand_.wrap( [=] ()
+                        /* me->m_routingTable->get_successor() = */
+                                        /* me->remote_find_successor(m_routingTable->get_self()); */
+                        service_.post( read_strand_.wrap( [=] ()
                                             {
-                                                me->remote_find_successor(m_routingTable->get_self());
+                        me->remote_find_successor(m_routingTable->get_self());
                                             } ) );
 
                         return true;
@@ -151,6 +167,24 @@ public:
                     }
                     //Add timeout functionality
                     /* me->join(endpoints); */
+                });
+        return true;
+    }
+
+    bool connect(const tcp::resolver::results_type& endpoints)
+    {
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] SESSION::connect";
+        boost::asio::async_connect(socket_, endpoints,
+                [this, me = shared_from_this(), endpoints](boost::system::error_code ec, tcp::endpoint)
+                {
+                    if(!ec)
+                    {
+                        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] SESSION::connect connected";
+                    } else {
+                        std::cout << "error happend..." << std::endl;
+                    }
+                    //Add timeout functionality
+                    /* me->connect(endpoints); */
                 });
         return true;
     }
@@ -169,7 +203,7 @@ public:
             }
             std::cout << "closest_preceding_node: " << predecessor->getID() << std::endl;
             std::cout << "self id: " << self->getID() << std::endl;
-            return remote_find_successor(predecessor, id);
+            return remote_find_factory(predecessor, id);
         }
 
         //if(id in range(self, successor))
@@ -181,19 +215,29 @@ public:
             return successor;
         } else {
             auto predecessor = closest_preceding_node(id);
-            return remote_find_successor(predecessor, id);
+            return remote_find_factory(predecessor, id);
         }
     }
 
+    std::shared_ptr<Peer> remote_find_factory(std::shared_ptr<Peer> peer, const std::string& id)
+    {
+        tcp::resolver resolver(service_);
+        auto endpoints = resolver.resolve(peer->getIP(), "1337");
+        auto handler =
+            std::make_shared<session>(m_io_context, m_routingTable);
+        handler->connect(endpoints);
+        return handler->remote_find_successor(id);
+    }
 
-    const std::shared_ptr<Peer> remote_find_successor(std::shared_ptr<Peer> peer, const std::string& id)
+
+    const std::shared_ptr<Peer> remote_find_successor(const std::string& id)
     {
         //This fct sends a find_successor request which will trigger find_successor
         //on the remote peer
         //TODO: generate find_successor request
         //find a way that we handle the response in this function so that we can return
         //the peer object in this function
-        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] SESSION::remote_find_successor";
+        BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] SESSION::remote_find_successor with peer";
 
         Request request;
 
@@ -215,25 +259,10 @@ public:
 
         peer_to_wait_for = nullptr;
         do_read_header();
-        /* boost::packaged_task<int> pt(&session::do_read_header); */
-        /* boost:: future<int> fi=pt.get_future(); */
-        /* std::packaged_task<int()> task(&session::do_read_header); */
-        /* std::future<int> f1 = task.get_future(); */
-        /* std::thread(std::move(task)).detach(); */
 
-        /* f1.wait(); */
-        /* std::cout << "F1: " << f1.get() << std::endl; */
-        /* do_read_header(); */
-
-        /* boost::system::error_code error; */
-        /* m_readbuf.resize(HEADER_SIZE); */
-        /* socket_.read_some(boost::asio::buffer(m_readbuf), error); */
-        /* unsigned msg_len = m_packed_request.decode_header(m_readbuf); */
-        /* std::cout << "MSG_LEN: " << msg_len << std::endl; */
-
-
+        future.get();
         //TODO: FIND BETTER WAY WTF!
-        return std::make_shared<Peer>(*peer_to_wait_for);
+        return peer_to_wait_for;
     }
 
     const std::shared_ptr<Peer> remote_find_successor(std::shared_ptr<Peer> peer)
@@ -261,7 +290,13 @@ public:
         /* peer_to_wait_for = nullptr; */
         do_read_header();
 
-        return peer;
+        std::cout << "wating for future..." << std::endl;
+        future.get();
+        std::cout << "future.get() returneeed" << std::endl;
+        std::cout << "ID: " << peer_to_wait_for->getID() << std::endl;
+        std::cout << "IP: " << peer_to_wait_for->getIP() << std::endl;
+
+        return peer_to_wait_for;
     }
 
 private:
@@ -284,6 +319,7 @@ private:
         return;
     }
 
+    //TODO: this function has to post to the read_strand_
     int do_read_header()
     {
         BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]do_read_header()";
@@ -370,17 +406,16 @@ private:
         //handle request type
         if(request_type == "query")
         {
-            /* if(!handle_query()) return false; */
             return handle_query(req);
         }
-        if(request_type == "find_successor"){
-            return handle_find_successor(req);
-        } else {
-            BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]Unknown Request Type";
-            return false;
+
+        if(request_type == "find_successor")
+        {
+             return handle_find_successor(req);
         }
 
-        return true;
+        BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]Unknown Request Type: " << request_type;
+        return false;
     }
 
     bool handle_response(RequestPtr req)
@@ -394,20 +429,16 @@ private:
         //handle request type
         if(request_type == "query")
         {
-            /* BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] m_self ID: " */
-            /*                         << m_routingTable->get_self()->getID(); */
-            if(!handle_query_respone(req)) return false;
-            /* if(!find_successor(m_routingTable->get_self()->getID())) return false; */
-            /* find_successor(m_routingTable->get_self()->getID()); */
-        } if (request_type == "find_successor") {
-
-            if(!handle_find_successor_response(req)) return false;
-
-        } else {
-            BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]Unknown Request Type";
-            return false;
+            return handle_query_response(req);
         }
-        return true;
+
+        if (request_type == "find_successor")
+        {
+            return handle_find_successor_response(req);
+        }
+
+        BOOST_LOG_TRIVIAL(debug) << "[SESSION " << name << "]Unknown Request Type";
+        return false;
     }
 
     std::shared_ptr<Peer> closest_preceding_node(const std::string& id)
@@ -427,7 +458,7 @@ private:
     }
 
 
-    bool handle_query_respone(RequestPtr req)
+    bool handle_query_response(RequestPtr req)
     {
         BOOST_LOG_TRIVIAL(info) << "[SESSION " << name << "] handle_query_response";
         //TODO: extract peerinfo from Request and update own Peer information (Hash)
@@ -444,6 +475,7 @@ private:
 
         if(self->getID() != "UNKNOWN"){
             std::cout << "New ID: " << self->getID() << std::endl;
+            promise_query.set_value(1);
             /* remote_find_successor(self); */
             return true;
         }
@@ -462,12 +494,16 @@ private:
         auto new_ip = req->peerinfo(0).peer_ip();
 
         //TODO: dont set successor, let remote_find_suc return it!!!
-        m_routingTable->set_successor(std::make_shared<Peer>(new_id, new_ip));
-
-        /* peer_to_wait_for = std::make_shared<Peer>(new_id, new_ip); */
-
+        /* m_routingTable->set_successor(std::make_shared<Peer>(new_id, new_ip)); */
         std::cout << "NEW SUCC ID: " << new_id << std::endl;
         std::cout << "NEW SUCC ID: " << new_ip << std::endl;
+
+        peer_to_wait_for = std::make_shared<Peer>(new_id, new_ip);
+        if(peer_to_wait_for != nullptr){
+            promise.set_value(1);
+            std::cout << "promise was set!" << std::endl;
+        }
+
         return true;
     }
 
@@ -479,8 +515,9 @@ private:
             return false;
         }
 
+        std::cout << "handle_first_suc start find_suc!!!" << std::endl;
         auto peer = find_successor(req->peerinfo(0).peer_id());
-        //->somehow wait till finished
+        std::cout << "handle_first_suc stopped find_suc!!!" << std::endl;
 
         Request request;
 
@@ -583,6 +620,9 @@ private:
         msg.pack(writebuf);
         send(writebuf);
 
+        do_read_header();
+        //TODO: wait till future_query is set
+
         return true;
     }
 
@@ -603,10 +643,20 @@ private:
     PackedMessage<Request> m_packed_request;
 
     //////NEW
+    boost::asio::io_context m_io_context;
     boost::asio::io_service& service_;
     tcp::socket socket_;
     boost::asio::io_service::strand write_strand_;
+    boost::asio::io_service::strand read_strand_;
     std::deque<std::vector<uint8_t>> send_packet_queue;
+
+    boost::promise<int> promise;
+    boost::unique_future<int> future;
+
+    boost::promise<int> promise_query;
+    boost::unique_future<int> future_query;
+
+
 
 };
 

@@ -23,7 +23,7 @@ using boost::asio::ip::tcp;
 class server
 {
 public:
-    server(int thread_count = 1, short port = 1337)
+    server(int thread_count = 4, short port = 1337)
         : thread_count_(thread_count), acceptor_(m_io_context), m_routingTable()
     {}
 
