@@ -8,6 +8,7 @@
 #include <string>
 #include <future>
 #include <thread>
+#include <vector>
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>
@@ -25,9 +26,6 @@ public:
     typedef std::shared_ptr<session> SessionPtr;
     typedef std::shared_ptr<RoutingTable> RoutingPtr;
     typedef std::shared_ptr<Request> RequestPtr;
-    /* session(tcp::socket socket) */
-    /*     : socket_(std::move(socket)) */
-    /* {} */
 
     session(boost::asio::io_context& io_context, RoutingPtr routingTable)
         : service_(io_context),
@@ -215,6 +213,7 @@ public:
     std::shared_ptr<Peer> remote_find_factory(std::shared_ptr<Peer> peer, const std::string& id)
     {
         tcp::resolver resolver(service_);
+        //TODO: NO STATIC PORT U FOOL!
         auto endpoints = resolver.resolve(peer->getIP(), "1337");
         auto handler =
             std::make_shared<session>(m_io_context, m_routingTable);
