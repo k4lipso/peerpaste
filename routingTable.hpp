@@ -68,6 +68,28 @@ public:
         return std::make_shared<std::vector<std::shared_ptr<Peer>>>(m_fingerTable);
     }
 
+    //TODO: Pass an ostream to print to something instead of cout
+    void print()
+    {
+        if(m_self != nullptr){
+            std::cout << "Self: \n";
+            m_self->print();
+        }
+        if(m_successor != nullptr){
+            std::cout << "\nSuccessor: \n";
+             m_successor->print();
+        }
+        if(m_predecessor != nullptr){
+            std::cout << "\nPredecessor: \n";
+              m_predecessor->print();
+        }
+        std::cout << "\nFingertable: \n";
+        for(const auto& finger : m_fingerTable){
+            finger->print();
+            std::cout << '\n';
+        }
+    }
+
     void append();
 
     void set();

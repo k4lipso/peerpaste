@@ -48,6 +48,7 @@ public:
 
     ~session()
     {
+        m_routingTable->print();
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Session Destroyed";
     }
 
@@ -149,8 +150,9 @@ public:
 
                         service_.post( read_strand_.wrap( [=] ()
                                             {
-                                                me->remote_find_successor(
-                                                        m_routingTable->get_self());
+                                                m_routingTable->set_successor(
+                                                        me->remote_find_successor(
+                                                            m_routingTable->get_self()));
                                             } ) );
 
                         //TODO: does this actually return something???????

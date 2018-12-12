@@ -64,6 +64,7 @@ private:
         m_routingTable = std::make_shared<RoutingTable>(p, nullptr, nullptr);
         BOOST_LOG_TRIVIAL(info) << "[SERVER] m_self ID: "
                                 << m_routingTable->get_self()->getID();
+        m_routingTable->print();
     }
 
 

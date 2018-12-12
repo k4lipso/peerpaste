@@ -21,6 +21,12 @@ public:
                 }
     ~Peer() {}
 
+    void print()
+    {
+        std::cout << "IP: " << getIP() << '\n';
+        std::cout << "ID: " << getID() << '\n';
+    }
+
     std::string getID()
     {
         return m_peer->peer_id();
@@ -73,7 +79,6 @@ private:
     //uptime of the peer
     //TODO eva if timestamp of creation would be enough..
     std::chrono::milliseconds m_uptime;
-
 };
 
 #endif /* PEER_H */
