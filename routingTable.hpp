@@ -71,6 +71,7 @@ public:
     //TODO: Pass an ostream to print to something instead of cout
     void print()
     {
+        std::cout << "######## FINGERTABLE START ########" << std::endl;
         if(m_self != nullptr){
             std::cout << "Self: \n";
             m_self->print();
@@ -88,6 +89,7 @@ public:
             finger->print();
             std::cout << '\n';
         }
+        std::cout << "######## FINGERTABLE END ########" << std::endl;
     }
 
     void append();

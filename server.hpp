@@ -24,7 +24,8 @@ class server
 {
 public:
     server(int thread_count = 4, short port = 1337)
-        : thread_count_(thread_count), acceptor_(m_io_context), m_routingTable()
+        : thread_count_(thread_count), acceptor_(m_io_context), m_routingTable(),
+          t(m_io_context, boost::asio::chrono::seconds(1))
     {}
 
     void start_server(uint16_t port)
@@ -40,6 +41,7 @@ public:
         init_routingtable();
         join(addr, server_port);
         accept_connections();
+        stabilize();
     }
 
 private:
@@ -146,13 +148,35 @@ private:
 
 
 
-    void stabilize();
+    void stabilize()
+    {
+        t.async_wait(boost::bind(&server::stabilize_internal, this));
+    }
+
+    void stabilize_internal()
+    {
+        std::cout << "stabilize()...." << std::endl;
+
+        auto stabilize_handler =
+            std::make_shared<session>(m_io_context, m_routingTable);
+        stabilize_handler->stabilize();
+
+        //TODO: should wait for stabilize here
+        auto notify_handler =
+            std::make_shared<session>(m_io_context, m_routingTable);
+        notify_handler->notify();
+
+        t.expires_at(t.expiry() + boost::asio::chrono::seconds(3));
+        t.async_wait(boost::bind(&server::stabilize, this));
+    }
+
 
     void notify(/*IP*/);
 
     void fix_fingers();
 
     void check_predecessor();
+
 
     //TODO:
     //MAKE READs/WRITEs ATOMIC
@@ -162,6 +186,7 @@ private:
     std::shared_ptr<RoutingTable> m_routingTable;
 
     boost::asio::io_context m_io_context;
+    boost::asio::steady_timer t;
     /* tcp::socket m_socket; */
     int thread_count_;
     std::vector<std::thread> thread_pool_;

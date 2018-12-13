@@ -60,6 +60,7 @@ public:
     /**
      * using this constructor an "outgoing" session will be created.
      * if request_type is "join" for example, that session will start
+     * tcp::resolver resolver(m_io_context)
      * a request a query at the given endpoint.
      * so instead the server handles join/query whatever, everything
      * is handled by session object. so the server object just has to
@@ -161,6 +162,60 @@ public:
                         BOOST_LOG_TRIVIAL(error) << get_name_tag()
                                                  << "join failed: " << ec;
                         return false;
+                });
+        return true;
+    }
+
+    bool stabilize()
+    {
+        tcp::resolver resolver(m_io_context);
+        //TODO: that port must be included in peerinfo!!!!!!!!!!!!!!!
+        auto endpoint = resolver.resolve(m_routingTable->get_successor()->getIP(), "1337");
+
+
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::stabilize()";
+        boost::asio::async_connect(socket_, endpoint,
+                [this, me = shared_from_this(), endpoint]
+                (boost::system::error_code ec, tcp::endpoint)
+                {
+                    if(!ec)
+                    {
+                        service_.post( read_strand_.wrap([=] ()
+                                {
+                                    me->stabilize_internal();
+                                } ));
+                        return true;
+                    }
+                    BOOST_LOG_TRIVIAL(error) << get_name_tag()
+                                             << "stabilize failed: " << ec;
+                    return false;
+                });
+        return true;
+    }
+
+    bool notify()
+    {
+        tcp::resolver resolver(m_io_context);
+        //TODO: that port must be included in peerinfo!!!!!!!!!!!!!!!
+        auto endpoint = resolver.resolve(m_routingTable->get_successor()->getIP(), "1337");
+
+
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::notify()";
+        boost::asio::async_connect(socket_, endpoint,
+                [this, me = shared_from_this(), endpoint]
+                (boost::system::error_code ec, tcp::endpoint)
+                {
+                    if(!ec)
+                    {
+                        service_.post( read_strand_.wrap([=] ()
+                                {
+                                    me->notify_internal();
+                                } ));
+                        return true;
+                    }
+                    BOOST_LOG_TRIVIAL(error) << get_name_tag()
+                                             << "notify failed: " << ec;
+                    return false;
                 });
         return true;
     }
@@ -394,6 +449,16 @@ private:
              return handle_find_successor(req);
         }
 
+        if(request_type == "get_predecessor")
+        {
+            return handle_get_predecessor(req);
+        }
+
+        if(request_type == "notify")
+        {
+            return handle_notify(req);
+        }
+
         BOOST_LOG_TRIVIAL(debug) << get_name_tag() << "]Unknown Request Type: " << request_type;
         return false;
     }
@@ -415,6 +480,11 @@ private:
         if (request_type == "find_successor")
         {
             return handle_find_successor_response(req);
+        }
+
+        if (request_type == "get_predecessor")
+        {
+            return handle_get_predecessor_response(req);
         }
 
         BOOST_LOG_TRIVIAL(debug) << get_name_tag() << "]Unknown Request Type";
@@ -459,6 +529,25 @@ private:
         }
 
         return false;
+    }
+
+    bool handle_get_predecessor_response(RequestPtr req)
+    {
+        //TODO: error handling and foo
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "handle_get_predecessor_response";
+
+        if(req->peerinfo_size() == 0){
+            std::cout << "setting peer_to_wait_for" << std::endl;
+            peer_to_wait_for = m_routingTable->get_successor();
+        } else {
+            std::cout << "UR MOM" << std::endl;
+            auto predecessor = req->peerinfo(0);
+            peer_to_wait_for = std::make_shared<Peer>();
+            peer_to_wait_for->setPeer(std::make_shared<PeerInfo>(predecessor));
+        }
+
+        promise.set_value(1);
+        return true;
     }
 
     bool handle_find_successor_response(RequestPtr req)
@@ -554,6 +643,59 @@ private:
         return true;
     }
 
+    bool handle_get_predecessor(RequestPtr req)
+    {
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::handle_get_predecessor";
+
+        Request request;
+
+        std::vector<uint8_t> writebuf;
+        PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
+        auto message = msg.get_msg();
+
+        auto predecessor = m_routingTable->get_predecessor();
+
+        if(predecessor != nullptr){
+            auto peerinfo = message->add_peerinfo();
+            //TODO: test this:
+            /* peerinfo = predecessor->getPeer().get(); */
+            peerinfo->set_peer_id(predecessor->getID());
+            peerinfo->set_peer_ip(predecessor->getIP());
+            peerinfo->set_peer_rtt(predecessor->getIP());
+            peerinfo->set_peer_uptime(predecessor->getIP());
+        }
+
+        msg.init_header(false, 0, 0, "get_predecessor", "top_secret_id", VERSION);
+        msg.pack(writebuf);
+        send(writebuf);
+
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Sent query_response";
+
+        return true;
+    }
+
+    bool handle_notify(RequestPtr req)
+    {
+        //TODO: SPAGETTHIIIIIIIIIIIIIii
+        if(m_routingTable->get_predecessor() == nullptr){
+            Peer peer;
+            peer.setPeer(std::make_shared<PeerInfo>(req->peerinfo(0)));
+            m_routingTable->set_predecessor(std::make_shared<Peer>(peer));
+            return true;
+        }
+
+        auto predecessor = m_routingTable->get_predecessor()->getID();
+        auto self = m_routingTable->get_self()->getID();
+        Peer new_pre;
+        new_pre.setPeer(std::make_shared<PeerInfo>(req->peerinfo(0)));
+        auto new_pre_id = new_pre.getID();
+
+        if(new_pre_id.compare(predecessor) >= 0 && new_pre_id.compare(self) <= 0){
+            m_routingTable->set_predecessor(std::make_shared<Peer>(new_pre));
+        }
+        return true;
+    }
+
     bool send_response()
     {
         return false;
@@ -598,6 +740,60 @@ private:
         return true;
     }
 
+    void stabilize_internal()
+    {
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::stabilize_internal";
+
+        Request request;
+
+        std::vector<uint8_t> writebuf;
+        PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
+        auto message = msg.get_msg();
+        msg.init_header(true, 0, 0, "get_predecessor", "secret_id", VERSION);
+        msg.pack(writebuf);
+        send(writebuf);
+
+        do_read_header();
+
+        future.get();
+
+        auto id = m_routingTable->get_self()->getID();
+        std::cout << id << std::endl;
+        auto id_succ = m_routingTable->get_successor()->getID();
+        std::cout << id_succ << std::endl;
+        auto id_succ_pre = peer_to_wait_for->getID();
+        std::cout << id_succ_pre << std::endl;
+
+        if(id_succ_pre.compare(id) > 0 && id_succ_pre.compare(id_succ) < 0){
+            m_routingTable->set_successor(peer_to_wait_for);
+        }
+    }
+
+    //TODO: THIS MUST CREATE NEW SESSION TO SUCCESSOR
+    void notify_internal()
+    {
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::notify_internal";
+        Request request;
+
+        std::vector<uint8_t> writebuf;
+        PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
+
+        auto message = msg.get_msg();
+        auto self = m_routingTable->get_self();
+        auto peerinfo = message->add_peerinfo();
+
+        peerinfo->set_peer_id(self->getID());
+        peerinfo->set_peer_ip(self->getIP());
+        peerinfo->set_peer_rtt(self->getIP());
+        peerinfo->set_peer_uptime(self->getIP());
+
+        msg.init_header(true, 0, 0, "notify", "secret_id", VERSION);
+        msg.pack(writebuf);
+        send(writebuf);
+
+        std::cout << "noty" << std::endl;
+    }
+
     std::string const get_name_tag()
     {
         std::stringstream str;
@@ -616,6 +812,7 @@ private:
 
     Message m_message;
 
+    //used twice!!!
     std::shared_ptr<Peer> peer_to_wait_for;
 
     std::vector<uint8_t> m_readbuf;

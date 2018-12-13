@@ -11,7 +11,7 @@
 class Peer
 {
 public:
-    Peer();
+    Peer() {}
     Peer(std::string id, std::string ip) :
                 m_id(id), m_ip(ip)
                 {
@@ -58,14 +58,14 @@ public:
         return m_peer->peer_uptime();
     }
 
-    /* std::shared_ptr<PeerInfo> getPeer() */
-    /* { */
-    /*     return m_peer; */
-    /* } */
-
     std::shared_ptr<PeerInfo> getPeer()
     {
         return std::make_shared<PeerInfo>(*m_peer);
+    }
+
+    void setPeer(std::shared_ptr<PeerInfo> peer)
+    {
+        m_peer = peer;
     }
 
 private:
