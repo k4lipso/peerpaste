@@ -168,6 +168,7 @@ public:
 
     bool stabilize()
     {
+        if(m_routingTable->get_successor() == nullptr) return false;
         tcp::resolver resolver(m_io_context);
         //TODO: that port must be included in peerinfo!!!!!!!!!!!!!!!
         auto endpoint = resolver.resolve(m_routingTable->get_successor()->getIP(), "1337");
