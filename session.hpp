@@ -228,6 +228,42 @@ public:
         return true;
     }
 
+    bool check_predecessor()
+    {
+        tcp::resolver resolver(m_io_context);
+        //TODO: that port must be included in peerinfo!!!!!!!!!!!!!!!
+        if(m_routingTable->get_predecessor() == nullptr){
+            BOOST_LOG_TRIVIAL(info) << get_name_tag() << "check_predecessor:" <<
+                                    " predecessor not initialzed. returning";
+            return false;
+        }
+        auto endpoint = resolver.resolve(m_routingTable->get_predecessor()->getIP(), "1337");
+
+
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::check_predecessor()";
+        boost::asio::async_connect(socket_, endpoint,
+                [this, me = shared_from_this(), endpoint]
+                (boost::system::error_code ec, tcp::endpoint)
+                {
+                    if(!ec)
+                    {
+                        //TODO: for now we just try to connect, if it works we dont change anything
+                        //but we should also check if the predecessor is answering to a message
+                        //sent in check_predecessor_internal()
+                        /* service_.post( read_strand_.wrap([=] () */
+                        /*         { */
+                        /*             me->check_predecessor_internal(); */
+                        /*         } )); */
+                        return true;
+                    }
+                    BOOST_LOG_TRIVIAL(error) << get_name_tag()
+                                             << "connect to predecessor failed: " << ec;
+                    m_routingTable->set_predecessor(nullptr);
+                    return false;
+                });
+        return true;
+    }
+
     bool connect(const tcp::resolver::results_type& endpoints)
     {
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::connect";
@@ -262,13 +298,9 @@ public:
             return remote_find_factory(predecessor, id);
         }
 
-        //if(id in range(self, successor))
-        //TODO: check if comparision is okay since it is '(n, successor]' in the paper:
-        //what means '(' and what means '['
         auto self_id = self->getID();
         auto succ_id = successor->getID();
-        if(id.compare(self->getID()) >= 0 && id.compare(successor->getID()) <= 0)
-        /* if(util::between(self_id, id, succ_id) || id == succ_id) */
+        if(util::between(self_id, id, succ_id) || id == succ_id)
         {
             //return successor
             return successor;
@@ -519,7 +551,7 @@ private:
         for(int i = finger->size() - 1; i >= 0; i--)
         {
             std::string finger_id = finger->at(i)->getID();
-            if(finger_id.compare(self->getID()) >= 0 && finger_id.compare(id) <= 0){
+            if(util::between(self->getID(), finger_id, id)){
                 return finger->at(i);
             }
         }
@@ -710,7 +742,7 @@ private:
         new_pre.setPeer(std::make_shared<PeerInfo>(req->peerinfo(0)));
         auto new_pre_id = new_pre.getID();
 
-        if(new_pre_id.compare(predecessor) >= 0 && new_pre_id.compare(self) <= 0){
+        if(util::between(predecessor, new_pre_id, self)){
             m_routingTable->set_predecessor(std::make_shared<Peer>(new_pre));
         }
         return true;
@@ -785,18 +817,17 @@ private:
         std::cout << id_succ_pre << std::endl;
 
         std::cout << "FOO" << std::endl;
-        if(id_succ_pre.compare(id) > 0 && id_succ_pre.compare(id_succ) < 0){
+        if(util::between(id, id_succ_pre, id_succ)){
             std::cout << "MOO" << std::endl;
             m_routingTable->set_successor(peer_to_wait_for);
         }
     }
 
-    //TODO: THIS MUST CREATE NEW SESSION TO SUCCESSOR
     void notify_internal()
     {
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::notify_internal";
-        Request request;
 
+        Request request;
         std::vector<uint8_t> writebuf;
         PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
 
@@ -812,8 +843,24 @@ private:
         msg.init_header(true, 0, 0, "notify", "secret_id", VERSION);
         msg.pack(writebuf);
         send(writebuf);
+    }
 
-        std::cout << "noty" << std::endl;
+    void check_predecessor_internal()
+    {
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::check_predecessor_internal";
+
+        Request request;
+        std::vector<uint8_t> writebuf;
+        PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
+
+        auto message = msg.get_msg();
+        msg.init_header(true, 0, 0, "check_predecessor", "secret_id", VERSION);
+        msg.pack(writebuf);
+        send(writebuf);
+
+        do_read_header();
+
+        future.get();
     }
 
     std::string const get_name_tag()

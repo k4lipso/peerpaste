@@ -163,6 +163,8 @@ private:
         auto stabilize_handler =
             std::make_shared<session>(m_io_context, m_routingTable);
 
+        //TODO: sometimes we get stuck when waiting for stabilize response if peer died!
+        //we have to set a timeout mechanism
         m_io_context.post(stabilize_strand_.wrap( [=] ()
                     {
                         stabilize_handler->stabilize();
@@ -176,9 +178,16 @@ private:
                     {
                         notify_handler->notify();
                     } ));
-        /* notify_handler->notify(); */
 
-        t.expires_at(t.expiry() + boost::asio::chrono::seconds(3));
+        //check_predecessor handler
+        auto predecessor_handler =
+            std::make_shared<session>(m_io_context, m_routingTable);
+        m_io_context.post(stabilize_strand_.wrap( [=] ()
+                    {
+                        predecessor_handler->check_predecessor();
+                    } ));
+
+        t.expires_at(t.expiry() + boost::asio::chrono::seconds(10));
         t.async_wait(boost::bind(&server::stabilize, this));
     }
 
