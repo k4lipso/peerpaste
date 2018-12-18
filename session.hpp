@@ -168,7 +168,10 @@ public:
 
     bool stabilize()
     {
-        if(m_routingTable->get_successor() == nullptr) return false;
+        if(m_routingTable->get_successor() == nullptr){
+            BOOST_LOG_TRIVIAL(info) << get_name_tag() << "stbilize: successor not initialzed. returning";
+            return false;
+        }
         tcp::resolver resolver(m_io_context);
         //TODO: that port must be included in peerinfo!!!!!!!!!!!!!!!
         auto endpoint = resolver.resolve(m_routingTable->get_successor()->getIP(), "1337");
@@ -198,6 +201,10 @@ public:
     {
         tcp::resolver resolver(m_io_context);
         //TODO: that port must be included in peerinfo!!!!!!!!!!!!!!!
+        if(m_routingTable->get_successor() == nullptr){
+            BOOST_LOG_TRIVIAL(info) << get_name_tag() << "notify: successor not initialzed. returning";
+            return false;
+        }
         auto endpoint = resolver.resolve(m_routingTable->get_successor()->getIP(), "1337");
 
 
@@ -258,12 +265,20 @@ public:
         //if(id in range(self, successor))
         //TODO: check if comparision is okay since it is '(n, successor]' in the paper:
         //what means '(' and what means '['
+        auto self_id = self->getID();
+        auto succ_id = successor->getID();
         if(id.compare(self->getID()) >= 0 && id.compare(successor->getID()) <= 0)
+        /* if(util::between(self_id, id, succ_id) || id == succ_id) */
         {
             //return successor
             return successor;
         } else {
+            std::cout << "WOWOWOWOWO" << std::endl;
             auto predecessor = closest_preceding_node(id);
+            if(predecessor->getID() == self->getID()){
+                std::cout << "PREDECESSOR IS SELF" << std::endl;
+                return self;
+            }
             return remote_find_factory(predecessor, id);
         }
     }
@@ -492,9 +507,12 @@ private:
         return false;
     }
 
+    //SUCC AND PRE MUST BE ADDED TO FINGERTABLE
+    //SUCC = FIGNER[1]
+    //PRE  = FINGER[0]
     std::shared_ptr<Peer> closest_preceding_node(const std::string& id)
     {
-        BOOST_LOG_TRIVIAL(info) << "[Session] closest_preceding_node()";
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "closest_preceding_node()";
 
         auto self = m_routingTable->get_self();
         auto finger = m_routingTable->get_fingerTable();
@@ -505,6 +523,7 @@ private:
                 return finger->at(i);
             }
         }
+        std::cout << "RETURNING SELF" << std::endl;
         return self;
     }
 
@@ -765,7 +784,9 @@ private:
         auto id_succ_pre = peer_to_wait_for->getID();
         std::cout << id_succ_pre << std::endl;
 
+        std::cout << "FOO" << std::endl;
         if(id_succ_pre.compare(id) > 0 && id_succ_pre.compare(id_succ) < 0){
+            std::cout << "MOO" << std::endl;
             m_routingTable->set_successor(peer_to_wait_for);
         }
     }

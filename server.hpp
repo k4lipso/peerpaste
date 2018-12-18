@@ -25,7 +25,8 @@ class server
 public:
     server(int thread_count = 4, short port = 1337)
         : thread_count_(thread_count), acceptor_(m_io_context), m_routingTable(),
-          t(m_io_context, boost::asio::chrono::seconds(1))
+          t(m_io_context, boost::asio::chrono::seconds(0)),
+          stabilize_strand_(m_io_context)
     {}
 
     void start_server(uint16_t port)
@@ -33,6 +34,7 @@ public:
         start_listening(port);
         init_routingtable();
         accept_connections();
+        stabilize();
     }
 
     void start_client(std::string addr, uint16_t server_port, uint16_t own_port)
@@ -53,7 +55,7 @@ private:
     {
         auto endpoint = acceptor_.local_endpoint();
         const boost::asio::ip::address ip_ = endpoint.address();
-        const std::string ip = ip_.to_string();
+        const std::string ip = "192.168.56.101";
         const std::string id = util::generate_sha256(ip);
         BOOST_LOG_TRIVIAL(info) << "[SERVER] IP: " << ip;
         BOOST_LOG_TRIVIAL(info) << "[SERVER] ID: " << id;
@@ -64,6 +66,7 @@ private:
     {
         auto p = std::make_shared<Peer>(createPeer());
         m_routingTable = std::make_shared<RoutingTable>(p, nullptr, nullptr);
+        m_routingTable->set_successor(p);
         BOOST_LOG_TRIVIAL(info) << "[SERVER] m_self ID: "
                                 << m_routingTable->get_self()->getID();
         m_routingTable->print();
@@ -159,12 +162,21 @@ private:
 
         auto stabilize_handler =
             std::make_shared<session>(m_io_context, m_routingTable);
-        stabilize_handler->stabilize();
+
+        m_io_context.post(stabilize_strand_.wrap( [=] ()
+                    {
+                        stabilize_handler->stabilize();
+                    } ));
+        /* stabilize_handler->stabilize(); */
 
         //TODO: should wait for stabilize here
         auto notify_handler =
             std::make_shared<session>(m_io_context, m_routingTable);
-        notify_handler->notify();
+        m_io_context.post(stabilize_strand_.wrap( [=] ()
+                    {
+                        notify_handler->notify();
+                    } ));
+        /* notify_handler->notify(); */
 
         t.expires_at(t.expiry() + boost::asio::chrono::seconds(3));
         t.async_wait(boost::bind(&server::stabilize, this));
@@ -186,6 +198,7 @@ private:
     std::shared_ptr<RoutingTable> m_routingTable;
 
     boost::asio::io_context m_io_context;
+    boost::asio::io_service::strand stabilize_strand_;
     boost::asio::steady_timer t;
     /* tcp::socket m_socket; */
     int thread_count_;

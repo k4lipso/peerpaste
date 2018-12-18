@@ -56,6 +56,8 @@ public:
     void set_successor(std::shared_ptr<Peer> successor)
     {
         m_successor = successor;
+        auto it = m_fingerTable.begin();
+        m_fingerTable.insert(it, successor);
     }
 
     std::shared_ptr<Peer> get_successor()
