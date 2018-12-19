@@ -17,6 +17,9 @@
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/log/trivial.hpp>
+#include <sstream>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 using boost::asio::ip::tcp;
 
@@ -26,6 +29,7 @@ public:
     server(int thread_count = 4, short port = 1337)
         : thread_count_(thread_count), acceptor_(m_io_context), m_routingTable(),
           t(m_io_context, boost::asio::chrono::seconds(0)),
+          t2(m_io_context, boost::asio::chrono::seconds(2)),
           stabilize_strand_(m_io_context)
     {}
 
@@ -35,6 +39,7 @@ public:
         init_routingtable();
         accept_connections();
         stabilize();
+        send_routing_information();
     }
 
     void start_client(std::string addr, uint16_t server_port, uint16_t own_port)
@@ -44,6 +49,7 @@ public:
         join(addr, server_port);
         accept_connections();
         stabilize();
+        send_routing_information();
     }
 
 private:
@@ -187,10 +193,68 @@ private:
                         predecessor_handler->check_predecessor();
                     } ));
 
-        t.expires_at(t.expiry() + boost::asio::chrono::seconds(10));
+        t.expires_at(t.expiry() + boost::asio::chrono::seconds(1));
         t.async_wait(boost::bind(&server::stabilize, this));
     }
 
+    void send_routing_information()
+    {
+        t2.async_wait(boost::bind(&server::send_routing_information_internal, this));
+    }
+
+    void send_routing_information_internal()
+    {
+        tcp::resolver resolver(m_io_context);
+        auto endpoint = resolver.resolve("192.168.56.105", "8080");
+        tcp::socket socket(m_io_context);
+        boost::asio::connect(socket, endpoint);
+
+        boost::asio::streambuf request;
+        std::ostream request_stream(&request);
+
+       using boost::property_tree::ptree;
+       using boost::property_tree::read_json;
+       using boost::property_tree::write_json;
+
+        ptree root, info;
+        if(m_routingTable->get_successor() != nullptr){
+            info.put("successor", m_routingTable->get_successor()->getID());
+        } else {
+            info.put("successor", "");
+        }
+        if(m_routingTable->get_predecessor() != nullptr){
+            info.put("predecessor", m_routingTable->get_predecessor()->getID());
+        } else {
+            info.put("predecessor", "");
+        }
+        root.put_child(m_routingTable->get_self()->getID(), info);
+        /* root.put ("some value", "8"); */
+        /* root.put ( "message", "value value: value!"); */
+        /* info.put("placeholder", "value"); */
+        /* info.put("value", "daf!"); */
+        /* info.put("module", "value"); */
+        /* root.put_child("exception", info); */
+
+        std::ostringstream buf;
+        write_json (buf, root, false);
+        std::string json = buf.str();
+
+        request_stream << "POST / HTTP/1.1 \r\n";
+        request_stream << "Host:" << "lol" << "\r\n";
+        request_stream << "User-Agent: C/1.0";
+        request_stream << "Content-Type: application/json; charset=utf-8 \r\n";
+        request_stream << "Accept: */*\r\n";
+        request_stream << "Content-Length: " << json.length() << "\r\n";
+        request_stream << "Connection: close\r\n\r\n";  //NOTE THE Double line feed
+        request_stream << json;
+
+        // Send the request.
+        boost::asio::write(socket, request);
+        std::cout << "written post req" << std::endl;
+        t2.expires_at(t.expiry() + boost::asio::chrono::seconds(15));
+        t2.async_wait(boost::bind(&server::send_routing_information_internal, this));
+
+    }
 
     void notify(/*IP*/);
 
@@ -209,6 +273,7 @@ private:
     boost::asio::io_context m_io_context;
     boost::asio::io_service::strand stabilize_strand_;
     boost::asio::steady_timer t;
+    boost::asio::steady_timer t2;
     /* tcp::socket m_socket; */
     int thread_count_;
     std::vector<std::thread> thread_pool_;

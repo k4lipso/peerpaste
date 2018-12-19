@@ -721,7 +721,7 @@ private:
         msg.pack(writebuf);
         send(writebuf);
 
-        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Sent query_response";
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Sent get_predecessor_response";
 
         return true;
     }
