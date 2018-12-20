@@ -11,20 +11,24 @@
 class Peer
 {
 public:
-    Peer() {}
-    Peer(std::string id, std::string ip) :
-                m_id(id), m_ip(ip)
-                {
-                    m_peer = std::make_shared<PeerInfo>();
-                    m_peer->set_peer_id(id);
-                    m_peer->set_peer_ip(ip);
-                }
+    Peer() {
+        m_peer = std::make_shared<PeerInfo>();
+    }
+    Peer(std::string id, std::string ip, std::string port)
+    {
+        m_peer = std::make_shared<PeerInfo>();
+        m_peer->set_peer_id(id);
+        m_peer->set_peer_ip(ip);
+        m_peer->set_peer_port(port);
+    }
+
     ~Peer() {}
 
     void print()
     {
         std::cout << "IP: " << getIP() << '\n';
         std::cout << "ID: " << getID() << '\n';
+        std::cout << "Port: " << getPort() << std::endl;
     }
 
     std::string getID()
@@ -68,17 +72,18 @@ public:
         m_peer = peer;
     }
 
+    void setPort(std::string port)
+    {
+        m_peer->set_peer_port(port);
+    }
+
+    std::string getPort()
+    {
+        return m_peer->peer_port();
+    }
+
 private:
     std::shared_ptr<PeerInfo> m_peer;
-    //The ID of the peer. Typically the hash of the IP Addr
-    std::string m_id;
-    //IP Addr
-    std::string m_ip;
-    //round-trip-time of the peer.
-    std::chrono::milliseconds m_rtt;
-    //uptime of the peer
-    //TODO eva if timestamp of creation would be enough..
-    std::chrono::milliseconds m_uptime;
 };
 
 #endif /* PEER_H */

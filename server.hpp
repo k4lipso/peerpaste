@@ -28,15 +28,16 @@ class server
 public:
     server(int thread_count = 4, short port = 1337)
         : thread_count_(thread_count), acceptor_(m_io_context), m_routingTable(),
-          t(m_io_context, boost::asio::chrono::seconds(0)),
+          t(m_io_context, boost::asio::chrono::seconds(5)),
           t2(m_io_context, boost::asio::chrono::seconds(2)),
           stabilize_strand_(m_io_context)
-    {}
+    {
+    }
 
     void start_server(uint16_t port)
     {
         start_listening(port);
-        init_routingtable();
+        init_routingtable(std::to_string(port));
         accept_connections();
         stabilize();
         send_routing_information();
@@ -45,7 +46,7 @@ public:
     void start_client(std::string addr, uint16_t server_port, uint16_t own_port)
     {
         start_listening(own_port);
-        init_routingtable();
+        init_routingtable(std::to_string(own_port));
         join(addr, server_port);
         accept_connections();
         stabilize();
@@ -57,20 +58,20 @@ private:
     /**
      * Creates on Peer Object based on the own IP
      */
-    Peer createPeer()
+    Peer createPeer(std::string port)
     {
         auto endpoint = acceptor_.local_endpoint();
         const boost::asio::ip::address ip_ = endpoint.address();
-        const std::string ip = "192.168.56.101";
-        const std::string id = util::generate_sha256(ip);
+        const std::string ip = "127.0.0.1";
+        const std::string id = util::generate_sha256(ip, port);
         BOOST_LOG_TRIVIAL(info) << "[SERVER] IP: " << ip;
         BOOST_LOG_TRIVIAL(info) << "[SERVER] ID: " << id;
-        return Peer(id, ip);
+        return Peer(id, ip, port);
     }
 
-    void init_routingtable()
+    void init_routingtable(std::string port)
     {
-        auto p = std::make_shared<Peer>(createPeer());
+        auto p = std::make_shared<Peer>(createPeer(port));
         m_routingTable = std::make_shared<RoutingTable>(p, nullptr, nullptr);
         m_routingTable->set_successor(p);
         BOOST_LOG_TRIVIAL(info) << "[SERVER] m_self ID: "
@@ -193,7 +194,7 @@ private:
                         predecessor_handler->check_predecessor();
                     } ));
 
-        t.expires_at(t.expiry() + boost::asio::chrono::seconds(1));
+        t.expires_at(t.expiry() + boost::asio::chrono::seconds(3));
         t.async_wait(boost::bind(&server::stabilize, this));
     }
 
@@ -205,7 +206,7 @@ private:
     void send_routing_information_internal()
     {
         tcp::resolver resolver(m_io_context);
-        auto endpoint = resolver.resolve("192.168.56.105", "8080");
+        auto endpoint = resolver.resolve("127.0.0.1", "8080");
         tcp::socket socket(m_io_context);
         boost::asio::connect(socket, endpoint);
 
@@ -251,7 +252,7 @@ private:
         // Send the request.
         boost::asio::write(socket, request);
         std::cout << "written post req" << std::endl;
-        t2.expires_at(t.expiry() + boost::asio::chrono::seconds(15));
+        t2.expires_at(t.expiry() + boost::asio::chrono::seconds(3));
         t2.async_wait(boost::bind(&server::send_routing_information_internal, this));
 
     }

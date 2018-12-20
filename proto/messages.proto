@@ -43,8 +43,9 @@ message PeerInfo
 {
     required string peer_id = 1;
     required string peer_ip = 2;
-    optional string peer_rtt = 3;
-    optional string peer_uptime = 4;
+    required string peer_port = 3;
+    optional string peer_rtt = 4;
+    optional string peer_uptime = 5;
     //various additional fields.. thinking..
 }
 

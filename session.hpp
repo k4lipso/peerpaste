@@ -2,7 +2,6 @@
 #define SESSION_H
 
 #include "message.hpp"
-/* #include "cryptowrapper.hpp" */
 #include "routingTable.hpp"
 
 #include <string>
@@ -48,7 +47,7 @@ public:
 
     ~session()
     {
-        m_routingTable->print();
+        /* m_routingTable->print(); */
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Session Destroyed";
     }
 
@@ -174,7 +173,8 @@ public:
         }
         tcp::resolver resolver(m_io_context);
         //TODO: that port must be included in peerinfo!!!!!!!!!!!!!!!
-        auto endpoint = resolver.resolve(m_routingTable->get_successor()->getIP(), "1337");
+        auto endpoint = resolver.resolve(m_routingTable->get_successor()->getIP(),
+                                         m_routingTable->get_successor()->getPort());
 
 
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::stabilize()";
@@ -205,7 +205,8 @@ public:
             BOOST_LOG_TRIVIAL(info) << get_name_tag() << "notify: successor not initialzed. returning";
             return false;
         }
-        auto endpoint = resolver.resolve(m_routingTable->get_successor()->getIP(), "1337");
+        auto endpoint = resolver.resolve(m_routingTable->get_successor()->getIP(),
+                                         m_routingTable->get_successor()->getPort());
 
 
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::notify()";
@@ -237,7 +238,8 @@ public:
                                     " predecessor not initialzed. returning";
             return false;
         }
-        auto endpoint = resolver.resolve(m_routingTable->get_predecessor()->getIP(), "1337");
+        auto endpoint = resolver.resolve(m_routingTable->get_predecessor()->getIP(),
+                                         m_routingTable->get_predecessor()->getPort());
 
 
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::check_predecessor()";
@@ -264,22 +266,31 @@ public:
         return true;
     }
 
-    bool connect(const tcp::resolver::results_type& endpoints)
+    std::shared_ptr<Peer> connect(const tcp::resolver::results_type& endpoints, std::string id)
     {
+        boost::promise<int> promise_;
+        boost::unique_future<int> future(promise_.get_future());
+        std::shared_ptr<Peer> peer;
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::connect";
         boost::asio::async_connect(socket_, endpoints,
-                [this, me = shared_from_this(), endpoints](boost::system::error_code ec, tcp::endpoint)
+                [this, me = shared_from_this(), endpoints, &promise_, &peer, id](boost::system::error_code ec, tcp::endpoint)
                 {
+                std::cout << "CONNECTED MOFO" << std::endl;
                     if(!ec)
                     {
                         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::connect connected";
+                        peer = remote_find_successor(id);
+                        promise_.set_value(1);
                     } else {
                         BOOST_LOG_TRIVIAL(error) << get_name_tag() << "error: " << ec;
                     }
                     //Add timeout functionality
                     /* me->connect(endpoints); */
                 });
-        return true;
+        std::cout << "AFTER ASYNC CALL U FOOL" << std::endl;
+        /* m_io_context.run(); */
+        future.get();
+        return peer;
     }
 
     //peer is peer object to update
@@ -302,6 +313,7 @@ public:
         auto succ_id = successor->getID();
         if(util::between(self_id, id, succ_id) || id == succ_id)
         {
+            std::cout << "RETURNED SUCC in find_successor" << std::endl;
             //return successor
             return successor;
         } else {
@@ -311,6 +323,7 @@ public:
                 std::cout << "PREDECESSOR IS SELF" << std::endl;
                 return self;
             }
+            std::cout << "STARTING MOTHERFUCKING REMOTE BRO" << std::endl;
             return remote_find_factory(predecessor, id);
         }
     }
@@ -319,15 +332,89 @@ public:
     {
         tcp::resolver resolver(service_);
         //TODO: NO STATIC PORT U FOOL!
-        auto endpoints = resolver.resolve(peer->getIP(), "1337");
+        auto endpoints = resolver.resolve(peer->getIP(), peer->getPort());
         auto handler =
-            std::make_shared<session>(m_io_context, m_routingTable);
-        handler->connect(endpoints);
-        return handler->remote_find_successor(id);
+            std::make_shared<session>(service_, m_routingTable);
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "IP: FOO" << peer->getIP() << std::endl;
+        std::cout << "port: FOO" << peer->getPort() << std::endl;
+        return handler->connect(endpoints, id);
+        /* return handler->remote_find_successor(id); */
     }
 
 
-    const std::shared_ptr<Peer> remote_find_successor(const std::string& id)
+    std::shared_ptr<Peer> remote_find_successor(const std::string& id)
     {
         //This fct sends a find_successor request which will trigger find_successor
         //on the remote peer
@@ -344,6 +431,7 @@ public:
         auto peerinfo = message->add_peerinfo();
         peerinfo->set_peer_id(id);
         peerinfo->set_peer_ip("");
+        peerinfo->set_peer_port("");
         peerinfo->set_peer_rtt("");
         peerinfo->set_peer_uptime("");
 
@@ -374,6 +462,7 @@ public:
         auto peerinfo = message->add_peerinfo();
         peerinfo->set_peer_id(peer->getID());
         peerinfo->set_peer_ip(peer->getIP());
+        peerinfo->set_peer_port(peer->getPort());
         peerinfo->set_peer_rtt("");
         peerinfo->set_peer_uptime("");
 
@@ -570,6 +659,7 @@ private:
         //set new ID
         self->setID(req->peerinfo(0).peer_id());
         self->setIP(req->peerinfo(0).peer_ip());
+        self->setPort(req->peerinfo(0).peer_port());
         //get predecessor/successor object
         auto predecessor = m_routingTable->get_predecessor();
         auto successor = m_routingTable->get_successor();
@@ -611,11 +701,12 @@ private:
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "handle_find_successor_response";
         auto new_id = req->peerinfo(0).peer_id();
         auto new_ip = req->peerinfo(0).peer_ip();
+        auto new_port = req->peerinfo(0).peer_port();
 
         //TODO: dont set successor, let remote_find_suc return it!!!
         /* m_routingTable->set_successor(std::make_shared<Peer>(new_id, new_ip)); */
 
-        peer_to_wait_for = std::make_shared<Peer>(new_id, new_ip);
+        peer_to_wait_for = std::make_shared<Peer>(new_id, new_ip, new_port);
         if(peer_to_wait_for != nullptr){
             promise.set_value(1);
             std::cout << "promise was set!" << std::endl;
@@ -643,6 +734,7 @@ private:
 
         peerinfo->set_peer_id(peer->getID());
         peerinfo->set_peer_ip(peer->getIP());
+        peerinfo->set_peer_port(peer->getPort());
         peerinfo->set_peer_rtt(peer->getIP());
         peerinfo->set_peer_uptime(peer->getIP());
 
@@ -667,11 +759,13 @@ private:
 
         //TODO: create hashing helper class that handles hashing of files and strings
         auto client_ip = socket_.remote_endpoint().address().to_string();
-        auto client_hash = util::generate_sha256(client_ip);
+        auto client_port = req->peerinfo(0).peer_port();
+        auto client_hash = util::generate_sha256(client_ip, client_port);
 
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Query Received";
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Client IP: " << client_ip;
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "New Client HASH: " << client_hash;
+        BOOST_LOG_TRIVIAL(info) << get_name_tag() << "New Client port: " << client_port;
 
         Request request;
 
@@ -682,6 +776,7 @@ private:
 
         peerinfo->set_peer_id(client_hash);
         peerinfo->set_peer_ip(client_ip);
+        peerinfo->set_peer_port(client_port);
         peerinfo->set_peer_rtt(client_ip);
         peerinfo->set_peer_uptime(client_ip);
 
@@ -713,8 +808,13 @@ private:
             /* peerinfo = predecessor->getPeer().get(); */
             peerinfo->set_peer_id(predecessor->getID());
             peerinfo->set_peer_ip(predecessor->getIP());
+            peerinfo->set_peer_port(predecessor->getPort());
             peerinfo->set_peer_rtt(predecessor->getIP());
             peerinfo->set_peer_uptime(predecessor->getIP());
+        } else {
+            /* Peer peer; */
+            /* peer.setPeer(std::make_shared<PeerInfo>(req->peerinfo(0))); */
+            /* m_routingTable->set_predecessor(std::make_shared<Peer>(peer)); */
         }
 
         msg.init_header(false, 0, 0, "get_predecessor", "top_secret_id", VERSION);
@@ -779,6 +879,7 @@ private:
         auto peerinfo = message->add_peerinfo();
         peerinfo->set_peer_id(peerinfo_->peer_id());
         peerinfo->set_peer_ip(peerinfo_->peer_ip());
+        peerinfo->set_peer_port(peerinfo_->peer_port());
         peerinfo->set_peer_rtt(peerinfo_->peer_ip());
         peerinfo->set_peer_uptime(peerinfo_->peer_ip());
         msg.init_header(true, 0, 0, "query", "top_secret_id", VERSION);
@@ -837,6 +938,7 @@ private:
 
         peerinfo->set_peer_id(self->getID());
         peerinfo->set_peer_ip(self->getIP());
+        peerinfo->set_peer_port(self->getPort());
         peerinfo->set_peer_rtt(self->getIP());
         peerinfo->set_peer_uptime(self->getIP());
 
