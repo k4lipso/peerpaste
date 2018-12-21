@@ -46,16 +46,6 @@ fetch('http://localhost:8080')
       .force('link', d3.forceLink().links(links).distance(60))
       .on('tick', ticked);
 
-    function getJSON()
-        {
-            var out = fetch('http://localhost:8080')
-                .then(res => res.json())
-                .then((out) => {
-            }).catch(err => console.error(err));
-            return out;
-        }
-    var foo = getJSON();
-    console.log("", foo);
 
     function updateLinks() {
       var u = d3.select('.links')
