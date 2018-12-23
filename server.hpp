@@ -23,10 +23,10 @@
 
 using boost::asio::ip::tcp;
 
-class server
+class Server
 {
 public:
-    server(int thread_count = 4, short port = 1337)
+    Server(int thread_count = 4, short port = 1337)
         : thread_count_(thread_count), acceptor_(m_io_context), m_routingTable(),
           t(m_io_context, boost::asio::chrono::seconds(5)),
           t2(m_io_context, boost::asio::chrono::seconds(2)),
@@ -93,7 +93,7 @@ private:
 
         //create session object
         auto join_handler =
-            std::make_shared<session>(m_io_context, m_routingTable);
+            std::make_shared<Session>(m_io_context, m_routingTable);
 
         //join the network using the given endpoint
         join_handler->join(endpoint);
@@ -121,7 +121,7 @@ private:
     void accept_connections()
     {
         auto handler =
-            std::make_shared<session>(m_io_context, m_routingTable);
+            std::make_shared<Session>(m_io_context, m_routingTable);
 
 
         acceptor_.async_accept( handler->socket(),
@@ -137,7 +137,7 @@ private:
         }
     }
 
-    void handle_new_connection(session::SessionPtr handler,
+    void handle_new_connection(Session::SessionPtr handler,
             const boost::system::error_code& ec)
     {
         BOOST_LOG_TRIVIAL(info) << "[SERVER] handle_accept with error";
@@ -146,7 +146,7 @@ private:
         BOOST_LOG_TRIVIAL(info) << "[SERVER] handle_accept with no error";
         handler->start();
 
-        auto new_handler = std::make_shared<session>(m_io_context, m_routingTable);
+        auto new_handler = std::make_shared<Session>(m_io_context, m_routingTable);
 
         acceptor_.async_accept( new_handler->socket(),
                                 [=] (auto ec)
@@ -160,7 +160,7 @@ private:
 
     void stabilize()
     {
-        t.async_wait(boost::bind(&server::stabilize_internal, this));
+        t.async_wait(boost::bind(&Server::stabilize_internal, this));
     }
 
     void stabilize_internal()
@@ -168,19 +168,19 @@ private:
         std::cout << "stabilize()...." << std::endl;
 
         auto stabilize_handler =
-            std::make_shared<session>(m_io_context, m_routingTable);
+            std::make_shared<Session>(m_io_context, m_routingTable);
 
         //TODO: sometimes we get stuck when waiting for stabilize response if peer died!
         //we have to set a timeout mechanism
-        m_io_context.post(stabilize_strand_.wrap( [=] ()
-                    {
+        /* m_io_context.post(stabilize_strand_.wrap( [=] () */
+        /*             { */
                         stabilize_handler->stabilize();
-                    } ));
+                    /* } )); */
         /* stabilize_handler->stabilize(); */
 
         //TODO: should wait for stabilize here
         auto notify_handler =
-            std::make_shared<session>(m_io_context, m_routingTable);
+            std::make_shared<Session>(m_io_context, m_routingTable);
         m_io_context.post(stabilize_strand_.wrap( [=] ()
                     {
                         notify_handler->notify();
@@ -188,19 +188,19 @@ private:
 
         //check_predecessor handler
         auto predecessor_handler =
-            std::make_shared<session>(m_io_context, m_routingTable);
+            std::make_shared<Session>(m_io_context, m_routingTable);
         m_io_context.post(stabilize_strand_.wrap( [=] ()
                     {
                         predecessor_handler->check_predecessor();
                     } ));
 
-        t.expires_at(t.expiry() + boost::asio::chrono::seconds(3));
-        t.async_wait(boost::bind(&server::stabilize, this));
+        t.expires_at(t.expiry() + boost::asio::chrono::milliseconds(1));
+        t.async_wait(boost::bind(&Server::stabilize, this));
     }
 
     void send_routing_information()
     {
-        t2.async_wait(boost::bind(&server::send_routing_information_internal, this));
+        t2.async_wait(boost::bind(&Server::send_routing_information_internal, this));
     }
 
     void send_routing_information_internal()
@@ -253,7 +253,7 @@ private:
         boost::asio::write(socket, request);
         std::cout << "written post req" << std::endl;
         t2.expires_at(t.expiry() + boost::asio::chrono::seconds(3));
-        t2.async_wait(boost::bind(&server::send_routing_information_internal, this));
+        t2.async_wait(boost::bind(&Server::send_routing_information_internal, this));
 
     }
 

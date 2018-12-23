@@ -18,15 +18,15 @@ using boost::asio::ip::tcp;
 //TODO: will overflow!!!!!!!!!!!!
 static int naming = 0;
 
-class session
-    : public std::enable_shared_from_this<session>
+class Session
+    : public std::enable_shared_from_this<Session>
 {
 public:
-    typedef std::shared_ptr<session> SessionPtr;
+    typedef std::shared_ptr<Session> SessionPtr;
     typedef std::shared_ptr<RoutingTable> RoutingPtr;
     typedef std::shared_ptr<Request> RequestPtr;
 
-    session(boost::asio::io_context& io_context, RoutingPtr routingTable)
+    Session(boost::asio::io_context& io_context, RoutingPtr routingTable)
         : service_(io_context),
           /* m_io_context(io_context), */
           socket_(io_context),
@@ -45,7 +45,7 @@ public:
         m_packed_request = PackedMessage<Request>(std::make_shared<Request>());
     }
 
-    ~session()
+    ~Session()
     {
         /* m_routingTable->print(); */
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Session Destroyed";
@@ -73,7 +73,7 @@ public:
     static SessionPtr create(boost::asio::io_context& io_context, RoutingPtr routingTable)
     {
         /* return std::make_shared<session>(socket, routingTable); */
-        return SessionPtr(new session(io_context, routingTable));
+        return SessionPtr(new Session(io_context, routingTable));
     }
 
     void start()
@@ -334,81 +334,7 @@ public:
         //TODO: NO STATIC PORT U FOOL!
         auto endpoints = resolver.resolve(peer->getIP(), peer->getPort());
         auto handler =
-            std::make_shared<session>(service_, m_routingTable);
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "IP: FOO" << peer->getIP() << std::endl;
-        std::cout << "port: FOO" << peer->getPort() << std::endl;
+            std::make_shared<Session>(service_, m_routingTable);
         return handler->connect(endpoints, id);
         /* return handler->remote_find_successor(id); */
     }
