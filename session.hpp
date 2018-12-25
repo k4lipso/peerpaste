@@ -28,7 +28,7 @@ public:
 
     Session(boost::asio::io_context& io_context)
         : service_(io_context),
-          /* m_io_context(io_context), */
+          /* io_context_(io_context), */
           socket_(io_context),
           write_strand_(io_context),
           read_strand_(io_context),
@@ -36,18 +36,18 @@ public:
           future(promise.get_future()),
           future_query(promise_query.get_future())
     {
-        m_routingTable = RoutingTable::getInstance();
-        m_readbuf = { 0 };
+        routing_table_ = RoutingTable::getInstance();
+        readbuf_ = { 0 };
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Session Created";
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "m_self ID: "
-                                << m_routingTable->get_self()->getID();
+                                << routing_table_->get_self()->getID();
 
-        m_packed_request = PackedMessage<Request>(std::make_shared<Request>());
+        packed_request_ = PackedMessage<Request>(std::make_shared<Request>());
     }
 
     ~Session()
     {
-        m_routingTable->print();
+        routing_table_->print();
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Session Destroyed";
     }
 
@@ -59,7 +59,7 @@ public:
     /**
      * using this constructor an "outgoing" session will be created.
      * if request_type is "join" for example, that session will start
-     * tcp::resolver resolver(m_io_context)
+     * tcp::resolver resolver(io_context_)
      * a request a query at the given endpoint.
      * so instead the server handles join/query whatever, everything
      * is handled by session object. so the server object just has to
@@ -150,9 +150,9 @@ public:
 
                         service_.post( read_strand_.wrap( [=] ()
                                             {
-                                                m_routingTable->set_successor(
+                                                routing_table_->set_successor(
                                                         me->remote_find_successor(
-                                                            m_routingTable->get_self()));
+                                                            routing_table_->get_self()));
                                             } ) );
 
                         //TODO: does this actually return something???????
@@ -167,14 +167,14 @@ public:
 
     bool stabilize()
     {
-        if(m_routingTable->get_successor() == nullptr){
+        if(routing_table_->get_successor() == nullptr){
             BOOST_LOG_TRIVIAL(info) << get_name_tag() << "stbilize: successor not initialzed. returning";
             return false;
         }
-        tcp::resolver resolver(m_io_context);
+        tcp::resolver resolver(io_context_);
         //TODO: that port must be included in peerinfo!!!!!!!!!!!!!!!
-        auto endpoint = resolver.resolve(m_routingTable->get_successor()->getIP(),
-                                         m_routingTable->get_successor()->getPort());
+        auto endpoint = resolver.resolve(routing_table_->get_successor()->getIP(),
+                                         routing_table_->get_successor()->getPort());
 
 
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::stabilize()";
@@ -199,14 +199,14 @@ public:
 
     bool notify()
     {
-        tcp::resolver resolver(m_io_context);
+        tcp::resolver resolver(io_context_);
         //TODO: that port must be included in peerinfo!!!!!!!!!!!!!!!
-        if(m_routingTable->get_successor() == nullptr){
+        if(routing_table_->get_successor() == nullptr){
             BOOST_LOG_TRIVIAL(info) << get_name_tag() << "notify: successor not initialzed. returning";
             return false;
         }
-        auto endpoint = resolver.resolve(m_routingTable->get_successor()->getIP(),
-                                         m_routingTable->get_successor()->getPort());
+        auto endpoint = resolver.resolve(routing_table_->get_successor()->getIP(),
+                                         routing_table_->get_successor()->getPort());
 
 
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::notify()";
@@ -231,15 +231,15 @@ public:
 
     bool check_predecessor()
     {
-        tcp::resolver resolver(m_io_context);
+        tcp::resolver resolver(io_context_);
         //TODO: that port must be included in peerinfo!!!!!!!!!!!!!!!
-        if(m_routingTable->get_predecessor() == nullptr){
+        if(routing_table_->get_predecessor() == nullptr){
             BOOST_LOG_TRIVIAL(info) << get_name_tag() << "check_predecessor:" <<
                                     " predecessor not initialzed. returning";
             return false;
         }
-        auto endpoint = resolver.resolve(m_routingTable->get_predecessor()->getIP(),
-                                         m_routingTable->get_predecessor()->getPort());
+        auto endpoint = resolver.resolve(routing_table_->get_predecessor()->getIP(),
+                                         routing_table_->get_predecessor()->getPort());
 
 
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::check_predecessor()";
@@ -260,7 +260,7 @@ public:
                     }
                     BOOST_LOG_TRIVIAL(error) << get_name_tag()
                                              << "connect to predecessor failed: " << ec;
-                    m_routingTable->set_predecessor(nullptr);
+                    routing_table_->set_predecessor(nullptr);
                     return false;
                 });
         return true;
@@ -286,7 +286,7 @@ public:
                     //Add timeout functionality
                     /* me->connect(endpoints); */
                 });
-        /* m_io_context.run(); */
+        /* io_context_.run(); */
         future.get();
         return peer;
     }
@@ -294,8 +294,8 @@ public:
     //peer is peer object to update
     const std::shared_ptr<Peer> find_successor(const std::string& id)
     {
-        auto self = m_routingTable->get_self();
-        auto successor = m_routingTable->get_successor();
+        auto self = routing_table_->get_self();
+        auto successor = routing_table_->get_successor();
         if(successor == nullptr){
             auto predecessor = closest_preceding_node(id);
             if(predecessor->getID() == self->getID()){
@@ -410,7 +410,7 @@ private:
         BOOST_LOG_TRIVIAL(debug) << get_name_tag() << "]handle_read_header()";
         if(!error)
         {
-            unsigned msg_len = m_packed_request.decode_header(m_readbuf);
+            unsigned msg_len = packed_request_.decode_header(readbuf_);
             do_read_message(msg_len);
             return;
 
@@ -426,10 +426,10 @@ private:
     int do_read_header()
     {
         BOOST_LOG_TRIVIAL(debug) << get_name_tag() << "]do_read_header()";
-        m_readbuf.resize(HEADER_SIZE);
+        readbuf_.resize(HEADER_SIZE);
 
         boost::asio::async_read(socket_,
-                                boost::asio::buffer(m_readbuf),
+                                boost::asio::buffer(readbuf_),
                                 [me = shared_from_this()]
                                 (boost::system::error_code const &error, std::size_t)
                                 {
@@ -443,11 +443,10 @@ private:
     void handle_message()
     {
         BOOST_LOG_TRIVIAL(debug) << get_name_tag() << "]handle_message()";
-        if(m_packed_request.unpack(m_readbuf))
+        if(packed_request_.unpack(readbuf_))
         {
-            RequestPtr req = m_packed_request.get_msg();
+            RequestPtr req = packed_request_.get_msg();
             auto commonheader = req->commonheader();
-            /* m_message = &req.get(); */
 
             /* //TODO: recheck if else is neccessarry */
             if(commonheader.t_flag()){
@@ -476,8 +475,8 @@ private:
     {
         BOOST_LOG_TRIVIAL(debug) << get_name_tag() << "]do_read_message()";
 
-        m_readbuf.resize(HEADER_SIZE + msg_len);
-        boost::asio::mutable_buffers_1 buf = boost::asio::buffer(&m_readbuf[HEADER_SIZE], msg_len);
+        readbuf_.resize(HEADER_SIZE + msg_len);
+        boost::asio::mutable_buffers_1 buf = boost::asio::buffer(&readbuf_[HEADER_SIZE], msg_len);
         /* boost::asio::async_read(socket_, buf, */
         /*         boost::bind(&session::handle_read_message, shared_from_this(), */
         /*             boost::asio::placeholders::error)); */
@@ -557,8 +556,8 @@ private:
     {
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "closest_preceding_node()";
 
-        auto self = m_routingTable->get_self();
-        auto finger = m_routingTable->get_fingerTable();
+        auto self = routing_table_->get_self();
+        auto finger = routing_table_->get_fingerTable();
         for(int i = finger->size() - 1; i >= 0; i--)
         {
             if(finger->at(i) == nullptr){
@@ -580,14 +579,14 @@ private:
         //TODO: extract peerinfo from Request and update own Peer information (Hash)
 
         //get own Peer object
-        auto self = m_routingTable->get_self();
+        auto self = routing_table_->get_self();
         //set new ID
         self->setID(req->peerinfo(0).peer_id());
         self->setIP(req->peerinfo(0).peer_ip());
         self->setPort(req->peerinfo(0).peer_port());
         //get predecessor/successor object
-        auto predecessor = m_routingTable->get_predecessor();
-        auto successor = m_routingTable->get_successor();
+        auto predecessor = routing_table_->get_predecessor();
+        auto successor = routing_table_->get_successor();
 
         if(self->getID() != "UNKNOWN"){
             promise_query.set_value(1);
@@ -605,7 +604,7 @@ private:
 
         if(req->peerinfo_size() == 0){
             std::cout << "setting peer_to_wait_for" << std::endl;
-            peer_to_wait_for = m_routingTable->get_successor();
+            peer_to_wait_for = routing_table_->get_successor();
         } else {
             auto predecessor = req->peerinfo(0);
             peer_to_wait_for = std::make_shared<Peer>();
@@ -628,7 +627,7 @@ private:
         auto new_port = req->peerinfo(0).peer_port();
 
         //TODO: dont set successor, let remote_find_suc return it!!!
-        /* m_routingTable->set_successor(std::make_shared<Peer>(new_id, new_ip)); */
+        /* routing_table_->set_successor(std::make_shared<Peer>(new_id, new_ip)); */
 
         peer_to_wait_for = std::make_shared<Peer>(new_id, new_ip, new_port);
         if(peer_to_wait_for != nullptr){
@@ -724,7 +723,7 @@ private:
         PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
         auto message = msg.get_msg();
 
-        auto predecessor = m_routingTable->get_predecessor();
+        auto predecessor = routing_table_->get_predecessor();
 
         if(predecessor != nullptr){
             auto peerinfo = message->add_peerinfo();
@@ -738,7 +737,7 @@ private:
         } else {
             /* Peer peer; */
             /* peer.setPeer(std::make_shared<PeerInfo>(req->peerinfo(0))); */
-            /* m_routingTable->set_predecessor(std::make_shared<Peer>(peer)); */
+            /* routing_table_->set_predecessor(std::make_shared<Peer>(peer)); */
         }
 
         msg.init_header(false, 0, 0, "get_predecessor", "top_secret_id", VERSION);
@@ -753,21 +752,21 @@ private:
     bool handle_notify(RequestPtr req)
     {
         //TODO: SPAGETTHIIIIIIIIIIIIIii
-        if(m_routingTable->get_predecessor() == nullptr){
+        if(routing_table_->get_predecessor() == nullptr){
             Peer peer;
             peer.setPeer(std::make_shared<PeerInfo>(req->peerinfo(0)));
-            m_routingTable->set_predecessor(std::make_shared<Peer>(peer));
+            routing_table_->set_predecessor(std::make_shared<Peer>(peer));
             return true;
         }
 
-        auto predecessor = m_routingTable->get_predecessor()->getID();
-        auto self = m_routingTable->get_self()->getID();
+        auto predecessor = routing_table_->get_predecessor()->getID();
+        auto self = routing_table_->get_self()->getID();
         Peer new_pre;
         new_pre.setPeer(std::make_shared<PeerInfo>(req->peerinfo(0)));
         auto new_pre_id = new_pre.getID();
 
         if(util::between(predecessor, new_pre_id, self)){
-            m_routingTable->set_predecessor(std::make_shared<Peer>(new_pre));
+            routing_table_->set_predecessor(std::make_shared<Peer>(new_pre));
         }
         return true;
     }
@@ -794,7 +793,7 @@ private:
         Request request;
 
         //TODO: rename
-        std::shared_ptr<PeerInfo> peerinfo_ = m_routingTable->get_self()->getPeer();
+        std::shared_ptr<PeerInfo> peerinfo_ = routing_table_->get_self()->getPeer();
 
         //Set the message
         std::vector<uint8_t> writebuf;
@@ -834,15 +833,15 @@ private:
 
         future.get();
 
-        auto id = m_routingTable->get_self()->getID();
+        auto id = routing_table_->get_self()->getID();
         std::cout << id << std::endl;
-        auto id_succ = m_routingTable->get_successor()->getID();
+        auto id_succ = routing_table_->get_successor()->getID();
         std::cout << id_succ << std::endl;
         auto id_succ_pre = peer_to_wait_for->getID();
         std::cout << id_succ_pre << std::endl;
 
         if(util::between(id, id_succ_pre, id_succ)){
-            m_routingTable->set_successor(peer_to_wait_for);
+            routing_table_->set_successor(peer_to_wait_for);
         }
     }
 
@@ -855,7 +854,7 @@ private:
         PackedMessage<Request> msg = PackedMessage<Request>(std::make_shared<Request>());
 
         auto message = msg.get_msg();
-        auto self = m_routingTable->get_self();
+        auto self = routing_table_->get_self();
         auto peerinfo = message->add_peerinfo();
 
         peerinfo->set_peer_id(self->getID());
@@ -901,18 +900,16 @@ private:
     void do_write(std::size_t length);
 
     std::string name;
-    RoutingPtr m_routingTable;
-
-    Message m_message;
+    RoutingPtr routing_table_;
 
     //used twice!!!
     std::shared_ptr<Peer> peer_to_wait_for;
 
-    std::vector<uint8_t> m_readbuf;
-    PackedMessage<Request> m_packed_request;
+    std::vector<uint8_t> readbuf_;
+    PackedMessage<Request> packed_request_;
 
     //////NEW
-    boost::asio::io_context m_io_context;
+    boost::asio::io_context io_context_;
     boost::asio::io_service& service_;
     tcp::socket socket_;
     boost::asio::io_service::strand write_strand_;

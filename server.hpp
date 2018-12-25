@@ -27,12 +27,12 @@ class Server
 {
 public:
     Server(int thread_count = 4, short port = 1337)
-        : thread_count_(thread_count), acceptor_(m_io_context),
-          t(m_io_context, boost::asio::chrono::seconds(5)),
-          t2(m_io_context, boost::asio::chrono::seconds(2)),
-          stabilize_strand_(m_io_context)
+        : thread_count_(thread_count), acceptor_(io_context_),
+          timer1_(io_context_, boost::asio::chrono::seconds(5)),
+          timer2_(io_context_, boost::asio::chrono::seconds(2)),
+          stabilize_strand_(io_context_)
     {
-        m_routingTable = RoutingTable::getInstance();
+        routing_table_ = RoutingTable::getInstance();
     }
 
     void start_server(uint16_t port)
@@ -73,14 +73,14 @@ private:
     void init_routingtable(std::string port)
     {
         auto p = std::make_shared<Peer>(createPeer(port));
-        m_routingTable->set_self(p);
-        m_routingTable->set_successor(p);
-        m_routingTable->set_predecessor(nullptr);
-        /* m_routingTable = std::make_shared<RoutingTable>(p, nullptr, nullptr); */
-        /* m_routingTable->set_successor(p); */
+        routing_table_->set_self(p);
+        routing_table_->set_successor(p);
+        routing_table_->set_predecessor(nullptr);
+        /* routing_table_ = std::make_shared<RoutingTable>(p, nullptr, nullptr); */
+        /* routing_table_->set_successor(p); */
         BOOST_LOG_TRIVIAL(info) << "[SERVER] m_self ID: "
-                                << m_routingTable->get_self()->getID();
-        m_routingTable->print();
+                                << routing_table_->get_self()->getID();
+        routing_table_->print();
     }
 
 
@@ -92,12 +92,12 @@ private:
     void join(std::string addr, uint16_t server_port)
     {
         //create endpoint
-        tcp::resolver resolver(m_io_context);
+        tcp::resolver resolver(io_context_);
         auto endpoint = resolver.resolve(addr, std::to_string(server_port));
 
         //create session object
         auto join_handler =
-            std::make_shared<Session>(m_io_context);
+            std::make_shared<Session>(io_context_);
 
         //join the network using the given endpoint
         join_handler->join(endpoint);
@@ -125,7 +125,7 @@ private:
     void accept_connections()
     {
         auto handler =
-            std::make_shared<Session>(m_io_context);
+            std::make_shared<Session>(io_context_);
 
 
         acceptor_.async_accept( handler->socket(),
@@ -137,7 +137,7 @@ private:
 
         for(int i=0; i < thread_count_; ++i)
         {
-            thread_pool_.emplace_back( [=]{ m_io_context.run(); } );
+            thread_pool_.emplace_back( [=]{ io_context_.run(); } );
         }
     }
 
@@ -150,7 +150,7 @@ private:
         BOOST_LOG_TRIVIAL(info) << "[SERVER] handle_accept with no error";
         handler->start();
 
-        auto new_handler = std::make_shared<Session>(m_io_context);
+        auto new_handler = std::make_shared<Session>(io_context_);
 
         acceptor_.async_accept( new_handler->socket(),
                                 [=] (auto ec)
@@ -164,7 +164,7 @@ private:
 
     void stabilize()
     {
-        t.async_wait(boost::bind(&Server::stabilize_internal, this));
+        timer1_.async_wait(boost::bind(&Server::stabilize_internal, this));
     }
 
     void stabilize_internal()
@@ -172,11 +172,11 @@ private:
         std::cout << "stabilize()...." << std::endl;
 
         auto stabilize_handler =
-            std::make_shared<Session>(m_io_context);
+            std::make_shared<Session>(io_context_);
 
         //TODO: sometimes we get stuck when waiting for stabilize response if peer died!
         //we have to set a timeout mechanism
-        /* m_io_context.post(stabilize_strand_.wrap( [=] () */
+        /* io_context_.post(stabilize_strand_.wrap( [=] () */
         /*             { */
                         stabilize_handler->stabilize();
                     /* } )); */
@@ -184,34 +184,34 @@ private:
 
         //TODO: should wait for stabilize here
         auto notify_handler =
-            std::make_shared<Session>(m_io_context);
-        m_io_context.post(stabilize_strand_.wrap( [=] ()
+            std::make_shared<Session>(io_context_);
+        io_context_.post(stabilize_strand_.wrap( [=] ()
                     {
                         notify_handler->notify();
                     } ));
 
         //check_predecessor handler
         auto predecessor_handler =
-            std::make_shared<Session>(m_io_context);
-        m_io_context.post(stabilize_strand_.wrap( [=] ()
+            std::make_shared<Session>(io_context_);
+        io_context_.post(stabilize_strand_.wrap( [=] ()
                     {
                         predecessor_handler->check_predecessor();
                     } ));
 
-        t.expires_at(t.expiry() + boost::asio::chrono::milliseconds(600));
-        t.async_wait(boost::bind(&Server::stabilize, this));
+        timer1_.expires_at(timer1_.expiry() + boost::asio::chrono::milliseconds(600));
+        timer1_.async_wait(boost::bind(&Server::stabilize, this));
     }
 
     void send_routing_information()
     {
-        t2.async_wait(boost::bind(&Server::send_routing_information_internal, this));
+        timer2_.async_wait(boost::bind(&Server::send_routing_information_internal, this));
     }
 
     void send_routing_information_internal()
     {
-        tcp::resolver resolver(m_io_context);
+        tcp::resolver resolver(io_context_);
         auto endpoint = resolver.resolve("127.0.0.1", "8080");
-        tcp::socket socket(m_io_context);
+        tcp::socket socket(io_context_);
         boost::asio::connect(socket, endpoint);
 
         boost::asio::streambuf request;
@@ -222,17 +222,17 @@ private:
        using boost::property_tree::write_json;
 
         ptree root, info;
-        if(m_routingTable->get_successor() != nullptr){
-            info.put("successor", m_routingTable->get_successor()->getID());
+        if(routing_table_->get_successor() != nullptr){
+            info.put("successor", routing_table_->get_successor()->getID());
         } else {
             info.put("successor", "");
         }
-        if(m_routingTable->get_predecessor() != nullptr){
-            info.put("predecessor", m_routingTable->get_predecessor()->getID());
+        if(routing_table_->get_predecessor() != nullptr){
+            info.put("predecessor", routing_table_->get_predecessor()->getID());
         } else {
             info.put("predecessor", "");
         }
-        root.put_child(m_routingTable->get_self()->getID(), info);
+        root.put_child(routing_table_->get_self()->getID(), info);
         /* root.put ("some value", "8"); */
         /* root.put ( "message", "value value: value!"); */
         /* info.put("placeholder", "value"); */
@@ -256,30 +256,20 @@ private:
         // Send the request.
         boost::asio::write(socket, request);
         std::cout << "written post req" << std::endl;
-        t2.expires_at(t.expiry() + boost::asio::chrono::seconds(3));
-        t2.async_wait(boost::bind(&Server::send_routing_information_internal, this));
+        timer2_.expires_at(timer2_.expiry() + boost::asio::chrono::seconds(3));
+        timer2_.async_wait(boost::bind(&Server::send_routing_information_internal, this));
 
     }
 
-    void notify(/*IP*/);
-
     void fix_fingers();
 
-    void check_predecessor();
+    std::shared_ptr<RoutingTable> routing_table_;
 
-
-    //TODO:
-    //MAKE READs/WRITEs ATOMIC
-    //ATOMIC READS AND WRITES
-    //Fingertable containing multiple peers,
-    //used to lookup keys
-    std::shared_ptr<RoutingTable> m_routingTable;
-
-    boost::asio::io_context m_io_context;
+    boost::asio::io_context io_context_;
     boost::asio::io_service::strand stabilize_strand_;
-    boost::asio::steady_timer t;
-    boost::asio::steady_timer t2;
-    /* tcp::socket m_socket; */
+    boost::asio::steady_timer timer1_;
+    boost::asio::steady_timer timer2_;
+
     int thread_count_;
     std::vector<std::thread> thread_pool_;
     boost::asio::ip::tcp::acceptor acceptor_;
