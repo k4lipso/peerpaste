@@ -27,11 +27,12 @@ class Server
 {
 public:
     Server(int thread_count = 4, short port = 1337)
-        : thread_count_(thread_count), acceptor_(m_io_context), m_routingTable(),
+        : thread_count_(thread_count), acceptor_(m_io_context),
           t(m_io_context, boost::asio::chrono::seconds(5)),
           t2(m_io_context, boost::asio::chrono::seconds(2)),
           stabilize_strand_(m_io_context)
     {
+        m_routingTable = RoutingTable::getInstance();
     }
 
     void start_server(uint16_t port)
@@ -72,8 +73,11 @@ private:
     void init_routingtable(std::string port)
     {
         auto p = std::make_shared<Peer>(createPeer(port));
-        m_routingTable = std::make_shared<RoutingTable>(p, nullptr, nullptr);
+        m_routingTable->set_self(p);
         m_routingTable->set_successor(p);
+        m_routingTable->set_predecessor(nullptr);
+        /* m_routingTable = std::make_shared<RoutingTable>(p, nullptr, nullptr); */
+        /* m_routingTable->set_successor(p); */
         BOOST_LOG_TRIVIAL(info) << "[SERVER] m_self ID: "
                                 << m_routingTable->get_self()->getID();
         m_routingTable->print();
@@ -93,7 +97,7 @@ private:
 
         //create session object
         auto join_handler =
-            std::make_shared<Session>(m_io_context, m_routingTable);
+            std::make_shared<Session>(m_io_context);
 
         //join the network using the given endpoint
         join_handler->join(endpoint);
@@ -121,7 +125,7 @@ private:
     void accept_connections()
     {
         auto handler =
-            std::make_shared<Session>(m_io_context, m_routingTable);
+            std::make_shared<Session>(m_io_context);
 
 
         acceptor_.async_accept( handler->socket(),
@@ -146,7 +150,7 @@ private:
         BOOST_LOG_TRIVIAL(info) << "[SERVER] handle_accept with no error";
         handler->start();
 
-        auto new_handler = std::make_shared<Session>(m_io_context, m_routingTable);
+        auto new_handler = std::make_shared<Session>(m_io_context);
 
         acceptor_.async_accept( new_handler->socket(),
                                 [=] (auto ec)
@@ -168,7 +172,7 @@ private:
         std::cout << "stabilize()...." << std::endl;
 
         auto stabilize_handler =
-            std::make_shared<Session>(m_io_context, m_routingTable);
+            std::make_shared<Session>(m_io_context);
 
         //TODO: sometimes we get stuck when waiting for stabilize response if peer died!
         //we have to set a timeout mechanism
@@ -180,7 +184,7 @@ private:
 
         //TODO: should wait for stabilize here
         auto notify_handler =
-            std::make_shared<Session>(m_io_context, m_routingTable);
+            std::make_shared<Session>(m_io_context);
         m_io_context.post(stabilize_strand_.wrap( [=] ()
                     {
                         notify_handler->notify();
@@ -188,13 +192,13 @@ private:
 
         //check_predecessor handler
         auto predecessor_handler =
-            std::make_shared<Session>(m_io_context, m_routingTable);
+            std::make_shared<Session>(m_io_context);
         m_io_context.post(stabilize_strand_.wrap( [=] ()
                     {
                         predecessor_handler->check_predecessor();
                     } ));
 
-        t.expires_at(t.expiry() + boost::asio::chrono::milliseconds(1));
+        t.expires_at(t.expiry() + boost::asio::chrono::milliseconds(600));
         t.async_wait(boost::bind(&Server::stabilize, this));
     }
 

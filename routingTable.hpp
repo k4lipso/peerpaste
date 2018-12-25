@@ -12,14 +12,14 @@
 class RoutingTable
 {
 public:
-    RoutingTable(std::shared_ptr<Peer> self,
-                 std::shared_ptr<Peer> predecessor,
-                 std::shared_ptr<Peer> successor)
-        : m_self(self), m_predecessor(predecessor), m_successor(successor),
-          m_fingerTable()
-    {}
+    static std::shared_ptr<RoutingTable> getInstance()
+    {
+        static std::shared_ptr<RoutingTable> instance{new RoutingTable};
+        return instance;
+    }
 
-    ~RoutingTable() {}
+    RoutingTable(RoutingTable const&) = delete;
+    void operator=(RoutingTable const&) = delete;
 
     //Should be const!
     const std::shared_ptr<const Peer> get(const size_t index) const
@@ -88,7 +88,9 @@ public:
         }
         std::cout << "\nFingertable: \n";
         for(const auto& finger : m_fingerTable){
-            finger->print();
+            if(finger != nullptr){
+                finger->print();
+            }
             std::cout << '\n';
         }
         std::cout << "######## FINGERTABLE END ########" << std::endl;
@@ -100,6 +102,11 @@ public:
 
     std::vector<std::shared_ptr<Peer>> m_fingerTable;
 private:
+    RoutingTable()
+    {
+        m_fingerTable = std::vector<std::shared_ptr<Peer>>();
+    }
+
     //Fingertable containing multiple peers,
     //used to lookup keys
 

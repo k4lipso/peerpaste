@@ -26,17 +26,17 @@ public:
     typedef std::shared_ptr<RoutingTable> RoutingPtr;
     typedef std::shared_ptr<Request> RequestPtr;
 
-    Session(boost::asio::io_context& io_context, RoutingPtr routingTable)
+    Session(boost::asio::io_context& io_context)
         : service_(io_context),
           /* m_io_context(io_context), */
           socket_(io_context),
           write_strand_(io_context),
           read_strand_(io_context),
-          m_routingTable(routingTable),
           name(std::to_string(++naming)),
           future(promise.get_future()),
           future_query(promise_query.get_future())
     {
+        m_routingTable = RoutingTable::getInstance();
         m_readbuf = { 0 };
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Session Created";
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "m_self ID: "
@@ -47,7 +47,7 @@ public:
 
     ~Session()
     {
-        /* m_routingTable->print(); */
+        m_routingTable->print();
         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "Session Destroyed";
     }
 
@@ -73,7 +73,7 @@ public:
     static SessionPtr create(boost::asio::io_context& io_context, RoutingPtr routingTable)
     {
         /* return std::make_shared<session>(socket, routingTable); */
-        return SessionPtr(new Session(io_context, routingTable));
+        return SessionPtr(new Session(io_context));
     }
 
     void start()
@@ -275,7 +275,6 @@ public:
         boost::asio::async_connect(socket_, endpoints,
                 [this, me = shared_from_this(), endpoints, &promise_, &peer, id](boost::system::error_code ec, tcp::endpoint)
                 {
-                std::cout << "CONNECTED MOFO" << std::endl;
                     if(!ec)
                     {
                         BOOST_LOG_TRIVIAL(info) << get_name_tag() << "SESSION::connect connected";
@@ -287,7 +286,6 @@ public:
                     //Add timeout functionality
                     /* me->connect(endpoints); */
                 });
-        std::cout << "AFTER ASYNC CALL U FOOL" << std::endl;
         /* m_io_context.run(); */
         future.get();
         return peer;
@@ -317,13 +315,11 @@ public:
             //return successor
             return successor;
         } else {
-            std::cout << "WOWOWOWOWO" << std::endl;
             auto predecessor = closest_preceding_node(id);
             if(predecessor->getID() == self->getID()){
                 std::cout << "PREDECESSOR IS SELF" << std::endl;
                 return self;
             }
-            std::cout << "STARTING MOTHERFUCKING REMOTE BRO" << std::endl;
             return remote_find_factory(predecessor, id);
         }
     }
@@ -334,7 +330,7 @@ public:
         //TODO: NO STATIC PORT U FOOL!
         auto endpoints = resolver.resolve(peer->getIP(), peer->getPort());
         auto handler =
-            std::make_shared<Session>(service_, m_routingTable);
+            std::make_shared<Session>(service_);
         return handler->connect(endpoints, id);
         /* return handler->remote_find_successor(id); */
     }
@@ -565,6 +561,9 @@ private:
         auto finger = m_routingTable->get_fingerTable();
         for(int i = finger->size() - 1; i >= 0; i--)
         {
+            if(finger->at(i) == nullptr){
+                break;
+            }
             std::string finger_id = finger->at(i)->getID();
             if(util::between(self->getID(), finger_id, id)){
                 return finger->at(i);
@@ -608,7 +607,6 @@ private:
             std::cout << "setting peer_to_wait_for" << std::endl;
             peer_to_wait_for = m_routingTable->get_successor();
         } else {
-            std::cout << "UR MOM" << std::endl;
             auto predecessor = req->peerinfo(0);
             peer_to_wait_for = std::make_shared<Peer>();
             peer_to_wait_for->setPeer(std::make_shared<PeerInfo>(predecessor));
@@ -843,9 +841,7 @@ private:
         auto id_succ_pre = peer_to_wait_for->getID();
         std::cout << id_succ_pre << std::endl;
 
-        std::cout << "FOO" << std::endl;
         if(util::between(id, id_succ_pre, id_succ)){
-            std::cout << "MOO" << std::endl;
             m_routingTable->set_successor(peer_to_wait_for);
         }
     }
