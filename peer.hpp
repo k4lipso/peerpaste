@@ -3,87 +3,62 @@
 
 #include <string>
 #include <chrono>
+#include <iostream>
 
 #include "proto/messages.pb.h"
+
 /**
  * A Peer Object, used to be stored in a Routing or Neighbor Table.
  */
 class Peer
 {
 public:
-    Peer() {
-        m_peer = std::make_shared<PeerInfo>();
-    }
-    Peer(std::string id, std::string ip, std::string port)
-    {
-        m_peer = std::make_shared<PeerInfo>();
-        m_peer->set_peer_id(id);
-        m_peer->set_peer_ip(ip);
-        m_peer->set_peer_port(port);
-    }
+    Peer(std::string id, std::string ip, std::string port) :
+        id_(id), ip_(ip), port_(port)
+    {}
 
-    ~Peer() {}
-
-    void print()
+    const void print() const
     {
-        std::cout << "IP: " << getIP() << '\n';
-        std::cout << "ID: " << getID() << '\n';
-        std::cout << "Port: " << getPort() << std::endl;
+        std::cout << "IP: " << get_ip() << '\n';
+        std::cout << "ID: " << get_id() << '\n';
+        std::cout << "Port: " << get_port() << std::endl;
     }
 
-    std::string getID()
+    const void set_id(const std::string& id)
     {
-        return m_peer->peer_id();
+        id_ = id;
     }
 
-    void setID(std::string hashed)
+    std::string get_id() const
     {
-        m_peer->set_peer_id(hashed);
-        /* m_id = hashed; */
+        return id_;
     }
 
-    std::string getIP()
+    const void set_ip(const std::string& ip)
     {
-        return m_peer->peer_ip();
+        ip_ = ip;
     }
 
-    void setIP(std::string ip)
+    std::string get_ip() const
     {
-        m_peer->set_peer_ip(ip);
+        return ip_;
     }
 
-    auto getRTT()
+    const void set_port(const std::string& port)
     {
-        return m_peer->peer_rtt();
+        port_ = port;
     }
 
-    auto getUptime()
+    std::string get_port() const
     {
-        return m_peer->peer_uptime();
-    }
-
-    std::shared_ptr<PeerInfo> getPeer()
-    {
-        return std::make_shared<PeerInfo>(*m_peer);
-    }
-
-    void setPeer(std::shared_ptr<PeerInfo> peer)
-    {
-        m_peer = peer;
-    }
-
-    void setPort(std::string port)
-    {
-        m_peer->set_peer_port(port);
-    }
-
-    std::string getPort()
-    {
-        return m_peer->peer_port();
+        return port_;
     }
 
 private:
-    std::shared_ptr<PeerInfo> m_peer;
+    std::string id_;
+    std::string ip_;
+    std::string port_;
 };
 
 #endif /* PEER_H */
+

@@ -31,12 +31,10 @@ MESSAGE("Boost Libraries: ${Boost_LOG_LIBRARY}")
 # SET(USED_LIBS  ${Boost_LOG_LIBRARY} ${Boost_SYSTEM_LIBRARY} ${Boost_THREAD_LIBRARY} ${Boost_REGEX_LIBRARY})
 
 add_library(libserver
-    "server.hpp"
-    "routingTable.hpp"
-    "session.hpp"
     "peer.hpp"
+    "header.hpp"
     "message.hpp"
-    "proto/messages.pb.cc"
+    "message_converter.hpp"
     )
 
 set_target_properties(libserver PROPERTIES LINKER_LANGUAGE CXX)
@@ -59,51 +57,51 @@ target_link_libraries(libserver
         ${CRYPTOPP_LIBRARIES}
     )
 
-add_executable(node main.cpp)
+# add_executable(node main.cpp)
 
-target_include_directories(node
-    PUBLIC
-        # ${BOOST_INCLUDE_DIRS}
-)
-
-target_link_libraries(node
-    PUBLIC
-        libserver
-)
-
-add_executable(peer main2.cpp)
-
-target_include_directories(peer
-    PUBLIC
-)
-
-target_link_libraries(peer
-    PUBLIC
-        libserver
-)
-
-add_executable(msg_test msg_test.cpp)
-
-target_include_directories(msg_test
-    PUBLIC
-        # ${BOOST_INCLUDE_DIRS}
-)
-
-target_link_libraries(msg_test
-    PUBLIC
-        libserver
-)
-
-# find_package(Catch2 REQUIRED)
-
-# add_executable(test test.cpp)
-
-# target_include_directories(test
+# target_include_directories(node
 #     PUBLIC
-#         ./
+#         # ${BOOST_INCLUDE_DIRS}
 # )
 
-# target_link_libraries(test
+# target_link_libraries(node
 #     PUBLIC
 #         libserver
 # )
+
+# add_executable(peer main2.cpp)
+
+# target_include_directories(peer
+#     PUBLIC
+# )
+
+# target_link_libraries(peer
+#     PUBLIC
+#         libserver
+# )
+
+# add_executable(msg_test msg_test.cpp)
+
+# target_include_directories(msg_test
+#     PUBLIC
+#         # ${BOOST_INCLUDE_DIRS}
+# )
+
+# target_link_libraries(msg_test
+#     PUBLIC
+#         libserver
+# )
+
+find_package(Catch2 REQUIRED)
+
+add_executable(test test.cpp)
+
+target_include_directories(test
+    PUBLIC
+        ./
+)
+
+target_link_libraries(test
+    PUBLIC
+        libserver
+)
