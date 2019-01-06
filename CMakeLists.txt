@@ -23,6 +23,8 @@ MESSAGE("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 MESSAGE("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
 MESSAGE("Boost Libraries: ${Boost_LIBRARIES}")
 MESSAGE("Boost Libraries: ${Boost_LOG_LIBRARY}")
+MESSAGE("PROTOBUF INCLUDE DIRS ${PROTOBUF_INCLUDE_DIRS}")
+MESSAGE("PROTOBUF LIBRARIES ${PROTOBUF_LIBRARIES}")
 # IF(Boost_FOUND)
 #   INCLUDE_DIRECTORIES(${Boost_INCLUDE_DIRS})
 #   LINK_DIRECTORIES(${Boost_LIBRARY_DIRS})
@@ -35,14 +37,15 @@ add_library(libserver
     "header.hpp"
     "message.hpp"
     "message_converter.hpp"
+    "proto/messages.pb.cc"
     )
 
 set_target_properties(libserver PROPERTIES LINKER_LANGUAGE CXX)
 
 target_include_directories(libserver
     PUBLIC
-        ${BOOST_INCLUDE_DIRS}
-        ${PROTOBUF_INCLUDE_DIRS}
+        # ${BOOST_INCLUDE_DIRS}
+        # ${PROTOBUF_INCLUDE_DIRS}
         ${CRYPTOPP_INCLUDE_DIR}
         "/usr/include/cryptopp"
     )
@@ -51,7 +54,6 @@ target_link_libraries(libserver
     PUBLIC
         ${CMAKE_THREAD_LIBS_INIT}
         ${Boost_LIBRARIES}
-        # ${USED_LIBS}
         ${Boost_LIBRARY_DIRS}
         ${PROTOBUF_LIBRARIES}
         ${CRYPTOPP_LIBRARIES}
@@ -92,16 +94,27 @@ target_link_libraries(libserver
 #         libserver
 # )
 
-find_package(Catch2 REQUIRED)
+add_subdirectory(test)
+# find_package(Catch2 REQUIRED)
 
-add_executable(test test.cpp)
+# add_executable(test test.cpp)
 
-target_include_directories(test
-    PUBLIC
-        ./
-)
+# target_include_directories(test
+#     PUBLIC
+#         ./
+#         # ${BOOST_INCLUDE_DIRS}
+#         # ${PROTOBUF_INCLUDE_DIRS}
+#         # ${CRYPTOPP_INCLUDE_DIR}
+#         # "/usr/include/cryptopp"
+# )
 
-target_link_libraries(test
-    PUBLIC
-        libserver
-)
+# target_link_libraries(test
+#     PUBLIC
+#         # ${CMAKE_THREAD_LIBS_INIT}
+#         # ${Boost_LIBRARIES}
+#         # # ${USED_LIBS}
+#         # ${Boost_LIBRARY_DIRS}
+#         # ${PROTOBUF_LIBRARIES}
+#         # ${CRYPTOPP_LIBRARIES}
+#         libserver
+# )
