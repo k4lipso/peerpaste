@@ -12,6 +12,9 @@
 
 #include <boost/asio.hpp>
 #include <boost/array.hpp>
+#include <boost/bind.hpp>
+#include <boost/thread.hpp>
+#include <boost/thread/future.hpp>
 
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
 #include <catch.hpp>
@@ -197,7 +200,8 @@ TEST_CASE( "Testing ProtobufMessageConverter", "[peeraste::MessageConverter]" )
 TEST_CASE( "Testing MessageQueue", "[]" )
 {
     auto message = std::make_shared<Message>();
-    auto session = std::make_shared<Session>();
+    boost::asio::io_context io_context;
+    auto session = std::make_shared<Session>(io_context);
     auto test_pair = std::make_pair(message, session);
     auto message_queue = MessageQueue::GetInstance();
 

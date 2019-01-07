@@ -39,6 +39,8 @@ add_library(libserver
     "session.hpp"
     "message_converter.hpp"
     "message_queue.cpp"
+    "session.cpp"
+    "server.hpp"
     "routing_table.hpp"
     "proto/messages.pb.cc"
     )
@@ -62,17 +64,17 @@ target_link_libraries(libserver
         ${CRYPTOPP_LIBRARIES}
     )
 
-# add_executable(node main.cpp)
+add_executable(node main.cpp)
 
-# target_include_directories(node
-#     PUBLIC
-#         # ${BOOST_INCLUDE_DIRS}
-# )
+target_include_directories(node
+    PUBLIC
+        # ${BOOST_INCLUDE_DIRS}
+)
 
-# target_link_libraries(node
-#     PUBLIC
-#         libserver
-# )
+target_link_libraries(node
+    PUBLIC
+        libserver
+)
 
 # add_executable(peer main2.cpp)
 
