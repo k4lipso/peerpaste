@@ -13,6 +13,7 @@
 class Peer
 {
 public:
+    Peer() : id_(""), ip_(""), port_("") {}
     Peer(std::string id, std::string ip, std::string port) :
         id_(id), ip_(ip), port_(port)
     {}

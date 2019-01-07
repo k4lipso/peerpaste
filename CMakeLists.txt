@@ -36,7 +36,10 @@ add_library(libserver
     "peer.hpp"
     "header.hpp"
     "message.hpp"
+    "session.hpp"
     "message_converter.hpp"
+    "message_queue.cpp"
+    "routing_table.hpp"
     "proto/messages.pb.cc"
     )
 

@@ -7,7 +7,13 @@
 class Header
 {
 public:
-    Header(){}
+    Header() : t_flag_(0), ttl_(0),
+               message_length_(0),
+               request_type_(""),
+               transaction_id_(""),
+               version_(""),
+               response_code_("")
+    {}
 
     Header(bool t_flag,
            uint32_t ttl,
