@@ -11,6 +11,7 @@ static int naming = 0;
 
 using boost::asio::ip::tcp;
 
+//Forward declaration
 class MessageQueue;
 
 class Session

@@ -4,6 +4,7 @@
 #include <string>
 #include <chrono>
 #include <iostream>
+#include <sstream>
 
 #include "proto/messages.pb.h"
 
@@ -53,6 +54,13 @@ public:
     std::string get_port() const
     {
         return port_;
+    }
+
+    const std::string stringify() const
+    {
+        std::stringstream str;
+        str << id_ << ip_ << port_;
+        return str.str();
     }
 
 private:

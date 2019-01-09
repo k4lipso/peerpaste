@@ -75,9 +75,10 @@ using boost::asio::ip::tcp;
     {
         if(!error)
         {
-            auto vec = send_packet_queue.front();
+            /* auto vec = send_packet_queue.front(); */
             send_packet_queue.pop_front();
 
+            //TODO: move out of if statement so it gets called everytime?
             if(!send_packet_queue.empty()){ start_packet_send(); }
         }
     }

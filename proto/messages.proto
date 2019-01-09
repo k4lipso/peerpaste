@@ -35,8 +35,11 @@ message CommonHeader
     //A unique number to match responses with the originated requests.
     required string transaction_id = 5;
 
-    required string version = 6;
-    optional string response_code = 7;
+    //A unique number to match responses with the originated requests.
+    required string correlational_id = 6;
+
+    required string version = 7;
+    optional string response_code = 8;
 }
 
 message PeerInfo

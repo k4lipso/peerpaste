@@ -5,6 +5,7 @@
 #include "header.hpp"
 
 #include <vector>
+#include <sstream>
 
 class Message
 {
@@ -49,6 +50,30 @@ public:
     const void add_peer(const Peer& peer)
     {
         peers_.push_back(peer);
+    }
+
+    const std::string stringify() const
+    {
+        std::stringstream str;
+        str << header_.stringify();
+        for(const auto peer : peers_){
+            str << peer.stringify();
+        }
+        return str.str();
+    }
+
+    //TODO: this function should generate a response
+    //by setting t_flag and putting transaction_id
+    //into correlational_id
+    Message generate_response()
+    {
+        if(!header_.is_request()){
+            std::cout << "Cant generate_response, is allready one"
+                      << '\n';
+        }
+        Message response;
+        response.set_header(header_.generate_response_header());
+        return response;
     }
 
 private:

@@ -28,6 +28,7 @@ public:
 class ProtobufMessageConverter : public MessageConverter
 {
 public:
+    //TODO: error handling! how to proceed on error?
     const MessagePtr MessageFromSerialized(const DataBuffer& buf) const override
     {
         //create a Protobuf Message
@@ -42,6 +43,7 @@ public:
                       protobuf_header.message_length(),
                       protobuf_header.request_type(),
                       protobuf_header.transaction_id(),
+                      protobuf_header.correlational_id(),
                       protobuf_header.version(),
                       protobuf_header.response_code());
 
@@ -75,6 +77,7 @@ public:
         protobuf_header->set_message_length(peerpaste_header.get_message_length());
         protobuf_header->set_request_type(peerpaste_header.get_request_type());
         protobuf_header->set_transaction_id(peerpaste_header.get_transaction_id());
+        protobuf_header->set_correlational_id(peerpaste_header.get_correlational_id());
         protobuf_header->set_version(peerpaste_header.get_version());
         protobuf_header->set_response_code(peerpaste_header.get_response_code());
 

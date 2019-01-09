@@ -2,6 +2,7 @@
 #define HEADER_H
 
 #include <string>
+#include <sstream>
 #include <iostream>
 
 class Header
@@ -26,6 +27,24 @@ public:
              message_length_(message_length),
              request_type_(request_type),
              transaction_id_(transaction_id),
+             correlational_id_(""),
+             version_(version),
+             response_code_(response_code)
+    {}
+
+    Header(bool t_flag,
+           uint32_t ttl,
+           uint64_t message_length,
+           std::string request_type,
+           std::string transaction_id,
+           std::string correlational_id,
+           std::string version,
+           std::string response_code)
+           : t_flag_(t_flag), ttl_(ttl),
+             message_length_(message_length),
+             request_type_(request_type),
+             transaction_id_(transaction_id),
+             correlational_id_(correlational_id),
              version_(version),
              response_code_(response_code)
     {}
@@ -37,6 +56,7 @@ public:
         std::cout << "message_length: " << get_message_length() << '\n';
         std::cout << "request_type: " << get_request_type() << '\n';
         std::cout << "transaction_id: " << get_transaction_id() << '\n';
+        std::cout << "correlational_id: " << get_correlational_id() << '\n';
         std::cout << "version: " << get_version() << '\n';
         std::cout << "response_code: " << get_response_code() << '\n';
     }
@@ -91,6 +111,16 @@ public:
         return transaction_id_;
     }
 
+    const void set_correlational_id(const std::string& correlational_id)
+    {
+        correlational_id_ = correlational_id;
+    }
+
+    std::string get_correlational_id() const
+    {
+        return correlational_id_;
+    }
+
     const void set_version(const std::string& version)
     {
         version_ = version;
@@ -111,12 +141,44 @@ public:
         return response_code_;
     }
 
+    const std::string stringify() const
+    {
+        std::stringstream str;
+        str << t_flag_ << ttl_ << message_length_ << request_type_
+            << transaction_id_ << correlational_id_
+            << version_ << response_code_;
+        return str.str();
+    }
+
+    Header generate_response_header()
+    {
+        if(!is_request()){
+            std::cout << "Cant generate_response, is allready one"
+                      << '\n';
+        }
+
+        Header response_header(false,
+                               get_ttl(),
+                               get_message_length(),
+                               get_request_type(),
+                               "",
+                               get_transaction_id(),
+                               get_version(),
+                               get_response_code());
+        return response_header;
+    }
+
+    const bool is_request() {
+        return t_flag_;
+    }
+
 private:
     bool t_flag_;
     uint32_t ttl_;
     uint64_t message_length_;
     std::string request_type_;
     std::string transaction_id_;
+    std::string correlational_id_;
     std::string version_;
     std::string response_code_;
 };

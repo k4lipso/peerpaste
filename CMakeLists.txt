@@ -42,6 +42,7 @@ add_library(libserver
     "session.cpp"
     "server.hpp"
     "routing_table.hpp"
+    "message_handler.hpp"
     "proto/messages.pb.cc"
     )
 
