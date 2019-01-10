@@ -3,6 +3,7 @@
 #include "message_converter.hpp"
 #include "message_queue.cpp"
 #include "message_handler.hpp"
+#include "aggregator.hpp"
 
 #include <iostream>
 #include <string>
@@ -215,6 +216,52 @@ TEST_CASE( "Testing MessageHandler", "[]" )
 {
     boost::asio::io_context io_context;
     MessageHandler msg_handler(io_context, 1337);
+}
+
+TEST_CASE( "Testing Aggregator", "[]" )
+{
+    Aggregator aggregator;
+    auto request = std::make_shared<RequestObject>();
+
+    std::string id = "123ABC";
+    std::string ip = "10.0.0.1";
+    std::string port = "1337";
+
+    Peer peer2;
+    peer2.set_port("1338");
+    Peer peer(id, ip, port);
+
+    bool t_flag = true;
+    uint32_t ttl = 1;
+    uint64_t message_length = 10;
+    std::string request_type = "find_successor";
+    std::string transaction_id = "123ABC";
+    std::string transaction_id2 = "456DEF";
+    std::string version = "1.0.0";
+    std::string response_code = "UNKNOWN";
+
+    Header header(t_flag, ttl, message_length, request_type,
+                  transaction_id, version, response_code);
+    Header header2(false, ttl, message_length, "query",
+                  transaction_id2, transaction_id2, version, response_code);
+
+    auto message = std::make_shared<Message>();
+    message->set_header(header);
+    message->add_peer(peer2);
+    auto message2 = std::make_shared<Message>();
+    message2->set_header(header2);
+    message2->add_peer(peer);
+
+    request->set_message(message);
+    request->set_connection(std::make_shared<Peer>(peer));
+
+    aggregator.add_aggregat(request, { transaction_id2 });
+
+    REQUIRE(aggregator.add_aggregat(message) == false);
+    REQUIRE(aggregator.add_aggregat(message2) == true);
+
+
+
 }
 
 TEST_CASE( "Testing MessageQueue", "[]" )

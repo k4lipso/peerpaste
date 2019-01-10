@@ -2,8 +2,12 @@
 #define REQUEST_OBJECT_HPP
 
 #include "message.hpp"
+#include "peer.hpp"
+#include "session.hpp"
 
 #include <variant>
+#include <optional>
+
 
 class RequestObject
 {
@@ -18,7 +22,8 @@ public:
 
     void call(MessagePtr message)
     {
-        handler_(message);
+        //throw exeption if no value
+        if(handler_.has_value()) handler_.value()(message);
     }
 
     void set_handler(HandlerFunction handler)
@@ -26,9 +31,14 @@ public:
         handler_ = handler;
     }
 
+    const bool has_handler() const
+    {
+        return handler_.has_value();
+    }
+
     const HandlerFunction get_handler() const
     {
-        return handler_;
+        return handler_.value();
     }
 
     void set_message(MessagePtr message)
@@ -67,7 +77,7 @@ public:
     }
 
 private:
-    HandlerFunction handler_;
+    std::optional<HandlerFunction> handler_;
     MessagePtr message_;
     std::variant<PeerPtr, SessionPtr> connection_;
 };

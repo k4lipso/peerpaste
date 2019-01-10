@@ -40,10 +40,13 @@ add_library(libserver
     "session.hpp"
     "message_converter.hpp"
     "message_queue.cpp"
+    "write_queue.cpp"
     "session.cpp"
     "server.hpp"
     "routing_table.hpp"
     "message_handler.hpp"
+    "aggregator.hpp"
+    "aggregat.hpp"
     "cryptowrapper.cpp"
     "proto/messages.pb.cc"
     )

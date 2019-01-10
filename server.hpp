@@ -41,7 +41,7 @@ public:
     {
         start_listening(own_port);
         accept_connections();
-        message_handler_.query(addr, std::to_string(server_port));
+        message_handler_.join(addr, std::to_string(server_port));
     }
 private:
     /**
