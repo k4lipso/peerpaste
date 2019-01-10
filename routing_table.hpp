@@ -2,7 +2,7 @@ class RoutingTable
 {
 public:
     typedef std::shared_ptr<Peer> PeerPtr;
-    RoutingTable () {}
+    RoutingTable () : self_(std::make_shared<Peer>()), predecessor_(std::make_shared<Peer>()) {}
 
     const PeerPtr get_self() const
     {

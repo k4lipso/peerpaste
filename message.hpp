@@ -1,12 +1,11 @@
 #ifndef MESSAGE_HPP
 #define MESSAGE_HPP
 
+#include "cryptowrapper.hpp"
 #include "peer.hpp"
 #include "header.hpp"
-
 #include <vector>
 #include <sstream>
-
 class Message
 {
 public:
@@ -65,15 +64,41 @@ public:
     //TODO: this function should generate a response
     //by setting t_flag and putting transaction_id
     //into correlational_id
-    Message generate_response()
+    std::shared_ptr<Message> generate_response()
     {
-        if(!header_.is_request()){
+        if(!is_request()){
             std::cout << "Cant generate_response, is allready one"
                       << '\n';
         }
         Message response;
         response.set_header(header_.generate_response_header());
-        return response;
+        return std::make_shared<Message>(response);
+    }
+
+    const bool is_request() const
+    {
+        return header_.is_request();
+    }
+
+    void generate_transaction_id()
+    {
+        auto transaction_id = util::generate_sha256(stringify());
+        header_.set_transaction_id(transaction_id);
+    }
+
+    const std::string get_transaction_id() const
+    {
+        return get_header().get_transaction_id();
+    }
+
+    const std::string get_correlational_id() const
+    {
+        return get_header().get_correlational_id();
+    }
+
+    const std::string get_request_type() const
+    {
+        return get_header().get_request_type();
     }
 
 private:

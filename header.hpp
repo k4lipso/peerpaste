@@ -168,7 +168,7 @@ public:
         return response_header;
     }
 
-    const bool is_request() {
+    const bool is_request() const {
         return t_flag_;
     }
 

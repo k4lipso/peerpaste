@@ -20,6 +20,7 @@ using boost::asio::ip::tcp;
           socket_(io_context),
           name_(std::to_string(++naming))
     {
+        std::cout << "Session " << name_ << " created" << '\n';
         message_queue_ = MessageQueue::GetInstance();
     }
 
@@ -33,18 +34,60 @@ using boost::asio::ip::tcp;
         return socket_;
     }
 
-    void Session::write(const std::vector<uint8_t>& writebuf)
+    void Session::write(const MessagePtr message)
     {
         std::cout << "Session " << name_ << " write()" << '\n';
-        service_.post( write_strand_.wrap( [me = shared_from_this(), writebuf] ()
+        ProtobufMessageConverter converter;
+        auto message_buf = converter.SerializedFromMessage(message);
+        std::vector<boost::uint8_t> encoded_buf;
+        encoded_buf.resize(header_size_);
+        encode_header(encoded_buf, message_buf.size());
+        encoded_buf.insert(encoded_buf.end(),
+                           std::make_move_iterator(message_buf.begin()),
+                           std::make_move_iterator(message_buf.end())
+                           );
+
+        service_.post( write_strand_.wrap( [me = shared_from_this(), encoded_buf] ()
                                             {
-                                                me->queue_message(writebuf);
+                                                me->queue_message(encoded_buf);
                                             } ) );
+    }
+
+    void Session::write_to(const MessagePtr message, std::string address,
+                                             std::string port)
+    {
+        std::cout << "Session " << name_ << " write_to()" << '\n';
+        tcp::resolver resolver(service_);
+        auto endpoint = resolver.resolve(address, port);
+
+        boost::asio::async_connect(socket_, endpoint,
+                [this, me = shared_from_this(), endpoint, message]
+                (boost::system::error_code ec, tcp::endpoint)
+                {
+                    if(!ec)
+                    {
+                        std::cout << "connected" << std::endl;
+                        me->write(message);
+                    } else {
+                        std::cout << "error: " << ec << std::endl;
+                    }
+                });
     }
 
     void Session::read()
     {
+        std::cout << "do read hedeara" << std::endl;
         do_read_header();
+    }
+
+    const std::string Session::get_client_ip() const
+    {
+        return socket_.remote_endpoint().address().to_string();
+    }
+
+    const unsigned Session::get_client_port() const
+    {
+        return socket_.remote_endpoint().port();
     }
 
     void Session::queue_message(const std::vector<uint8_t>& message)
@@ -91,8 +134,11 @@ using boost::asio::ip::tcp;
             std::vector<uint8_t> message_buf(begin, end);
             ProtobufMessageConverter converter;
             auto message_ptr = converter.MessageFromSerialized(message_buf);
+            std::cout << "PRINTING MESSAGE " << std::endl;
+            std::cout << "SESSION PUSHES MESSAGE ON QUEUE" << std::endl;
             message_queue_->push_back(message_ptr, shared_from_this());
         } else {
+            std::cout << "error in handle read message: " << ec << std::endl;
             do_read_header();
         }
     }
@@ -115,12 +161,12 @@ using boost::asio::ip::tcp;
         if(!error)
         {
             unsigned msg_len = decode_header(readbuf_);
-            //TODO: put on deque
+
             do_read_message(msg_len);
             return;
 
         } else {
-            /* do_read_header(); */
+            std::cout << "error in handle read: " << error << std::endl;
         }
 
         return;
@@ -136,6 +182,7 @@ using boost::asio::ip::tcp;
                                 [me = shared_from_this()]
                                 (boost::system::error_code const &error, std::size_t)
                                 {
+                                    std::cout << "call handle read" << std::endl;
                                     me->handle_read_header(error);
                                 });
     }

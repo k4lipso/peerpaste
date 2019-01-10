@@ -3,8 +3,6 @@
 #include "message_converter.hpp"
 #include "message_queue.cpp"
 #include "message_handler.hpp"
-#include "routing_table.hpp"
-#include "cryptowrapper.hpp"
 
 #include <iostream>
 #include <string>
@@ -189,7 +187,7 @@ TEST_CASE( "Testing ProtobufMessageConverter", "[peeraste::MessageConverter]" )
 
     //Check if Response header get generated the right way
     auto response_peerpaste_message = peerpaste_message->generate_response();
-    auto response_peerpaste_header = response_peerpaste_message.get_header();
+    auto response_peerpaste_header = response_peerpaste_message->get_header();
     REQUIRE(response_peerpaste_header.get_t_flag() == false);
     REQUIRE(response_peerpaste_header.get_ttl() == 10);
     REQUIRE(response_peerpaste_header.get_message_length() == 15);
@@ -215,8 +213,8 @@ TEST_CASE( "Testing ProtobufMessageConverter", "[peeraste::MessageConverter]" )
 
 TEST_CASE( "Testing MessageHandler", "[]" )
 {
-    MessageHandler msg_handler;
-    msg_handler.handle_message();
+    boost::asio::io_context io_context;
+    MessageHandler msg_handler(io_context, 1337);
 }
 
 TEST_CASE( "Testing MessageQueue", "[]" )

@@ -27,9 +27,14 @@
         deque_.pop_front();
     }
 
-    const size_t MessageQueue::size() const
+    const size_t MessageQueue::size() const noexcept
     {
         return deque_.size();
+    }
+
+    const bool MessageQueue::empty() const noexcept
+    {
+        return deque_.empty();
     }
 
     MessageQueue::MessageQueue()

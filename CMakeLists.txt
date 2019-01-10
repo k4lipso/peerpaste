@@ -43,6 +43,7 @@ add_library(libserver
     "server.hpp"
     "routing_table.hpp"
     "message_handler.hpp"
+    "cryptowrapper.cpp"
     "proto/messages.pb.cc"
     )
 
@@ -77,16 +78,16 @@ target_link_libraries(node
         libserver
 )
 
-# add_executable(peer main2.cpp)
+add_executable(peer main2.cpp)
 
-# target_include_directories(peer
-#     PUBLIC
-# )
+target_include_directories(peer
+    PUBLIC
+)
 
-# target_link_libraries(peer
-#     PUBLIC
-#         libserver
-# )
+target_link_libraries(peer
+    PUBLIC
+        libserver
+)
 
 # add_executable(msg_test msg_test.cpp)
 

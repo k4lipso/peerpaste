@@ -1,3 +1,8 @@
+#ifndef SESSION_HPP
+#define SESSION_HPP
+
+#include "message.hpp"
+
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
 #include <boost/thread.hpp>
@@ -5,6 +10,7 @@
 
 #include <iostream>
 #include <memory>
+#include <string>
 
 //TODO: will overflow!!!!!!!!!!!!
 static int naming = 0;
@@ -19,14 +25,19 @@ class Session
 {
 public:
     typedef std::shared_ptr<Session> SessionPtr;
+    typedef std::shared_ptr<Message> MessagePtr;
     typedef std::vector<boost::uint8_t> DataBuffer;
 
     //TODO: deeleeteeeee!
     Session (boost::asio::io_context& io_context);
     ~Session ();
     boost::asio::ip::tcp::socket& get_socket();
-    void write(const std::vector<uint8_t>& writebuf);
+    void write(const MessagePtr message);
+    void write_to(const MessagePtr message, std::string address,
+                                                        std::string port);
     void read();
+    const std::string get_client_ip() const;
+    const unsigned get_client_port() const;
     void print_name()
     {
         std::cout << "Session Name: " << name_ << '\n';
@@ -54,3 +65,5 @@ private:
     std::string name_;
     const size_t header_size_ = 4;
 };
+
+#endif /* ifndef SESSION_HPP */

@@ -3,10 +3,10 @@
 
 #define VERSION "0.0.1"
 
-#include "cryptowrapper.hpp"
 #include "session.hpp"
 #include "peer.hpp"
 #include "message.hpp"
+#include "message_handler.hpp"
 #include "proto/messages.pb.h"
 
 #include <string>
@@ -26,7 +26,8 @@ class Server
 {
 public:
     Server(int thread_count = 4, short port = 1337)
-        : thread_count_(thread_count), acceptor_(io_context_)
+        : thread_count_(thread_count), acceptor_(io_context_),
+          message_handler_(io_context_, port)
     {
     }
 
@@ -34,6 +35,13 @@ public:
     {
         start_listening(port);
         accept_connections();
+    }
+
+    void start_client(std::string addr, uint16_t server_port, uint16_t own_port)
+    {
+        start_listening(own_port);
+        accept_connections();
+        message_handler_.query(addr, std::to_string(server_port));
     }
 private:
     /**
@@ -98,6 +106,8 @@ private:
     int thread_count_;
     std::vector<std::thread> thread_pool_;
     boost::asio::ip::tcp::acceptor acceptor_;
+
+    MessageHandler message_handler_;
 };
 
 #endif /* SERVER_H */
