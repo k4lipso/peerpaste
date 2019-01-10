@@ -24,7 +24,7 @@ int main(int argc, char* argv[])
     boost::asio::executor_work_guard<boost::asio::io_context::executor_type> foo
         = boost::asio::make_work_guard(io_context);
 
-    Server s;
+    Server s(4, std::atoi(argv[3]));
     s.start_client(argv[1], std::stoi(argv[2]), std::atoi(argv[3]));
 
     io_context.run();

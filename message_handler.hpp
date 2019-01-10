@@ -5,6 +5,7 @@
 #include "message.hpp"
 #include "message_queue.hpp"
 #include "routing_table.hpp"
+#include "request_object.hpp"
 #include <functional>
 
 class MessageHandler
@@ -29,6 +30,7 @@ public:
     {
         handle_message();
         //TODO: check if request are outdated. then retry or cancel
+        //look at TODO at bottom (RequestObj)
 
         timer_.expires_at(timer_.expiry() + boost::asio::chrono::seconds(1));
         timer_.async_wait(boost::bind(&MessageHandler::run, this));
@@ -44,16 +46,16 @@ public:
         auto message = message_queue_->front().first;
         auto session = message_queue_->front().second;
         message_queue_->pop_front();
+        message->print();
 
         //TODO: handle invalid messages here
 
         if(message->is_request()){
             handle_request(message, session);
-            return;
+        } else {
+            handle_response(message, session);
         }
-
-        handle_response(message, session);
-
+        handle_message();
     }
 
     void handle_request(MessagePtr message, SessionPtr session)
@@ -96,8 +98,10 @@ public:
         auto correlational_id = message->get_correlational_id();
         auto search = open_requests_.find(correlational_id);
         if(search != open_requests_.end()){
-             auto handler = open_requests_.at(correlational_id);
-             handler(message);
+            auto request_object = open_requests_.at(correlational_id);
+            request_object.call(message);
+             /* auto handler = open_requests_.at(correlational_id); */
+             /* handler(message); */
         } else {
             //TODO: handle invalid message
         }
@@ -105,7 +109,6 @@ public:
 
     void query(std::string address, std::string port)
     {
-        std::cout << "QUERY MOFO" << std::endl;
         MessagePtr query_request = std::make_shared<Message>();
 
         Header query_header(true, 0, 0, "query", "", "", "");
@@ -120,13 +123,18 @@ public:
         query_handler->write_to(query_request, address, port);
         query_handler->read();
 
-        auto handler = std::bind(&MessageHandler::query_response_handler,
+        auto handler = std::bind(&MessageHandler::handle_query_response,
                                                             this,
                                                             std::placeholders::_1);
-        open_requests_[transaction_id] = handler;
+
+        RequestObject request;
+        request.set_handler(handler);
+        request.set_message(query_request);
+        request.set_connection(query_handler);
+        open_requests_[transaction_id] = request;
     }
 
-    void query_response_handler(MessagePtr message)
+    void handle_query_response(MessagePtr message)
     {
         std::cout << "QUERY RESPONSE HANDLER" << std::endl;
         if(message->get_peers().size() == 1){
@@ -140,7 +148,6 @@ public:
         }
     }
 
-    void handle_query_response(MessagePtr message);
     void handle_find_successor_response(MessagePtr message);
     void handle_notify_response(MessagePtr message);
     void handle_check_predecessor_response(MessagePtr message);
@@ -157,6 +164,8 @@ private:
     //std::map<string, RequestObject>
     //RequestObject contains: function ptr,
     //                        message (with timestamp!),
-    std::map<std::string, std::function<void(MessagePtr)>> open_requests_;
+    //                        Peer to send the request
+    /* std::map<std::string, std::function<void(MessagePtr)>> open_requests_; */
+    std::map<std::string, RequestObject> open_requests_;
 };
 #endif /* MESSAGE_HANDLER_HPP */
