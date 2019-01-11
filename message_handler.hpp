@@ -22,7 +22,11 @@ public:
                         service_(io_context),
                         timer_(io_context, boost::asio::chrono::seconds(1))
     {
+        //TODO: setup self more accurate
         routing_table_.get_self()->set_port(std::to_string(port));
+        routing_table_.get_self()->set_ip("127.0.0.1");
+        routing_table_.get_self()->set_id(util::generate_sha256("127.0.0.1",
+                                                                std::to_string(port)));
         message_queue_ = MessageQueue::GetInstance();
         write_queue_ = WriteQueue::GetInstance();
         run();
@@ -113,9 +117,112 @@ public:
             handle_query_request(message, session);
             return;
         }
-        //TODO: IMPLEMENT FIND SUCC REQ
+        if(request_type == "find_successor"){
+            handle_find_successor_request(message, session);
+            return;
+        }
 
         std::cout << "UNKNOWN REQUEST TYPE: " << request_type << std::endl;
+    }
+
+    void handle_find_successor_request(MessagePtr message, SessionPtr session)
+    {
+        std::cout << "handle_find_successor_request()" << std::endl;
+        if(message->get_peers().size() != 1){
+            //TODO: handle invalid message here
+        }
+
+        auto id = message->get_peers().front().get_id();
+        auto successor = find_successor(id);
+        auto response_message = message->generate_response();
+        if(successor == nullptr){
+            //We have to use aggregator
+            //to request successor remotely befor responding
+            auto successor_predecessor = closest_preceding_node(id);
+            auto new_request = std::make_shared<Message>();
+            Header header(true, 0, 0, "find_successor", "", "", "");
+            new_request->set_header(header);
+            new_request->set_peers( { message->get_peers().front() } );
+            new_request->generate_transaction_id();
+            auto transaction_id = new_request->get_transaction_id();
+
+            //Request that requests successor from another peer
+            auto request = std::make_shared<RequestObject>();
+            request->set_message(new_request);
+            request->set_connection(successor_predecessor);
+
+            //Response that will be sent back when request above
+            //got answered
+            auto response = std::make_shared<RequestObject>();
+            response->set_message(message->generate_response());
+            response->set_connection(session);
+
+            aggregator_.add_aggregat(response, { transaction_id });
+
+            write_queue_->push_back(*request.get());
+            return;
+        }
+
+        response_message->set_peers( { *successor.get() } );
+        response_message->generate_transaction_id();
+
+        RequestObject response;
+        response.set_message(response_message);
+        response.set_connection(session);
+        write_queue_->push_back(response);
+    }
+
+    const std::shared_ptr<Peer> find_successor(const std::string& id)
+    {
+        auto self = routing_table_.get_self();
+
+        //if peers are empty there is no successor
+        if(routing_table_.get_peers().size() == 0){
+            auto predecessor = closest_preceding_node(id);
+            if(predecessor->get_id() == self->get_id()){
+                std::cout << "find_successor() returns self" << std::endl;
+                return self;
+            }
+            std::cout << "closest_preceding_node: " << predecessor->get_id() << std::endl;
+            std::cout << "self id: " << self->get_id() << std::endl;
+            return nullptr;
+        }
+
+        auto self_id = self->get_id();
+        auto successor = routing_table_.get_successor();
+        auto succ_id = successor->get_id();
+        if(util::between(self_id, id, succ_id) || id == succ_id)
+        {
+            std::cout << "RETURNED SUCC in find_successor" << std::endl;
+            return successor;
+        } else {
+            auto predecessor = closest_preceding_node(id);
+            if(predecessor->get_id() == self->get_id()){
+                std::cout << "PREDECESSOR IS SELF" << std::endl;
+                return self;
+            }
+            return nullptr;
+        }
+    }
+
+    //TODO: make priv
+    std::shared_ptr<Peer> closest_preceding_node(const std::string& id)
+    {
+        auto self = routing_table_.get_self();
+        auto peers = routing_table_.get_peers();
+        for(int i = peers.size() - 1; i >= 0; i--)
+        {
+            if(peers.at(i) == nullptr){
+                //TODO: continue instead?
+                break;
+            }
+            std::string peer_id = peers.at(i)->get_id();
+            if(util::between(self->get_id(), peer_id, id)){
+                return peers.at(i);
+            }
+        }
+        std::cout << "RETURNING SELF" << std::endl;
+        return self;
     }
 
     void handle_query_request(MessagePtr message, SessionPtr session)
@@ -136,9 +243,10 @@ public:
         response_message->add_peer(peer);
         response_message->generate_transaction_id();
 
-        session->write(response_message);
-
-        session->read();
+        RequestObject response;
+        response.set_message(response_message);
+        response.set_connection(session);
+        write_queue_->push_back(response);
     }
 
     void handle_response(MessagePtr message, SessionPtr session)
@@ -151,10 +259,11 @@ public:
             auto request_object = open_requests_.at(correlational_id);
             if(request_object.has_handler()){
                 request_object.call(message);
-                aggregator_.add_aggregat(message);
             } else {
                 std::cout << "handle response: no handler specified" << '\n';
             }
+
+            aggregator_.add_aggregat(message);
 
         } else {
             //TODO: handle invalid message
@@ -232,6 +341,13 @@ public:
     void handle_join_response(MessagePtr message)
     {
         std::cout << "HANDLE JOIN RESPONSE MOTHER FUCKER" << std::endl;
+        if(message->get_peers().size() != 1){
+            //TODO: handle invalid message
+        }
+
+        auto successor = std::make_shared<Peer>(message->get_peers().front());
+        routing_table_.set_successor(successor);
+        routing_table_.print();
     }
 
     void handle_query_response(MessagePtr message)

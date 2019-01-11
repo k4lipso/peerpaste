@@ -4,6 +4,21 @@ public:
     typedef std::shared_ptr<Peer> PeerPtr;
     RoutingTable () : self_(std::make_shared<Peer>()), predecessor_(std::make_shared<Peer>()) {}
 
+    void print() const
+    {
+        std::cout << "#### ROUTINGTABLE BEGIN ####" << std::endl;
+        std::cout << "SELF:" << std::endl;
+        self_->print();
+        std::cout << "PREDECESSOR: " << std::endl;
+        predecessor_->print();
+        std::cout << "FINGERTABLE: " << std::endl;
+        for(const auto peer : peers_){
+            peer->print();
+            std::cout << "######" << std::endl;
+        }
+        std::cout << "#### ROUTINGTABLE END ####" << std::endl;
+    }
+
     const PeerPtr get_self() const
     {
         return self_;
@@ -31,6 +46,11 @@ public:
             return;
         }
         peers_[0] = sucessor;
+    }
+
+    const PeerPtr get_successor() const
+    {
+        return peers_.front();
     }
 
     const size_t size() const noexcept
