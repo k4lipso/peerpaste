@@ -15,6 +15,7 @@ class MessageHandler
 public:
     typedef std::shared_ptr<Message> MessagePtr;
     typedef std::shared_ptr<Session> SessionPtr;
+    typedef std::shared_ptr<RequestObject> RequestObjectPtr;
 
     MessageHandler (boost::asio::io_context& io_context, short port) :
                         routing_table_(),
@@ -93,41 +94,41 @@ public:
             return;
         }
 
-        auto message = message_queue_->front().first;
-        auto session = message_queue_->front().second;
+        auto transport_object = message_queue_->front();
+        auto message = transport_object->get_message();
         message_queue_->pop_front();
-        message->print();
 
         //TODO: handle invalid messages here
 
         if(message->is_request()){
-            handle_request(message, session);
+            handle_request(transport_object);
         } else {
-            handle_response(message, session);
+            handle_response(transport_object);
         }
         handle_message();
     }
 
-    void handle_request(MessagePtr message, SessionPtr session)
+    void handle_request(RequestObjectPtr transport_object)
     {
         std::cout << "handle_request" << std::endl;
-        auto request_type = message->get_request_type();
+        auto request_type = transport_object->get_request_type();
 
         if(request_type == "query"){
-            handle_query_request(message, session);
+            handle_query_request(transport_object);
             return;
         }
         if(request_type == "find_successor"){
-            handle_find_successor_request(message, session);
+            handle_find_successor_request(transport_object);
             return;
         }
 
         std::cout << "UNKNOWN REQUEST TYPE: " << request_type << std::endl;
     }
 
-    void handle_find_successor_request(MessagePtr message, SessionPtr session)
+    void handle_find_successor_request(const RequestObjectPtr transport_object)
     {
         std::cout << "handle_find_successor_request()" << std::endl;
+        auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
             //TODO: handle invalid message here
         }
@@ -153,9 +154,8 @@ public:
 
             //Response that will be sent back when request above
             //got answered
-            auto response = std::make_shared<RequestObject>();
+            auto response = std::make_shared<RequestObject>(*transport_object);
             response->set_message(message->generate_response());
-            response->set_connection(session);
 
             aggregator_.add_aggregat(response, { transaction_id });
 
@@ -166,10 +166,10 @@ public:
         response_message->set_peers( { *successor.get() } );
         response_message->generate_transaction_id();
 
-        RequestObject response;
-        response.set_message(response_message);
-        response.set_connection(session);
-        write_queue_->push_back(response);
+        auto response = std::make_shared<RequestObject>(*transport_object);
+        response->set_message(response_message);
+
+        write_queue_->push_back(*response.get());
     }
 
     const std::shared_ptr<Peer> find_successor(const std::string& id)
@@ -225,15 +225,16 @@ public:
         return self;
     }
 
-    void handle_query_request(MessagePtr message, SessionPtr session)
+    void handle_query_request(const RequestObjectPtr transport_object)
     {
         std::cout << "handle_query_request" << std::endl;
+        auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
             //TODO: handle invalid messages here
         }
 
         auto peer = message->get_peers().front();
-        auto client_ip = session->get_client_ip();
+        auto client_ip = transport_object->get_client_ip();
         auto client_port = peer.get_port();
         auto client_id = util::generate_sha256(client_ip, client_port);
         peer.set_ip(client_ip);
@@ -243,26 +244,27 @@ public:
         response_message->add_peer(peer);
         response_message->generate_transaction_id();
 
-        RequestObject response;
-        response.set_message(response_message);
-        response.set_connection(session);
-        write_queue_->push_back(response);
+        auto response = std::make_shared<RequestObject>(*transport_object);
+        response->set_message(response_message);
+
+        write_queue_->push_back(*response.get());
     }
 
-    void handle_response(MessagePtr message, SessionPtr session)
+    void handle_response(const RequestObjectPtr transport_object)
     {
         std::cout << "handle_response" << std::endl;
 
-        auto correlational_id = message->get_correlational_id();
+        auto correlational_id = transport_object->get_correlational_id();
         auto search = open_requests_.find(correlational_id);
         if(search != open_requests_.end()){
             auto request_object = open_requests_.at(correlational_id);
             if(request_object.has_handler()){
-                request_object.call(message);
+                request_object.call(transport_object);
             } else {
                 std::cout << "handle response: no handler specified" << '\n';
             }
 
+            auto message = transport_object->get_message();
             aggregator_.add_aggregat(message);
 
         } else {
@@ -338,8 +340,9 @@ public:
         write_queue_->push_back(request);
     }
 
-    void handle_join_response(MessagePtr message)
+    void handle_join_response(const RequestObjectPtr transport_object)
     {
+        auto message = transport_object->get_message();
         std::cout << "HANDLE JOIN RESPONSE MOTHER FUCKER" << std::endl;
         if(message->get_peers().size() != 1){
             //TODO: handle invalid message
@@ -350,8 +353,9 @@ public:
         routing_table_.print();
     }
 
-    void handle_query_response(MessagePtr message)
+    void handle_query_response(const RequestObjectPtr transport_object)
     {
+        auto message = transport_object->get_message();
         std::cout << "QUERY RESPONSE HANDLER" << std::endl;
         if(message->get_peers().size() == 1){
             //TODO: make  message peers to be shared_ptrs
@@ -370,6 +374,7 @@ public:
     void handle_get_predecessor_response(MessagePtr message);
 
 private:
+
     boost::asio::io_service& service_;
     boost::asio::steady_timer timer_;
 

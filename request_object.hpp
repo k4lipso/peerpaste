@@ -15,15 +15,16 @@ public:
     typedef std::shared_ptr<Message> MessagePtr;
     typedef std::shared_ptr<Peer> PeerPtr;
     typedef std::shared_ptr<Session> SessionPtr;
-    typedef std::function<void(MessagePtr)> HandlerFunction;
+    typedef std::shared_ptr<RequestObject> RequestObjectPtr;
+    typedef std::function<void(RequestObjectPtr)> HandlerFunction;
 
     RequestObject() {}
     ~RequestObject () {}
 
-    void call(MessagePtr message)
+    void call(RequestObjectPtr request)
     {
         //throw exeption if no value
-        if(handler_.has_value()) handler_.value()(message);
+        if(handler_.has_value()) handler_.value()(request);
     }
 
     void set_handler(HandlerFunction handler)
@@ -74,6 +75,24 @@ public:
     const PeerPtr get_peer() const
     {
         return std::get<PeerPtr>(connection_);
+    }
+
+    const std::string get_correlational_id() const noexcept
+    {
+        return message_->get_correlational_id();
+    }
+
+    const std::string get_request_type() const noexcept
+    {
+        return message_->get_request_type();
+    }
+
+    const std::string get_client_ip() const
+    {
+        if(is_session()){
+            return get_session()->get_client_ip();
+        }
+        return get_peer()->get_ip();
     }
 
 private:

@@ -5,6 +5,7 @@
 
     typedef std::shared_ptr<Message> MessagePtr;
     typedef std::shared_ptr<Session> SessionPtr;
+    typedef std::shared_ptr<RequestObject> RequestObjectPtr;
 
     std::shared_ptr<MessageQueue> MessageQueue::GetInstance()
     {
@@ -14,10 +15,13 @@
 
     void MessageQueue::push_back(const MessagePtr message, const SessionPtr session)
     {
-        deque_.push_back(std::make_pair(message, session));
+        auto request = std::make_shared<RequestObject>();
+        request->set_message(message);
+        request->set_connection(session);
+        deque_.push_back(request);
     }
 
-    const std::pair<MessagePtr, SessionPtr> MessageQueue::front() const
+    const RequestObjectPtr MessageQueue::front() const
     {
         return deque_.front();
     }
