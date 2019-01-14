@@ -5,6 +5,7 @@
 
     typedef std::shared_ptr<Message> MessagePtr;
     typedef std::shared_ptr<Session> SessionPtr;
+    typedef std::shared_ptr<RequestObject> RequestObjectPtr;
 
     std::shared_ptr<WriteQueue> WriteQueue::GetInstance()
     {
@@ -12,12 +13,12 @@
         return instance;
     }
 
-    void WriteQueue::push_back(const RequestObject request)
+    void WriteQueue::push_back(const RequestObjectPtr request)
     {
         deque_.push_back(request);
     }
 
-    const RequestObject WriteQueue::front() const
+    const RequestObjectPtr WriteQueue::front() const
     {
         return deque_.front();
     }

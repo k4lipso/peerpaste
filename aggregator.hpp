@@ -16,19 +16,20 @@ public:
         write_queue_ = WriteQueue::GetInstance();
     }
 
-    const bool add_aggregat(MessagePtr message)
+    const RequestObjectPtr add_aggregat(MessagePtr message)
     {
         auto id = message->get_correlational_id();
         for(auto aggregat : aggregats_){
             if(aggregat.add_message(message)){
                 if(aggregat.is_complete()){
-                    write_queue_->push_back(*aggregat.get_result_message().get());
+                    //TODO: delete aggregat from vector
+                    return aggregat.get_result_message();
                 }
-                return true;
+                return nullptr;
             }
         }
         std::cout << "AGGR NOT IN AGGRS" << std::endl;
-        return false;
+        return nullptr;
     }
 
     void add_aggregat(RequestObjectPtr request, std::unordered_set<std::string> ids)

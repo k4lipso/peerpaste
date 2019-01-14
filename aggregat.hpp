@@ -74,7 +74,7 @@ public:
                 auto query_message = messages_.front();
                 auto self = query_message->get_peers().front();
                 original_message->set_peers({ self });
-                request_->get_message()->print();
+                original_message->generate_transaction_id();
                 return request_;
             }
             //both messages are "find_successor"

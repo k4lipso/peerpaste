@@ -21,6 +21,11 @@
         deque_.push_back(request);
     }
 
+    void MessageQueue::push_back(const RequestObjectPtr request_object)
+    {
+        deque_.push_back(request_object);
+    }
+
     const RequestObjectPtr MessageQueue::front() const
     {
         return deque_.front();

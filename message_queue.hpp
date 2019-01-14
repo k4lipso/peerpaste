@@ -19,6 +19,7 @@ public:
 
     static std::shared_ptr<MessageQueue> GetInstance();
     void push_back(const MessagePtr message, const SessionPtr session);
+    void push_back(const RequestObjectPtr request_object);
     const RequestObjectPtr front() const;
     void pop_front() noexcept;
     const size_t size() const noexcept;

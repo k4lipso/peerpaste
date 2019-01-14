@@ -55,7 +55,7 @@ public:
         }
 
         //TODO: store as ptr in write_queue!
-        auto request = std::make_shared<RequestObject>(write_queue_->front());
+        auto request = std::make_shared<RequestObject>(*write_queue_->front());
         write_queue_->pop_front();
         auto message = request->get_message();
         auto is_request = message->is_request();
@@ -83,8 +83,20 @@ public:
         if(is_request){
             auto transaction_id = message->get_transaction_id();
             //TODO: store ptrs in open_requests
-            open_requests_[transaction_id] = *request.get();
+            open_requests_[transaction_id] = request;
         }
+    }
+
+    void push_to_write_queue(const RequestObjectPtr transport_object)
+    {
+        auto is_request = transport_object->get_message()->is_request();
+        if(is_request){
+            auto transaction_id = transport_object->get_message()->get_transaction_id();
+            //TODO: store ptrs in open_requests
+            open_requests_[transaction_id] = transport_object;
+        }
+        write_queue_->push_back(transport_object);
+        std::cout << "PUSH TO WRITE SIZE: " << open_requests_.size() << std::endl;
     }
 
     void handle_message()
@@ -137,6 +149,7 @@ public:
         auto successor = find_successor(id);
         auto response_message = message->generate_response();
         if(successor == nullptr){
+            std::cout << "SUC IS NULLPTr" << std::endl;
             //We have to use aggregator
             //to request successor remotely befor responding
             auto successor_predecessor = closest_preceding_node(id);
@@ -159,7 +172,7 @@ public:
 
             aggregator_.add_aggregat(response, { transaction_id });
 
-            write_queue_->push_back(*request.get());
+            push_to_write_queue(request);
             return;
         }
 
@@ -169,7 +182,7 @@ public:
         auto response = std::make_shared<RequestObject>(*transport_object);
         response->set_message(response_message);
 
-        write_queue_->push_back(*response.get());
+        push_to_write_queue(response);
     }
 
     const std::shared_ptr<Peer> find_successor(const std::string& id)
@@ -247,7 +260,7 @@ public:
         auto response = std::make_shared<RequestObject>(*transport_object);
         response->set_message(response_message);
 
-        write_queue_->push_back(*response.get());
+        push_to_write_queue(response);
     }
 
     void handle_response(const RequestObjectPtr transport_object)
@@ -258,16 +271,23 @@ public:
         auto search = open_requests_.find(correlational_id);
         if(search != open_requests_.end()){
             auto request_object = open_requests_.at(correlational_id);
-            if(request_object.has_handler()){
-                request_object.call(transport_object);
+            open_requests_.erase(correlational_id);
+            /* auto request_object = open_requests_.extract(correlational_id).value; */
+            if(request_object->has_handler()){
+                request_object->call(transport_object);
             } else {
                 std::cout << "handle response: no handler specified" << '\n';
             }
 
             auto message = transport_object->get_message();
-            aggregator_.add_aggregat(message);
+            auto possible_request = aggregator_.add_aggregat(message);
+            if(possible_request != nullptr){
+                std::cout << "PUSHING TO DA WRITE QEUEE" << std::endl;
+                push_to_write_queue(possible_request);
+            }
 
         } else {
+            std::cout << "INVALID MSG (handle_response)" << std::endl;
             //TODO: handle invalid message
         }
     }
@@ -290,12 +310,11 @@ public:
                                                             this,
                                                             std::placeholders::_1);
 
-        RequestObject request;
-        request.set_handler(handler);
-        request.set_message(query_request);
-        request.set_connection(target);
-        open_requests_[transaction_id] = request;
-        write_queue_->push_back(request);
+        auto request = std::make_shared<RequestObject>();
+        request->set_handler(handler);
+        request->set_message(query_request);
+        request->set_connection(target);
+        push_to_write_queue(request);
         return transaction_id;
     }
 
@@ -317,15 +336,15 @@ public:
                                                             this,
                                                             std::placeholders::_1);
 
-        RequestObject request;
-        request.set_handler(handler);
-        request.set_message(query_request);
-        request.set_connection(target);
-        open_requests_[transaction_id] = request;
+        auto request = std::make_shared<RequestObject>();
+        request->set_handler(handler);
+        request->set_message(query_request);
+        request->set_connection(target);
 
         MessagePtr find_successor_request = std::make_shared<Message>();
         Header find_succressor_header(true, 0, 0, "find_successor", "", "", "");
         find_successor_request->set_header(find_succressor_header);
+        /* find_successor_request->generate_transaction_id(); */
 
         auto successor_handler = std::bind(&MessageHandler::handle_join_response,
                                                             this,
@@ -337,7 +356,7 @@ public:
         successor_request->set_connection(target);
 
         aggregator_.add_aggregat(successor_request, { transaction_id });
-        write_queue_->push_back(request);
+        push_to_write_queue(request);
     }
 
     void handle_join_response(const RequestObjectPtr transport_object)
@@ -364,6 +383,7 @@ public:
             std::cout << "### SELF:" << std::endl;
             routing_table_.get_self()->print();
         } else {
+            std::cout << "WRONG MESSAGE SIZE()" << std::endl;
             //TODO: handle invalid message
         }
     }
@@ -388,7 +408,8 @@ private:
     //                        message (with timestamp!),
     //                        Peer to send the request
     /* std::map<std::string, std::function<void(MessagePtr)>> open_requests_; */
-    std::map<std::string, RequestObject> open_requests_;
+    //TODO: delete objects when they got handled
+    std::map<std::string, RequestObjectPtr> open_requests_;
 
     Aggregator aggregator_;
 };
