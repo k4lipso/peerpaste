@@ -21,7 +21,7 @@ text {
 
 <body>
      <div id="content">
-    <svg width="1300" height="760">
+    <svg width="2600" height="1520">
       <g class="links"></g>
       <g class="nodes"></g>
     </svg>
@@ -30,7 +30,7 @@ text {
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/4.2.2/d3.min.js"></script>
   <script>
-var width = 1300, height = 760
+var width = 2600, height = 1520
 var out = {};
 fetch('http://localhost:8080')
     .then(res => res.json())
@@ -41,9 +41,9 @@ fetch('http://localhost:8080')
     var links = out["links"];
 
     var simulation = d3.forceSimulation(nodes)
-      .force('charge', d3.forceManyBody().strength(-150))
+      .force('charge', d3.forceManyBody().strength(-080))
       .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('link', d3.forceLink().links(links).distance(60))
+      .force('link', d3.forceLink().links(links).distance(100))
       .on('tick', ticked);
 
 

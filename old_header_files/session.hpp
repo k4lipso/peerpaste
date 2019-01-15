@@ -912,7 +912,6 @@ private:
     PackedMessage<Request> packed_request_;
 
     //////NEW
-    boost::asio::io_context io_context_;
     boost::asio::io_service& service_;
     tcp::socket socket_;
     boost::asio::io_service::strand write_strand_;

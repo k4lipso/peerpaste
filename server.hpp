@@ -7,6 +7,7 @@
 #include "peer.hpp"
 #include "message.hpp"
 #include "message_handler.hpp"
+#include "request_object.hpp"
 #include "proto/messages.pb.h"
 
 #include <string>
@@ -27,14 +28,18 @@ class Server
 public:
     Server(int thread_count = 4, short port = 1337)
         : thread_count_(thread_count), acceptor_(io_context_),
-          message_handler_(io_context_, port)
+          message_handler_(io_context_, port),
+          timer_(io_context_, boost::asio::chrono::seconds(1))
     {
+        write_queue_ = WriteQueue::GetInstance();
     }
 
     void start_server(uint16_t port)
     {
         start_listening(port);
         accept_connections();
+        message_handler_.init();
+        run();
     }
 
     void start_client(std::string addr, uint16_t server_port, uint16_t own_port)
@@ -42,8 +47,57 @@ public:
         start_listening(own_port);
         accept_connections();
         message_handler_.join(addr, std::to_string(server_port));
+        run();
     }
 private:
+
+    void run()
+    {
+        message_handler_.handle_message();
+        message_handler_.stabilize();
+        message_handler_.notify();
+        handle_write_queue();
+
+        timer_.expires_at(timer_.expiry() + boost::asio::chrono::seconds(1));
+        timer_.async_wait(boost::bind(&Server::run, this));
+
+    }
+
+    //TODO: using move() for request?
+    void handle_write_queue()
+    {
+        bool write_queue_is_empty = write_queue_->empty();
+        if(write_queue_is_empty){
+            return;
+        }
+
+        //TODO: store as ptr in write_queue!
+        auto request = std::make_shared<RequestObject>(*write_queue_->front());
+        write_queue_->pop_front();
+        auto message = request->get_message();
+        auto is_request = message->is_request();
+
+        if(request->is_session()){
+            auto session = request->get_session();
+            session->write(message);
+            if(is_request){
+                session->read();
+            }
+        } else {
+            //TODO: this is to session/boost specific
+            //when using a test_socket or something like that this code
+            //should be more abstract so that the message_handler does not need
+            //to know what kind of object sends the data somewhere
+            auto peer = request->get_peer();
+            auto write_handler = std::make_shared<Session>(io_context_);
+            write_handler->write_to(message, peer->get_ip(), peer->get_port());
+            if(is_request){
+                write_handler->read();
+            }
+        }
+    }
+
+
     /**
      * Starts listening on the given port
      */
@@ -106,7 +160,9 @@ private:
     int thread_count_;
     std::vector<std::thread> thread_pool_;
     boost::asio::ip::tcp::acceptor acceptor_;
+    boost::asio::steady_timer timer_;
 
+    std::shared_ptr<WriteQueue> write_queue_;
     MessageHandler message_handler_;
 };
 

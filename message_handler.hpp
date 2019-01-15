@@ -19,9 +19,7 @@ public:
 
     MessageHandler (boost::asio::io_context& io_context, short port) :
                         routing_table_(),
-                        aggregator_(),
-                        service_(io_context),
-                        timer_(io_context, boost::asio::chrono::seconds(1))
+                        aggregator_()
     {
         //TODO: setup self more accurate
         routing_table_.get_self()->set_port(std::to_string(port));
@@ -30,63 +28,16 @@ public:
                                                                 std::to_string(port)));
         message_queue_ = MessageQueue::GetInstance();
         write_queue_ = WriteQueue::GetInstance();
-        run();
+    }
+
+    void init()
+    {
+        routing_table_.set_successor(routing_table_.get_self());
     }
 
     ~MessageHandler () {}
 
-    void run()
-    {
-        handle_message();
-        handle_write_queue();
-        //TODO: check if request are outdated. then retry or cancel
-        //look at TODO at bottom (RequestObj)
-        //TODO: check send_queue
-
-        timer_.expires_at(timer_.expiry() + boost::asio::chrono::seconds(1));
-        timer_.async_wait(boost::bind(&MessageHandler::run, this));
-    }
-
-    void handle_write_queue()
-    {
-        bool write_queue_is_empty = write_queue_->empty();
-        if(write_queue_is_empty){
-            return;
-        }
-
-        //TODO: store as ptr in write_queue!
-        auto request = std::make_shared<RequestObject>(*write_queue_->front());
-        write_queue_->pop_front();
-        auto message = request->get_message();
-        auto is_request = message->is_request();
-
-        if(request->is_session()){
-            auto session = request->get_session();
-            session->write(message);
-            if(is_request){
-                session->read();
-            }
-        } else {
-            //TODO: this is to session/boost specific
-            //when using a test_socket or something like that this code
-            //should be more abstract so that the message_handler does not need
-            //to know what kind of object sends the data somewhere
-            auto peer = request->get_peer();
-            auto write_handler = std::make_shared<Session>(service_);
-            write_handler->write_to(message, peer->get_ip(), peer->get_port());
-            if(is_request){
-                write_handler->read();
-            }
-
-        }
-
-        if(is_request){
-            auto transaction_id = message->get_transaction_id();
-            //TODO: store ptrs in open_requests
-            open_requests_[transaction_id] = request;
-        }
-    }
-
+    //TODO: pass rvalue reference to only allow std::move()
     void push_to_write_queue(const RequestObjectPtr transport_object)
     {
         auto is_request = transport_object->get_message()->is_request();
@@ -101,36 +52,44 @@ public:
 
     void handle_message()
     {
-        bool message_queue_is_empty = message_queue_->empty();
+        const bool message_queue_is_empty = message_queue_->empty();
         if(message_queue_is_empty){
             return;
         }
 
-        auto transport_object = message_queue_->front();
-        auto message = transport_object->get_message();
+        auto transport_object = std::move(message_queue_->front());
         message_queue_->pop_front();
+        const bool is_request = transport_object->get_message()->is_request();
 
         //TODO: handle invalid messages here
 
-        if(message->is_request()){
-            handle_request(transport_object);
+        if(is_request){
+            handle_request(std::move(transport_object));
         } else {
             handle_response(transport_object);
         }
         handle_message();
     }
 
-    void handle_request(RequestObjectPtr transport_object)
+    void handle_request(RequestObjectPtr&& transport_object)
     {
         std::cout << "handle_request" << std::endl;
         auto request_type = transport_object->get_request_type();
 
         if(request_type == "query"){
-            handle_query_request(transport_object);
+            handle_query_request(std::move(transport_object));
             return;
         }
         if(request_type == "find_successor"){
             handle_find_successor_request(transport_object);
+            return;
+        }
+        if(request_type == "get_predecessor"){
+            handle_get_predecessor_request(transport_object);
+            return;
+        }
+        if(request_type == "notify"){
+            handle_notify(transport_object);
             return;
         }
 
@@ -238,7 +197,7 @@ public:
         return self;
     }
 
-    void handle_query_request(const RequestObjectPtr transport_object)
+    void handle_query_request(RequestObjectPtr&& transport_object)
     {
         std::cout << "handle_query_request" << std::endl;
         auto message = transport_object->get_message();
@@ -261,6 +220,29 @@ public:
         response->set_message(response_message);
 
         push_to_write_queue(response);
+    }
+
+    void handle_get_predecessor_request(const RequestObjectPtr transport_object)
+    {
+        std::cout << "handle_get_predecessor_request" << std::endl;
+        auto message = transport_object->get_message();
+        if(message->get_peers().size() != 0){
+            //TODO: handle_invalid_message!
+        }
+
+        auto response = message->generate_response();
+        auto predecessor = routing_table_.get_predecessor();
+        if(predecessor != nullptr){
+            response->set_peers( { *predecessor.get() } );
+        } else {
+            //TODO: send invalid message here, so that requestor knows that there
+            //is no predecessor
+        }
+        response->generate_transaction_id();
+
+        auto response_object = std::make_shared<RequestObject>(*transport_object);
+        response_object->set_message(response);
+        push_to_write_queue(response_object);
     }
 
     void handle_response(const RequestObjectPtr transport_object)
@@ -292,30 +274,109 @@ public:
         }
     }
 
-    std::string query(std::string address, std::string port)
+    /* std::string query(std::string address, std::string port) */
+    /* { */
+    /*     MessagePtr query_request = std::make_shared<Message>(); */
+
+    /*     Header query_header(true, 0, 0, "query", "", "", ""); */
+    /*     auto self = routing_table_.get_self(); */
+
+    /*     query_request->set_header(query_header); */
+    /*     query_request->add_peer(*self.get()); */
+    /*     query_request->generate_transaction_id(); */
+    /*     auto transaction_id = query_request->get_transaction_id(); */
+
+    /*     auto target = std::make_shared<Peer>("", address, port); */
+
+    /*     auto handler = std::bind(&MessageHandler::handle_query_response, */
+    /*                                                         this, */
+    /*                                                         std::placeholders::_1); */
+
+    /*     auto request = std::make_shared<RequestObject>(); */
+    /*     request->set_handler(handler); */
+    /*     request->set_message(query_request); */
+    /*     request->set_connection(target); */
+    /*     push_to_write_queue(request); */
+    /*     return transaction_id; */
+    /* } */
+
+    void stabilize()
     {
-        MessagePtr query_request = std::make_shared<Message>();
+        std::cout << "stabilizing my friend" << std::endl;
 
-        Header query_header(true, 0, 0, "query", "", "", "");
-        auto self = routing_table_.get_self();
+        auto get_predecessor_msg = std::make_shared<Message>();
+        get_predecessor_msg->set_header(Header(true, 0, 0, "get_predecessor", "", "", ""));
+        get_predecessor_msg->generate_transaction_id();
+        auto transaction_id = get_predecessor_msg->get_transaction_id();
 
-        query_request->set_header(query_header);
-        query_request->add_peer(*self.get());
-        query_request->generate_transaction_id();
-        auto transaction_id = query_request->get_transaction_id();
+        auto target = routing_table_.get_successor();
+        if(target == nullptr){
+            return;
+        }
 
-        auto target = std::make_shared<Peer>("", address, port);
-
-        auto handler = std::bind(&MessageHandler::handle_query_response,
-                                                            this,
-                                                            std::placeholders::_1);
+        auto handler = std::bind(&MessageHandler::handle_stabilize,
+                                 this,
+                                 std::placeholders::_1);
 
         auto request = std::make_shared<RequestObject>();
         request->set_handler(handler);
-        request->set_message(query_request);
+        request->set_message(get_predecessor_msg);
         request->set_connection(target);
         push_to_write_queue(request);
-        return transaction_id;
+    }
+
+    void notify()
+    {
+        std::cout << "NOTIFY()..." << std::endl;
+        //TODO: add better abstracted checking if succ/pre/whatever is initialized
+        if(routing_table_.get_self()->get_id() == ""){
+            std::cout << "Notifi: error, no id for self" << std::endl;
+            return;
+        }
+
+        auto target = routing_table_.get_successor();
+        if(target == nullptr){
+            std::cout << "Notifi: error, no successor found" << std::endl;
+            return;
+        }
+
+
+        auto notify_message = std::make_shared<Message>();
+        notify_message->set_header(Header(true, 0, 0, "notify", "", "", ""));
+        notify_message->add_peer(*routing_table_.get_self().get());
+        notify_message->generate_transaction_id();
+        auto transaction_id = notify_message->get_transaction_id();
+
+        auto request = std::make_shared<RequestObject>();
+        request->set_message(notify_message);
+        request->set_connection(target);
+        push_to_write_queue(request);
+    }
+
+    void handle_notify(const RequestObjectPtr transport_object)
+    {
+        std::cout << "HANDLE NOTIFY" << std::endl;
+        auto message = transport_object->get_message();
+        if(message->get_peers().size() != 1){
+            //TODO: handle invalid msg
+            std::cout << "handle notify invalid message" << std::endl;
+            return;
+        }
+
+        auto notify_peer = std::make_shared<Peer>(message->get_peers().front());
+        if(routing_table_.get_predecessor() == nullptr){
+            routing_table_.set_predecessor(notify_peer);
+            return;
+        }
+
+        auto predecessor_id = routing_table_.get_predecessor()->get_id();
+        auto self_id = routing_table_.get_self()->get_id();
+        auto notify_peer_id = notify_peer->get_id();
+
+        if(util::between(predecessor_id, notify_peer_id, self_id)){
+            routing_table_.set_predecessor(notify_peer);
+        }
+        routing_table_.print();
     }
 
     void join(std::string address, std::string port)
@@ -388,15 +449,36 @@ public:
         }
     }
 
+    void handle_stabilize(const RequestObjectPtr transport_object)
+    {
+        auto message = transport_object->get_message();
+        std::cout << "handle_stabilize..." << std::endl;
+
+        if(message->get_peers().size() != 1){
+            //TODO: handle invalid message
+            std::cout << "invalid message size at handle_stabilize" << std::endl;
+            return;
+        }
+
+        auto self = routing_table_.get_self();
+        auto successor = routing_table_.get_successor();
+        auto successors_predecessor = message->get_peers().front();
+
+        if(util::between(self->get_id(),
+                         successors_predecessor.get_id(),
+                         successor->get_id())){
+            routing_table_.set_successor(std::make_shared<Peer>(successors_predecessor));
+        }
+        std::cout << "#######################################################################" << std::endl;
+        routing_table_.print();
+    }
+
     void handle_find_successor_response(MessagePtr message);
     void handle_notify_response(MessagePtr message);
     void handle_check_predecessor_response(MessagePtr message);
     void handle_get_predecessor_response(MessagePtr message);
 
 private:
-
-    boost::asio::io_service& service_;
-    boost::asio::steady_timer timer_;
 
     RoutingTable routing_table_;
     std::shared_ptr<MessageQueue> message_queue_;

@@ -2,7 +2,7 @@ class RoutingTable
 {
 public:
     typedef std::shared_ptr<Peer> PeerPtr;
-    RoutingTable () : self_(std::make_shared<Peer>()), predecessor_(std::make_shared<Peer>()) {}
+    RoutingTable () : self_(std::make_shared<Peer>()), predecessor_(nullptr) {}
 
     void print() const
     {
@@ -10,7 +10,9 @@ public:
         std::cout << "SELF:" << std::endl;
         self_->print();
         std::cout << "PREDECESSOR: " << std::endl;
-        predecessor_->print();
+        if(predecessor_ != nullptr){
+            predecessor_->print();
+        }
         std::cout << "FINGERTABLE: " << std::endl;
         for(const auto peer : peers_){
             peer->print();
@@ -50,7 +52,10 @@ public:
 
     const PeerPtr get_successor() const
     {
-        return peers_.front();
+        if(size() != 0){
+            return peers_.front();
+        }
+        return nullptr;
     }
 
     const size_t size() const noexcept
