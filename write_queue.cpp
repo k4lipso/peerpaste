@@ -15,6 +15,7 @@
 
     void WriteQueue::push_back(const RequestObjectPtr request)
     {
+        std::cout << "FRONT ON SIZE: " << deque_.size() << std::endl;
         deque_.push_back(request);
     }
 

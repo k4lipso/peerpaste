@@ -28,6 +28,7 @@
 
     const RequestObjectPtr MessageQueue::front() const
     {
+        std::cout << "FRONT ON SIZE: " << deque_.size() << std::endl;
         return deque_.front();
     }
 

@@ -20,13 +20,11 @@ using boost::asio::ip::tcp;
           socket_(io_context),
           name_(std::to_string(++naming))
     {
-        std::cout << "Session " << name_ << " created" << '\n';
         message_queue_ = MessageQueue::GetInstance();
     }
 
     Session::~Session ()
     {
-        std::cout << "Session " << name_ << " destroyed" << '\n';
     }
 
     boost::asio::ip::tcp::socket& Session::get_socket()
@@ -36,7 +34,6 @@ using boost::asio::ip::tcp;
 
     void Session::write(const MessagePtr message)
     {
-        std::cout << "Session " << name_ << " write()" << '\n';
         ProtobufMessageConverter converter;
         auto message_buf = converter.SerializedFromMessage(message);
         std::vector<boost::uint8_t> encoded_buf;
@@ -56,7 +53,6 @@ using boost::asio::ip::tcp;
     void Session::write_to(const MessagePtr message, std::string address,
                                              std::string port)
     {
-        std::cout << "Session " << name_ << " write_to()" << '\n';
         tcp::resolver resolver(service_);
         auto endpoint = resolver.resolve(address, port);
 
@@ -66,7 +62,6 @@ using boost::asio::ip::tcp;
                 {
                     if(!ec)
                     {
-                        std::cout << "connected" << std::endl;
                         me->write(message);
                     } else {
                         std::cout << "error: " << ec << std::endl;
@@ -76,7 +71,6 @@ using boost::asio::ip::tcp;
 
     void Session::read()
     {
-        std::cout << "do read hedeara" << std::endl;
         do_read_header();
     }
 
@@ -134,9 +128,9 @@ using boost::asio::ip::tcp;
             std::vector<uint8_t> message_buf(begin, end);
             ProtobufMessageConverter converter;
             auto message_ptr = converter.MessageFromSerialized(message_buf);
-            std::cout << "PRINTING MESSAGE " << std::endl;
-            std::cout << "SESSION PUSHES MESSAGE ON QUEUE" << std::endl;
             message_queue_->push_back(message_ptr, shared_from_this());
+            std::cout << "INCOMMING MESSAGE YO" << std::endl;
+            message_ptr->print();
         } else {
             std::cout << "error in handle read message: " << ec << std::endl;
             do_read_header();
@@ -182,7 +176,6 @@ using boost::asio::ip::tcp;
                                 [me = shared_from_this()]
                                 (boost::system::error_code const &error, std::size_t)
                                 {
-                                    std::cout << "call handle read" << std::endl;
                                     me->handle_read_header(error);
                                 });
     }

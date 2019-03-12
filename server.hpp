@@ -29,7 +29,9 @@ public:
     Server(int thread_count = 4, short port = 1337)
         : thread_count_(thread_count), acceptor_(io_context_),
           message_handler_(io_context_, port),
-          timer_(io_context_, boost::asio::chrono::seconds(1))
+          timer_(io_context_, boost::asio::chrono::seconds(1)),
+          read_strand_(io_context_),
+          write_strand_(io_context_)
     {
         write_queue_ = WriteQueue::GetInstance();
     }
@@ -53,10 +55,19 @@ private:
 
     void run()
     {
-        message_handler_.handle_message();
+        io_context_.post( read_strand_.wrap( [&]()
+                        {
+                            message_handler_.handle_message();
+                        }) );
+        /* message_handler_.handle_message(); */
         message_handler_.stabilize();
         message_handler_.notify();
-        handle_write_queue();
+        io_context_.post( read_strand_.wrap( [&]()
+                        {
+                            handle_write_queue();
+                        }) );
+        /* handle_write_queue(); */
+        send_routing_information();
 
         timer_.expires_at(timer_.expiry() + boost::asio::chrono::seconds(1));
         timer_.async_wait(boost::bind(&Server::run, this));
@@ -95,6 +106,8 @@ private:
                 write_handler->read();
             }
         }
+
+        handle_write_queue();
     }
 
 
@@ -143,7 +156,6 @@ private:
             return;
         }
 
-        BOOST_LOG_TRIVIAL(info) << "[SERVER] handle_accept with no error";
         handler->read();
 
         auto new_handler = std::make_shared<Session>(io_context_);
@@ -156,7 +168,61 @@ private:
                               );
     }
 
+    void send_routing_information()
+    {
+        auto routing_table_ = message_handler_.get_routing_table();
+        tcp::resolver resolver(io_context_);
+        auto endpoint = resolver.resolve("127.0.0.1", "8080");
+        tcp::socket socket(io_context_);
+        boost::asio::connect(socket, endpoint);
+
+        boost::asio::streambuf request;
+        std::ostream request_stream(&request);
+
+        using boost::property_tree::ptree;
+        using boost::property_tree::read_json;
+        using boost::property_tree::write_json;
+
+        ptree root, info;
+        if(routing_table_.get_successor() != nullptr){
+            info.put("successor", routing_table_.get_successor()->get_id());
+        } else {
+            info.put("successor", "");
+        }
+        if(routing_table_.get_predecessor() != nullptr){
+            info.put("predecessor", routing_table_.get_predecessor()->get_id());
+        } else {
+            info.put("predecessor", "");
+        }
+        root.put_child(routing_table_.get_self()->get_id(), info);
+        /* root.put ("some value", "8"); */
+        /* root.put ( "message", "value value: value!"); */
+        /* info.put("placeholder", "value"); */
+        /* info.put("value", "daf!"); */
+        /* info.put("module", "value"); */
+        /* root.put_child("exception", info); */
+
+        std::ostringstream buf;
+        write_json (buf, root, false);
+        std::string json = buf.str();
+
+        request_stream << "POST / HTTP/1.1 \r\n";
+        request_stream << "Host:" << "lol" << "\r\n";
+        request_stream << "User-Agent: C/1.0";
+        request_stream << "Content-Type: application/json; charset=utf-8 \r\n";
+        request_stream << "Accept: */*\r\n";
+        request_stream << "Content-Length: " << json.length() << "\r\n";
+        request_stream << "Connection: close\r\n\r\n";  //NOTE THE Double line feed
+        request_stream << json;
+
+        // Send the request.
+        boost::asio::write(socket, request);
+
+    }
+
     boost::asio::io_context io_context_;
+    boost::asio::io_service::strand read_strand_;
+    boost::asio::io_service::strand write_strand_;
     int thread_count_;
     std::vector<std::thread> thread_pool_;
     boost::asio::ip::tcp::acceptor acceptor_;

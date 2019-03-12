@@ -47,7 +47,6 @@ public:
             open_requests_[transaction_id] = transport_object;
         }
         write_queue_->push_back(transport_object);
-        std::cout << "PUSH TO WRITE SIZE: " << open_requests_.size() << std::endl;
     }
 
     void handle_message()
@@ -73,7 +72,6 @@ public:
 
     void handle_request(RequestObjectPtr&& transport_object)
     {
-        std::cout << "handle_request" << std::endl;
         auto request_type = transport_object->get_request_type();
 
         if(request_type == "query"){
@@ -98,7 +96,6 @@ public:
 
     void handle_find_successor_request(const RequestObjectPtr transport_object)
     {
-        std::cout << "handle_find_successor_request()" << std::endl;
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
             //TODO: handle invalid message here
@@ -108,7 +105,6 @@ public:
         auto successor = find_successor(id);
         auto response_message = message->generate_response();
         if(successor == nullptr){
-            std::cout << "SUC IS NULLPTr" << std::endl;
             //We have to use aggregator
             //to request successor remotely befor responding
             auto successor_predecessor = closest_preceding_node(id);
@@ -152,11 +148,8 @@ public:
         if(routing_table_.get_peers().size() == 0){
             auto predecessor = closest_preceding_node(id);
             if(predecessor->get_id() == self->get_id()){
-                std::cout << "find_successor() returns self" << std::endl;
                 return self;
             }
-            std::cout << "closest_preceding_node: " << predecessor->get_id() << std::endl;
-            std::cout << "self id: " << self->get_id() << std::endl;
             return nullptr;
         }
 
@@ -165,12 +158,10 @@ public:
         auto succ_id = successor->get_id();
         if(util::between(self_id, id, succ_id) || id == succ_id)
         {
-            std::cout << "RETURNED SUCC in find_successor" << std::endl;
             return successor;
         } else {
             auto predecessor = closest_preceding_node(id);
             if(predecessor->get_id() == self->get_id()){
-                std::cout << "PREDECESSOR IS SELF" << std::endl;
                 return self;
             }
             return nullptr;
@@ -193,13 +184,11 @@ public:
                 return peers.at(i);
             }
         }
-        std::cout << "RETURNING SELF" << std::endl;
         return self;
     }
 
     void handle_query_request(RequestObjectPtr&& transport_object)
     {
-        std::cout << "handle_query_request" << std::endl;
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
             //TODO: handle invalid messages here
@@ -224,10 +213,10 @@ public:
 
     void handle_get_predecessor_request(const RequestObjectPtr transport_object)
     {
-        std::cout << "handle_get_predecessor_request" << std::endl;
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 0){
             //TODO: handle_invalid_message!
+            std::cout << "Invalid message handle_get_predecessor_request" << std::endl;
         }
 
         auto response = message->generate_response();
@@ -237,6 +226,7 @@ public:
         } else {
             //TODO: send invalid message here, so that requestor knows that there
             //is no predecessor
+            std::cout << "OMG ITS HAPPENING" << std::endl;
         }
         response->generate_transaction_id();
 
@@ -247,7 +237,6 @@ public:
 
     void handle_response(const RequestObjectPtr transport_object)
     {
-        std::cout << "handle_response" << std::endl;
 
         auto correlational_id = transport_object->get_correlational_id();
         auto search = open_requests_.find(correlational_id);
@@ -261,12 +250,15 @@ public:
                 std::cout << "handle response: no handler specified" << '\n';
             }
 
+            std::cout << "FOO" << std::endl;
             auto message = transport_object->get_message();
+            std::cout << "FOO" << std::endl;
             auto possible_request = aggregator_.add_aggregat(message);
+            std::cout << "FOO" << std::endl;
             if(possible_request != nullptr){
-                std::cout << "PUSHING TO DA WRITE QEUEE" << std::endl;
                 push_to_write_queue(possible_request);
             }
+            std::cout << "FOO" << std::endl;
 
         } else {
             std::cout << "INVALID MSG (handle_response)" << std::endl;
@@ -302,7 +294,6 @@ public:
 
     void stabilize()
     {
-        std::cout << "stabilizing my friend" << std::endl;
 
         auto get_predecessor_msg = std::make_shared<Message>();
         get_predecessor_msg->set_header(Header(true, 0, 0, "get_predecessor", "", "", ""));
@@ -327,7 +318,6 @@ public:
 
     void notify()
     {
-        std::cout << "NOTIFY()..." << std::endl;
         //TODO: add better abstracted checking if succ/pre/whatever is initialized
         if(routing_table_.get_self()->get_id() == ""){
             std::cout << "Notifi: error, no id for self" << std::endl;
@@ -347,15 +337,25 @@ public:
         notify_message->generate_transaction_id();
         auto transaction_id = notify_message->get_transaction_id();
 
+        auto handler = std::bind(&MessageHandler::handle_notify_response,
+                                 this,
+                                 std::placeholders::_1);
+
         auto request = std::make_shared<RequestObject>();
         request->set_message(notify_message);
+        request->set_handler(handler);
         request->set_connection(target);
         push_to_write_queue(request);
     }
 
+    void handle_notify_response(const RequestObjectPtr transport_object)
+    {
+        std::cout << "handle_notify_response" << std::endl;
+        return;
+    }
+
     void handle_notify(const RequestObjectPtr transport_object)
     {
-        std::cout << "HANDLE NOTIFY" << std::endl;
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
             //TODO: handle invalid msg
@@ -423,7 +423,6 @@ public:
     void handle_join_response(const RequestObjectPtr transport_object)
     {
         auto message = transport_object->get_message();
-        std::cout << "HANDLE JOIN RESPONSE MOTHER FUCKER" << std::endl;
         if(message->get_peers().size() != 1){
             //TODO: handle invalid message
         }
@@ -436,15 +435,13 @@ public:
     void handle_query_response(const RequestObjectPtr transport_object)
     {
         auto message = transport_object->get_message();
-        std::cout << "QUERY RESPONSE HANDLER" << std::endl;
         if(message->get_peers().size() == 1){
             //TODO: make  message peers to be shared_ptrs
             auto peer = std::make_shared<Peer>(message->get_peers().front());
             routing_table_.set_self(peer);
-            std::cout << "### SELF:" << std::endl;
             routing_table_.get_self()->print();
         } else {
-            std::cout << "WRONG MESSAGE SIZE()" << std::endl;
+            std::cout << "WRONG MESSAGE SIZE() handle_query_response" << std::endl;
             //TODO: handle invalid message
         }
     }
@@ -452,7 +449,6 @@ public:
     void handle_stabilize(const RequestObjectPtr transport_object)
     {
         auto message = transport_object->get_message();
-        std::cout << "handle_stabilize..." << std::endl;
 
         if(message->get_peers().size() != 1){
             //TODO: handle invalid message
@@ -469,12 +465,15 @@ public:
                          successor->get_id())){
             routing_table_.set_successor(std::make_shared<Peer>(successors_predecessor));
         }
-        std::cout << "#######################################################################" << std::endl;
         routing_table_.print();
     }
 
+    RoutingTable get_routing_table()
+    {
+        return routing_table_;
+    }
+
     void handle_find_successor_response(MessagePtr message);
-    void handle_notify_response(MessagePtr message);
     void handle_check_predecessor_response(MessagePtr message);
     void handle_get_predecessor_response(MessagePtr message);
 
