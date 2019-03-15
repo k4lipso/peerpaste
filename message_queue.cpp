@@ -15,6 +15,7 @@
 
     void MessageQueue::push_back(const MessagePtr message, const SessionPtr session)
     {
+        std::lock_guard<std::mutex> guard(mutex_);
         auto request = std::make_shared<RequestObject>();
         request->set_message(message);
         request->set_connection(session);
@@ -23,18 +24,23 @@
 
     void MessageQueue::push_back(const RequestObjectPtr request_object)
     {
+        std::lock_guard<std::mutex> guard(mutex_);
         deque_.push_back(request_object);
     }
 
-    const RequestObjectPtr MessageQueue::front() const
+    const RequestObjectPtr MessageQueue::front()
     {
+        std::lock_guard<std::mutex> guard(mutex_);
         std::cout << "FRONT ON SIZE: " << deque_.size() << std::endl;
         return deque_.front();
     }
 
     void MessageQueue::pop_front() noexcept
     {
-        deque_.pop_front();
+        std::lock_guard<std::mutex> guard(mutex_);
+        if(deque_.size() != 0){
+            deque_.pop_front();
+        }
     }
 
     const size_t MessageQueue::size() const noexcept
