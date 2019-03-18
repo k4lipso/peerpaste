@@ -11,9 +11,9 @@ class Session;
 class MessageQueue
 {
 public:
-    typedef std::shared_ptr<Message> MessagePtr;
-    typedef std::shared_ptr<Session> SessionPtr;
-    typedef std::shared_ptr<RequestObject> RequestObjectPtr;
+    using MessagePtr = std::shared_ptr<Message>;
+    using SessionPtr = std::shared_ptr<Session>;
+    using RequestObjectPtr = std::shared_ptr<RequestObject>;
 
     MessageQueue(MessageQueue const&) = delete;
     void operator=(MessageQueue const&) = delete;

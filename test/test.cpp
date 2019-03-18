@@ -173,7 +173,7 @@ TEST_CASE( "Testing ProtobufMessageConverter", "[peeraste::MessageConverter]" )
 
     //Create converter and create a Message from the given buffer
     ProtobufMessageConverter converter;
-    auto peerpaste_message = converter.MessageFromSerialized(buf);
+    std::shared_ptr<Message> peerpaste_message = converter.MessageFromSerialized(buf);
 
     //Check if header contains right information
     auto peerpaste_header = peerpaste_message->get_header();

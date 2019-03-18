@@ -21,7 +21,7 @@ class MessageConverter
 public:
     virtual ~MessageConverter() {}
 
-    virtual const MessagePtr MessageFromSerialized(const DataBuffer& buf) const = 0;
+    virtual std::unique_ptr<Message> MessageFromSerialized(const DataBuffer& buf) const = 0;
     virtual const DataBuffer SerializedFromMessage(const MessagePtr message) const = 0;
 };
 
@@ -29,10 +29,10 @@ class ProtobufMessageConverter : public MessageConverter
 {
 public:
     //TODO: error handling! how to proceed on error?
-    const MessagePtr MessageFromSerialized(const DataBuffer& buf) const override
+    std::unique_ptr<Message> MessageFromSerialized(const DataBuffer& buf) const override
     {
         //create a Protobuf Message
-        auto protobuf_message = std::make_shared<Request>();
+        auto protobuf_message = std::make_unique<Request>();
         //fill Message with data by parsing from DataBuffer
         protobuf_message->ParseFromArray(&buf[0], buf.size()); //TODO: could fail
 
@@ -48,7 +48,7 @@ public:
                       protobuf_header.response_code());
 
         //Create MessagePtr and set the header
-        MessagePtr message = std::make_shared<Message>();
+        auto message = std::make_unique<Message>();
         message->set_header(header);
 
         //Iterate over every protobuf_peer, create Peer object from it
@@ -67,7 +67,7 @@ public:
 
     const DataBuffer SerializedFromMessage(const MessagePtr message) const override
     {
-        auto protobuf_message = std::make_shared<Request>();
+        auto protobuf_message = std::make_unique<Request>();
         auto protobuf_header = protobuf_message->mutable_commonheader();
         auto peerpaste_header = message->get_header();
         auto peerpaste_peers = message->get_peers();

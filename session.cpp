@@ -127,9 +127,8 @@ using boost::asio::ip::tcp;
             auto end = readbuf_.end();
             std::vector<uint8_t> message_buf(begin, end);
             ProtobufMessageConverter converter;
-            auto message_ptr = converter.MessageFromSerialized(message_buf);
+            std::shared_ptr<Message> message_ptr = converter.MessageFromSerialized(message_buf);
             message_queue_->push_back(message_ptr, shared_from_this());
-            std::cout << "INCOMMING MESSAGE YO" << std::endl;
             message_ptr->print();
         } else {
             std::cout << "error in handle read message: " << ec << std::endl;
