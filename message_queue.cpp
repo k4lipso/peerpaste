@@ -28,10 +28,9 @@
         deque_.push_back(request_object);
     }
 
-    const RequestObjectPtr MessageQueue::front()
+    const RequestObjectPtr MessageQueue::front() const
     {
         std::lock_guard<std::mutex> guard(mutex_);
-        std::cout << "FRONT ON SIZE: " << deque_.size() << std::endl;
         return deque_.front();
     }
 

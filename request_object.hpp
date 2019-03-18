@@ -12,11 +12,11 @@
 class RequestObject
 {
 public:
-    typedef std::shared_ptr<Message> MessagePtr;
-    typedef std::shared_ptr<Peer> PeerPtr;
-    typedef std::shared_ptr<Session> SessionPtr;
-    typedef std::shared_ptr<RequestObject> RequestObjectPtr;
-    typedef std::function<void(RequestObjectPtr)> HandlerFunction;
+    using MessagePtr = std::shared_ptr<Message>;
+    using PeerPtr = std::shared_ptr<Peer>;
+    using SessionPtr = std::shared_ptr<Session>;
+    using RequestObjectPtr = std::shared_ptr<RequestObject>;
+    using HandlerFunction = std::function<void(RequestObjectPtr)>;
 
     RequestObject() {}
     ~RequestObject () {}

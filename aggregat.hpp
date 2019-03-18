@@ -86,7 +86,8 @@ public:
             }
         }
 
-        std::cout << "No pattern matched in get_result_message()" << std::endl;
+        std::cout << "No pattern matched in get_result_message()" << '\n';
+        return nullptr;
     }
 
 private:

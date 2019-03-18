@@ -7,6 +7,8 @@ set(CMAKE_BUILD_TYPE Debug)
 
 project("PeerPaste" CXX)
 
+option(BUILD_TESTS "test will be build" OFF)
+
 find_package (Threads REQUIRED)
 
 find_package(Protobuf REQUIRED)
@@ -107,7 +109,9 @@ target_link_libraries(peer
 #         libserver
 # )
 
-add_subdirectory(test)
+if(BUILD_TESTS)
+    add_subdirectory(test)
+endif()
 # find_package(Catch2 REQUIRED)
 
 # add_executable(test test.cpp)

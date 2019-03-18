@@ -6,19 +6,19 @@ public:
 
     void print() const
     {
-        std::cout << "#### ROUTINGTABLE BEGIN ####" << std::endl;
-        std::cout << "SELF:" << std::endl;
+        std::cout << "#### ROUTINGTABLE BEGIN ####" << '\n';
+        std::cout << "SELF:" << '\n';
         self_->print();
-        std::cout << "PREDECESSOR: " << std::endl;
+        std::cout << "PREDECESSOR: " << '\n';
         if(predecessor_ != nullptr){
             predecessor_->print();
         }
-        std::cout << "FINGERTABLE: " << std::endl;
+        std::cout << "FINGERTABLE: " << '\n';
         for(const auto peer : peers_){
             peer->print();
-            std::cout << "######" << std::endl;
+            std::cout << "######" << '\n';
         }
-        std::cout << "#### ROUTINGTABLE END ####" << std::endl;
+        std::cout << "#### ROUTINGTABLE END ####" << '\n';
     }
 
     const PeerPtr get_self() const

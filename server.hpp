@@ -55,23 +55,14 @@ private:
 
     void run()
     {
-        io_context_.post( read_strand_.wrap( [&]()
-                        {
-                            message_handler_.handle_message();
-                        }) );
-        /* message_handler_.handle_message(); */
+        message_handler_.handle_message();
         message_handler_.stabilize();
         message_handler_.notify();
-        io_context_.post( read_strand_.wrap( [&]()
-                        {
-                            handle_write_queue();
-                        }) );
-        /* handle_write_queue(); */
+        handle_write_queue();
         send_routing_information();
 
-        timer_.expires_at(timer_.expiry() + boost::asio::chrono::seconds(1));
+        timer_.expires_at(timer_.expiry() + boost::asio::chrono::milliseconds(500));
         timer_.async_wait(boost::bind(&Server::run, this));
-
     }
 
     //TODO: using move() for request?
@@ -95,7 +86,7 @@ private:
                 session->read();
             }
         } else {
-            //TODO: this is to session/boost specific
+            //TODO: this is too session/boost specific
             //when using a test_socket or something like that this code
             //should be more abstract so that the message_handler does not need
             //to know what kind of object sends the data somewhere

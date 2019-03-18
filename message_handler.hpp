@@ -16,6 +16,7 @@ public:
     typedef std::shared_ptr<Message> MessagePtr;
     typedef std::shared_ptr<Session> SessionPtr;
     typedef std::shared_ptr<RequestObject> RequestObjectPtr;
+    typedef std::shared_ptr<Peer> PeerPtr;
 
     MessageHandler (boost::asio::io_context& io_context, short port) :
                         routing_table_(),
@@ -91,7 +92,7 @@ public:
             return;
         }
 
-        std::cout << "UNKNOWN REQUEST TYPE: " << request_type << std::endl;
+        std::cout << "UNKNOWN REQUEST TYPE: " << request_type << '\n';
     }
 
     void handle_find_successor_request(const RequestObjectPtr transport_object)
@@ -216,7 +217,7 @@ public:
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 0){
             //TODO: handle_invalid_message!
-            std::cout << "Invalid message handle_get_predecessor_request" << std::endl;
+            std::cout << "Invalid message handle_get_predecessor_request" << '\n';
         }
 
         auto response = message->generate_response();
@@ -226,7 +227,8 @@ public:
         } else {
             //TODO: send invalid message here, so that requestor knows that there
             //is no predecessor
-            std::cout << "OMG ITS HAPPENING" << std::endl;
+            std::cout << "[MessageHandler] handle_get_predecessor_request():"
+                      << "not yet implemented" << '\n';
         }
         response->generate_transaction_id();
 
@@ -250,47 +252,17 @@ public:
                 std::cout << "handle response: no handler specified" << '\n';
             }
 
-            std::cout << "FOO" << std::endl;
             auto message = transport_object->get_message();
-            std::cout << "FOO" << std::endl;
             auto possible_request = aggregator_.add_aggregat(message);
-            std::cout << "FOO" << std::endl;
             if(possible_request != nullptr){
                 push_to_write_queue(possible_request);
             }
-            std::cout << "FOO" << std::endl;
 
         } else {
-            std::cout << "INVALID MSG (handle_response)" << std::endl;
+            std::cout << "[MessageHandler] (handle_response) INVALID MSG " << '\n';
             //TODO: handle invalid message
         }
     }
-
-    /* std::string query(std::string address, std::string port) */
-    /* { */
-    /*     MessagePtr query_request = std::make_shared<Message>(); */
-
-    /*     Header query_header(true, 0, 0, "query", "", "", ""); */
-    /*     auto self = routing_table_.get_self(); */
-
-    /*     query_request->set_header(query_header); */
-    /*     query_request->add_peer(*self.get()); */
-    /*     query_request->generate_transaction_id(); */
-    /*     auto transaction_id = query_request->get_transaction_id(); */
-
-    /*     auto target = std::make_shared<Peer>("", address, port); */
-
-    /*     auto handler = std::bind(&MessageHandler::handle_query_response, */
-    /*                                                         this, */
-    /*                                                         std::placeholders::_1); */
-
-    /*     auto request = std::make_shared<RequestObject>(); */
-    /*     request->set_handler(handler); */
-    /*     request->set_message(query_request); */
-    /*     request->set_connection(target); */
-    /*     push_to_write_queue(request); */
-    /*     return transaction_id; */
-    /* } */
 
     void stabilize()
     {
@@ -320,13 +292,13 @@ public:
     {
         //TODO: add better abstracted checking if succ/pre/whatever is initialized
         if(routing_table_.get_self()->get_id() == ""){
-            std::cout << "Notifi: error, no id for self" << std::endl;
+            std::cout << "Notifi: error, no id for self" << '\n';
             return;
         }
 
         auto target = routing_table_.get_successor();
         if(target == nullptr){
-            std::cout << "Notifi: error, no successor found" << std::endl;
+            std::cout << "Notifi: error, no successor found" << '\n';
             return;
         }
 
@@ -350,7 +322,7 @@ public:
 
     void handle_notify_response(const RequestObjectPtr transport_object)
     {
-        std::cout << "handle_notify_response" << std::endl;
+        std::cout << "handle_notify_response" << '\n';
         return;
     }
 
@@ -359,7 +331,7 @@ public:
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
             //TODO: handle invalid msg
-            std::cout << "handle notify invalid message" << std::endl;
+            std::cout << "handle notify invalid message" << '\n';
             return;
         }
 
@@ -441,7 +413,7 @@ public:
             routing_table_.set_self(peer);
             routing_table_.get_self()->print();
         } else {
-            std::cout << "WRONG MESSAGE SIZE() handle_query_response" << std::endl;
+            std::cout << "WRONG MESSAGE SIZE() handle_query_response" << '\n';
             //TODO: handle invalid message
         }
     }
@@ -452,7 +424,7 @@ public:
 
         if(message->get_peers().size() != 1){
             //TODO: handle invalid message
-            std::cout << "invalid message size at handle_stabilize" << std::endl;
+            std::cout << "invalid message size at handle_stabilize" << '\n';
             return;
         }
 

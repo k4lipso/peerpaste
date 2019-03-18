@@ -15,17 +15,19 @@
 
     void WriteQueue::push_back(const RequestObjectPtr request)
     {
-        std::cout << "FRONT ON SIZE: " << deque_.size() << std::endl;
+        std::lock_guard<std::mutex> guard(mutex_);
         deque_.push_back(request);
     }
 
     const RequestObjectPtr WriteQueue::front() const
     {
+        std::lock_guard<std::mutex> guard(mutex_);
         return deque_.front();
     }
 
-    void WriteQueue::pop_front() noexcept
+    void WriteQueue::pop_front()
     {
+        std::lock_guard<std::mutex> guard(mutex_);
         deque_.pop_front();
     }
 

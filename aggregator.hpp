@@ -9,8 +9,8 @@
 class Aggregator
 {
 public:
-    typedef std::shared_ptr<Message> MessagePtr;
-    typedef std::shared_ptr<RequestObject> RequestObjectPtr;
+    using MessagePtr = std::shared_ptr<Message>;
+    using RequestObjectPtr = std::shared_ptr<RequestObject>;
 
     Aggregator () : aggregats_() {
         write_queue_ = WriteQueue::GetInstance();
@@ -28,7 +28,7 @@ public:
                 return nullptr;
             }
         }
-        std::cout << "AGGR NOT IN AGGRS" << std::endl;
+        std::cout << "AGGR NOT IN AGGRS" << '\n';
         return nullptr;
     }
 
