@@ -240,19 +240,28 @@ public:
     void handle_response(const RequestObjectPtr transport_object)
     {
 
+        //Get the CorrelationID to check if there is an OpenRequest matching
+        //that ID
         auto correlational_id = transport_object->get_correlational_id();
         auto search = open_requests_.find(correlational_id);
+
+        //if there is an open request
         if(search != open_requests_.end()){
+            //Get the request object and erase it from the container
             auto request_object = open_requests_.at(correlational_id);
             open_requests_.erase(correlational_id);
-            /* auto request_object = open_requests_.extract(correlational_id).value; */
+
+            //Check if the request has a handler function
             if(request_object->has_handler()){
+                //call the handler function passing the response object
                 request_object->call(transport_object);
             } else {
                 std::cout << "handle response: no handler specified" << '\n';
             }
 
+            //Get the response message
             auto message = transport_object->get_message();
+            //Check if there is an aggregat waiting for a message
             auto possible_request = aggregator_.add_aggregat(message);
             if(possible_request != nullptr){
                 push_to_write_queue(possible_request);
@@ -353,6 +362,7 @@ public:
 
     void join(std::string address, std::string port)
     {
+        //Generate Query
         MessagePtr query_request = std::make_shared<Message>();
 
         Header query_header(true, 0, 0, "query", "", "", "");
@@ -374,6 +384,7 @@ public:
         request->set_message(query_request);
         request->set_connection(target);
 
+        //Generate Find Successor Request
         MessagePtr find_successor_request = std::make_shared<Message>();
         Header find_succressor_header(true, 0, 0, "find_successor", "", "", "");
         find_successor_request->set_header(find_succressor_header);
@@ -388,6 +399,8 @@ public:
         successor_request->set_message(find_successor_request);
         successor_request->set_connection(target);
 
+        //Add succsessor request as aggregat, so that it gets send
+        //as soon as the query_response was handled
         aggregator_.add_aggregat(successor_request, { transaction_id });
         push_to_write_queue(request);
     }

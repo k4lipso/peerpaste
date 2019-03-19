@@ -21,6 +21,17 @@ public:
     RequestObject() {}
     ~RequestObject () {}
 
+    /*
+     * Calls the optional handlerfunction with the
+     * given request object
+     * The Idea is that you create a Request, set a handler
+     * and store it in an open_requests container
+     * As soon as you get a response with a matching
+     * corelational ID you pass the response object
+     * to this call function of the original request object
+     * which will execute the function with the response as an
+     * argument
+     */
     void call(RequestObjectPtr request)
     {
         //throw exeption if no value
