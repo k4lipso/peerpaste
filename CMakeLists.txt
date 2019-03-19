@@ -52,6 +52,7 @@ add_library(libserver
     "aggregator.hpp"
     "aggregat.hpp"
     "cryptowrapper.cpp"
+    "storage.hpp"
     "proto/messages.pb.cc"
     )
 

@@ -8,6 +8,7 @@
 #include "routing_table.hpp"
 #include "request_object.hpp"
 #include "aggregator.hpp"
+#include "storage.hpp"
 #include <functional>
 
 class MessageHandler
@@ -20,13 +21,17 @@ public:
 
     MessageHandler (boost::asio::io_context& io_context, short port) :
                         routing_table_(),
-                        aggregator_()
+                        aggregator_(),
+                        storage_(nullptr)
     {
         //TODO: setup self more accurate
         routing_table_.get_self()->set_port(std::to_string(port));
         routing_table_.get_self()->set_ip("127.0.0.1");
         routing_table_.get_self()->set_id(util::generate_sha256("127.0.0.1",
                                                                 std::to_string(port)));
+        /* storage_ = Storage(std::string(routing_table_.get_self()->get_id())); */
+        storage_ = std::make_unique<Storage>(routing_table_.get_self()->get_id());
+
         message_queue_ = MessageQueue::GetInstance();
         write_queue_ = WriteQueue::GetInstance();
     }
@@ -360,6 +365,50 @@ public:
         routing_table_.print();
     }
 
+    void put(const std::string& data)
+    {
+        //generate data id
+        auto data_id = util::generate_sha256(data, "");
+
+        //TODO: generate put request here, holding the data string
+        //then check if we know the successor allready.
+        //if that is the case just send the put request
+        //if it is not the case:
+        //generate find successor request for the data_id
+        //create an aggregat which waits till successor is found
+        //and then sends the put request
+
+        //try to find successor
+        auto succ = find_successor(data_id);
+
+        //if no successor is found
+        if(succ == nullptr){
+            //We have to use agggregat
+            auto succ_prede = closest_preceding_node(data_id);
+            auto new_request = std::make_shared<Message>();
+            Header header(true, 0, 0, "find_successor", "", "", "");
+            new_request->set_header(header);
+            new_request->set_peers({ Peer(data_id, "", "") });
+            new_request->generate_transaction_id();
+            auto transaction_id = new_request->get_transaction_id();
+
+            auto handler = std::bind(&MessageHandler::handle_put,
+                                     this,
+                                     std::placeholders::_1);
+
+            auto request = std::make_shared<RequestObject>();
+            request->set_handler(handler);
+            request->set_message(new_request);
+            request->set_connection(succ_prede);
+            push_to_write_queue(request);
+            return;
+        }
+    }
+
+    void handle_put(const RequestObjectPtr transport_object)
+    {
+    }
+
     void join(std::string address, std::string port)
     {
         //Generate Query
@@ -465,6 +514,7 @@ public:
 private:
 
     RoutingTable routing_table_;
+    std::unique_ptr<Storage> storage_;
     std::shared_ptr<MessageQueue> message_queue_;
     std::shared_ptr<WriteQueue> write_queue_;
 
