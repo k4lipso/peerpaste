@@ -74,6 +74,20 @@ public:
         return peers_;
     }
 
+    bool is_valid()
+    {
+        const auto successor = get_successor();
+        const auto predecessor = get_predecessor();
+        if(successor != nullptr && successor != self_){
+            if(predecessor != nullptr && predecessor != self_){
+                std::cout << "valid" << std::endl;
+                return true;
+            }
+        }
+        std::cout << "not valid" << std::endl;
+        return false;
+    }
+
 private:
     PeerPtr self_;
     PeerPtr predecessor_;

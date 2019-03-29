@@ -381,6 +381,9 @@ public:
 
     void put(const std::string& data)
     {
+        while(!routing_table_.is_valid()){
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
         //generate data id
         auto data_id = util::generate_sha256(data, "");
 
