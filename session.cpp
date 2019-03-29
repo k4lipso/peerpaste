@@ -25,6 +25,7 @@ using boost::asio::ip::tcp;
 
     Session::~Session ()
     {
+        socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
     }
 
     boost::asio::ip::tcp::socket& Session::get_socket()
@@ -129,7 +130,6 @@ using boost::asio::ip::tcp;
             ProtobufMessageConverter converter;
             std::shared_ptr<Message> message_ptr = converter.MessageFromSerialized(message_buf);
             message_queue_->push_back(message_ptr, shared_from_this());
-            message_ptr->print();
         } else {
             std::cout << "error in handle read message: " << ec << std::endl;
             do_read_header();
@@ -159,7 +159,7 @@ using boost::asio::ip::tcp;
             return;
 
         } else {
-            std::cout << "error in handle read: " << error << std::endl;
+            /* std::cout << "error in handle read: " << error << std::endl; */
         }
 
         return;

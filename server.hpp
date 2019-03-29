@@ -26,8 +26,9 @@ using boost::asio::ip::tcp;
 class Server
 {
 public:
-    Server(int thread_count = 4, short port = 1337)
-        : thread_count_(thread_count), acceptor_(io_context_),
+    Server(int thread_count = 4, int port = 1338)
+        : port_(port),
+          thread_count_(thread_count), acceptor_(io_context_),
           message_handler_(io_context_, port),
           timer_(io_context_, boost::asio::chrono::seconds(1)),
           read_strand_(io_context_),
@@ -36,9 +37,9 @@ public:
         write_queue_ = WriteQueue::GetInstance();
     }
 
-    void start_server(uint16_t port)
+    void start_server()
     {
-        start_listening(port);
+        start_listening(port_);
         accept_connections();
         message_handler_.init();
         run();
@@ -50,6 +51,11 @@ public:
         accept_connections();
         message_handler_.join(addr, std::to_string(server_port));
         run();
+    }
+
+    void put(std::string data)
+    {
+        message_handler_.put(data);
     }
 private:
 
@@ -221,6 +227,8 @@ private:
 
     std::shared_ptr<WriteQueue> write_queue_;
     MessageHandler message_handler_;
+
+    const int port_;
 };
 
 #endif /* SERVER_H */

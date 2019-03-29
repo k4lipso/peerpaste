@@ -98,6 +98,17 @@ target_link_libraries(peer
         libserver
 )
 
+add_executable(put main3.cpp)
+
+target_include_directories(put
+    PUBLIC
+)
+
+target_link_libraries(put
+    PUBLIC
+        libserver
+)
+
 # add_executable(msg_test msg_test.cpp)
 
 # target_include_directories(msg_test

@@ -9,10 +9,14 @@
 class Message
 {
 public:
-    Message() {}
+    Message() : data_("") {}
 
     const void print() const
     {
+        if(get_request_type() == "get_predecessor" ||
+                    get_request_type() == "notify"){
+            return;
+        }
         std::cout << "########## MESSAGE BEGIN ##########" << '\n';
         std::cout << "##### HEADER #####" << '\n';
         header_.print();
@@ -23,6 +27,8 @@ public:
             peer.print();
             i++;
         }
+        std::cout << "##### DATA ######" << std::endl;
+        std::cout << data_ << std::endl;
         std::cout << "########## MESSAGE END ##########" << '\n';
     }
 
@@ -101,9 +107,20 @@ public:
         return get_header().get_request_type();
     }
 
+    void set_data(const std::string& data)
+    {
+        data_ = data;
+    }
+
+    std::string get_data()
+    {
+        return data_;
+    }
+
 private:
     Header header_;
     std::vector<Peer> peers_;
+    std::string data_;
 };
 
 #endif /* MESSAGE_HPP */

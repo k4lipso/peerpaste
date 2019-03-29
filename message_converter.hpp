@@ -35,9 +35,9 @@ public:
         auto protobuf_message = std::make_unique<Request>();
         //fill Message with data by parsing from DataBuffer
         protobuf_message->ParseFromArray(&buf[0], buf.size()); //TODO: could fail
-
         //Get protobuf_header and create Header from it
         auto protobuf_header = protobuf_message->commonheader();
+        auto protobuf_data = protobuf_message->data();
         Header header(protobuf_header.t_flag(),
                       protobuf_header.ttl(),
                       protobuf_header.message_length(),
@@ -60,6 +60,10 @@ public:
                       protobuf_peer.peer_ip(),
                       protobuf_peer.peer_port());
             message->add_peer(peer);
+        }
+
+        if(protobuf_message->has_data()){
+            message->set_data(protobuf_message->data());
         }
 
         return message;
@@ -86,6 +90,10 @@ public:
             protobuf_peer->set_peer_id(peer.get_id());
             protobuf_peer->set_peer_ip(peer.get_ip());
             protobuf_peer->set_peer_port(peer.get_port());
+        }
+
+        if(message->get_data() != ""){
+            protobuf_message->set_data(message->get_data());
         }
 
         std::vector<uint8_t> buf;
