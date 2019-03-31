@@ -59,6 +59,11 @@ public:
         message_handler_.put(data);
     }
 
+    void get(std::string data)
+    {
+        message_handler_.get(data);
+    }
+
     void send_routing_information(const bool b){
         send_routing_information_ = b;
     }

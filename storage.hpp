@@ -26,6 +26,11 @@ public:
         return content;
     }
 
+    bool exists(const std::string& id){
+        std::ifstream f(storage_path_ + id);
+        return f.good();
+    }
+
 private:
     const std::string id_;
     const std::string storage_path_;

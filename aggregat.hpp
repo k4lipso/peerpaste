@@ -86,7 +86,11 @@ public:
             }
         }
         if(original_message->get_request_type() == "put"){
-            std::cout << "PUTPUTPTUTPUTPUTPAUTADHLKJSAHDKSADHSA" << std::endl;
+            auto succ = messages_.front()->get_peers().at(0);
+            request_->set_connection(std::make_shared<Peer>(succ));
+            return request_;
+        }
+        if(original_message->get_request_type() == "get"){
             auto succ = messages_.front()->get_peers().at(0);
             request_->set_connection(std::make_shared<Peer>(succ));
             return request_;

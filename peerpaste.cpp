@@ -25,6 +25,7 @@ int main(int argc, char** argv)
         ("port,p", po::value<unsigned>(), "Port to listen on")
         ("join,j", po::value<std::vector<std::string>>()->multitoken()->composing(), "IP and Port of Host to connect to")
         ("put", po::value<std::string>(), "Path to text file")
+        ("get", po::value<std::string>(), "Hash of a stored Paste")
         ("debug", "Send routing information to localhost");
 
     po::variables_map vm;
@@ -53,7 +54,6 @@ int main(int argc, char** argv)
         if (vm.count("join")) {
             //TODO: add a lot of boundary checking
             auto vec = vm["join"].as<std::vector<std::string>>();
-            std::cout << vec.size() << std::endl;
             auto host_ip = vec.at(0);
             auto host_port = vec.at(1);
             server->start_client(host_ip, std::atoi(host_port.c_str()), 4);
@@ -68,6 +68,11 @@ int main(int argc, char** argv)
             server->put(str);
         }
 
+        if (vm.count("get")) {
+            std::string data_hash = vm["get"].as<std::string>();
+            server->get(data_hash);
+        }
+
         if (vm.count("debug")) {
             server->send_routing_information(true);
         }
@@ -79,7 +84,6 @@ int main(int argc, char** argv)
     try
     {
         io_context.run();
-        std::cout << "CLEANING UP" << std::endl;
     }
     catch (std::exception& e)
     {

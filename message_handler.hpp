@@ -102,8 +102,31 @@ public:
             handle_put_request(transport_object);
             return;
         }
+        if(request_type == "get"){
+            handle_get_request(transport_object);
+            return;
+        }
 
         /* std::cout << "UNKNOWN REQUEST TYPE: " << request_type << '\n'; */
+    }
+
+    void handle_get_request(const RequestObjectPtr transport_object)
+    {
+        auto message = transport_object->get_message();
+        auto data = message->get_data();
+
+        auto response_message = message->generate_response();
+
+        if(storage_->exists(data)){
+            response_message->set_data(storage_->get(data));
+        } else {
+            response_message->set_data("Could not Find file, try again later");
+        }
+
+        response_message->generate_transaction_id();
+        auto response = std::make_shared<RequestObject>(*transport_object);
+        response->set_message(response_message);
+        push_to_write_queue(response);
     }
 
     void handle_put_request(const RequestObjectPtr transport_object)
@@ -111,6 +134,14 @@ public:
         auto data = transport_object->get_message()->get_data();
         auto data_id = util::generate_sha256(data, "");
         storage_->put(data, data_id);
+
+        auto message = transport_object->get_message();
+        auto response_message = message->generate_response();
+        response_message->set_data(data_id);
+        response_message->generate_transaction_id();
+        auto response = std::make_shared<RequestObject>(*transport_object);
+        response->set_message(response_message);
+        push_to_write_queue(response);
     }
 
     void handle_find_successor_request(const RequestObjectPtr transport_object)
@@ -257,7 +288,6 @@ public:
 
     void handle_response(const RequestObjectPtr transport_object)
     {
-
         //Get the CorrelationID to check if there is an OpenRequest matching
         //that ID
         auto correlational_id = transport_object->get_correlational_id();
@@ -378,6 +408,56 @@ public:
         routing_table_.print();
     }
 
+    void get(const std::string& data)
+    {
+        while(!routing_table_.is_valid()){
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+
+        auto get_request_message = std::make_shared<Message>();
+        Header get_request_message_header(true, 0, 0, "get", "", "", "");
+        get_request_message->set_header(get_request_message_header);
+        get_request_message->set_data(data);
+        get_request_message->generate_transaction_id();
+
+        auto get_request = std::make_shared<RequestObject>();
+        auto get_request_handler = std::bind(&MessageHandler::handle_get_response,
+                                                              this,
+                                                              std::placeholders::_1);
+        get_request->set_handler(get_request_handler);
+        get_request->set_message(get_request_message);
+
+        auto succ = find_successor(data);
+
+        //if no successor is found
+        if(succ == nullptr){
+            //We have to use agggregat
+            auto succ_prede = closest_preceding_node(data);
+            auto new_request = std::make_shared<Message>();
+            Header header(true, 0, 0, "find_successor", "", "", "");
+            new_request->set_header(header);
+            new_request->set_peers({ Peer(data, "", "") });
+            new_request->generate_transaction_id();
+            auto transaction_id = new_request->get_transaction_id();
+
+            auto request = std::make_shared<RequestObject>();
+            request->set_message(new_request);
+            request->set_connection(succ_prede);
+            aggregator_.add_aggregat(get_request, { transaction_id });
+            push_to_write_queue(request);
+            return;
+        }
+        get_request->set_connection(succ);
+        push_to_write_queue(get_request);
+    }
+
+    void handle_get_response(const RequestObjectPtr transport_object)
+    {
+        std::cout << "GET RESPONSE HANDLER" << std::endl;
+
+        std::cout << transport_object->get_message()->get_data() << std::endl;
+    }
+
     void put(const std::string& data)
     {
         while(!routing_table_.is_valid()){
@@ -443,6 +523,8 @@ public:
         /* std::cout << "###############################" << std::endl; */
         /* std::cout << "######HANDLE_PUT_RESPONSE######" << std::endl; */
         /* std::cout << "###############################" << std::endl; */
+        std::cout << "Paste is stored. Get it using this is: " << std::endl;
+        std::cout << transport_object->get_message()->get_data() << std::endl;
     }
 
     void join(std::string address, std::string port)
