@@ -74,17 +74,18 @@ public:
         return peers_;
     }
 
+    /*
+     * Checks if successor and predecessor are set
+     */
     bool is_valid()
     {
         const auto successor = get_successor();
         const auto predecessor = get_predecessor();
         if(successor != nullptr && successor != self_){
             if(predecessor != nullptr && predecessor != self_){
-                std::cout << "valid" << std::endl;
                 return true;
             }
         }
-        std::cout << "not valid" << std::endl;
         return false;
     }
 

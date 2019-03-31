@@ -22,14 +22,11 @@ int main(int argc, char* argv[])
 
     /* boost::asio::io_context io_context; */
     boost::asio::io_context io_context;
-    boost::asio::executor_work_guard<boost::asio::io_context::executor_type> foo
-        = boost::asio::make_work_guard(io_context);
+    auto foo = boost::asio::make_work_guard(io_context);
 
     Server s(4, std::atoi(argv[1]));
     s.start_server();
 
-    /* std::thread thread([&io_context](){ io_context.run(); }); */
-    /* thread.join(); */
     io_context.run();
     std::cout << "CLEANING UP" << std::endl;
   }

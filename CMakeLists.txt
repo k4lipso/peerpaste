@@ -22,7 +22,7 @@ message("${CRYPTOPP_FOUND}")
 
 SET(Boost_USE_STATIC_LIBS ON)
 SET(Boost_USE_MULTITHREAD ON)
-FIND_PACKAGE(Boost REQUIRED COMPONENTS log system thread regex)
+FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options log system thread regex)
 MESSAGE("Boost information")
 MESSAGE("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 MESSAGE("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
@@ -106,6 +106,18 @@ target_include_directories(put
 
 target_link_libraries(put
     PUBLIC
+        libserver
+)
+
+add_executable(peerpaste peerpaste.cpp)
+
+target_include_directories(peerpaste
+    PUBLIC
+)
+
+target_link_libraries(peerpaste
+    PUBLIC
+        ${Boost_LIBRARIES}
         libserver
 )
 

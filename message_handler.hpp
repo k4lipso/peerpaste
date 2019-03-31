@@ -109,7 +109,6 @@ public:
     void handle_put_request(const RequestObjectPtr transport_object)
     {
         auto data = transport_object->get_message()->get_data();
-        std::cout << "DATA: " << data << std::endl;
         auto data_id = util::generate_sha256(data, "");
         storage_->put(data, data_id);
     }
@@ -539,7 +538,7 @@ public:
         routing_table_.print();
     }
 
-    RoutingTable get_routing_table()
+    const RoutingTable get_routing_table()
     {
         return routing_table_;
     }

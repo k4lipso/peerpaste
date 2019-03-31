@@ -43,7 +43,7 @@ public:
     bool add_message(MessagePtr message)
     {
         if(!has_id(message->get_correlational_id())){
-            std::cout << "id not found in add message" << std::endl;
+            /* std::cout << "id not found in add message" << std::endl; */
             return false;
         }
 

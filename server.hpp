@@ -32,7 +32,8 @@ public:
           message_handler_(io_context_, port),
           timer_(io_context_, boost::asio::chrono::seconds(1)),
           read_strand_(io_context_),
-          write_strand_(io_context_)
+          write_strand_(io_context_),
+          send_routing_information_(false)
     {
         write_queue_ = WriteQueue::GetInstance();
     }
@@ -47,7 +48,7 @@ public:
 
     void start_client(std::string addr, uint16_t server_port, uint16_t own_port)
     {
-        start_listening(own_port);
+        start_listening(port_);
         accept_connections();
         message_handler_.join(addr, std::to_string(server_port));
         run();
@@ -57,6 +58,11 @@ public:
     {
         message_handler_.put(data);
     }
+
+    void send_routing_information(const bool b){
+        send_routing_information_ = b;
+    }
+
 private:
 
     void run()
@@ -65,7 +71,9 @@ private:
         message_handler_.stabilize();
         message_handler_.notify();
         handle_write_queue();
-        send_routing_information();
+        if(send_routing_information_){
+            send_routing_information_internal();
+        }
 
         timer_.expires_at(timer_.expiry() + boost::asio::chrono::milliseconds(500));
         timer_.async_wait(boost::bind(&Server::run, this));
@@ -165,7 +173,7 @@ private:
                               );
     }
 
-    void send_routing_information()
+    void send_routing_information_internal()
     {
         auto routing_table_ = message_handler_.get_routing_table();
         tcp::resolver resolver(io_context_);
@@ -229,6 +237,7 @@ private:
     MessageHandler message_handler_;
 
     const int port_;
+    bool send_routing_information_;
 };
 
 #endif /* SERVER_H */
