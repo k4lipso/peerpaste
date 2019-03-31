@@ -10,7 +10,7 @@
 
 #include <boost/asio.hpp>
 #include "proto/messages.pb.h"
-#include <google/protobuf/util/delimited_message_util.h>
+/* #include <google/protobuf/util/delimited_message_util.h> */
 
 //TODO: non boost possible?
 typedef std::vector<boost::uint8_t> DataBuffer;

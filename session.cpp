@@ -26,6 +26,7 @@ using boost::asio::ip::tcp;
     Session::~Session ()
     {
         socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
+        socket_.close();
     }
 
     boost::asio::ip::tcp::socket& Session::get_socket()
@@ -151,15 +152,17 @@ using boost::asio::ip::tcp;
 
     void Session::handle_read_header(const boost::system::error_code& error)
     {
-        if(!error)
-        {
+        if(!error){
             unsigned msg_len = decode_header(readbuf_);
 
             do_read_message(msg_len);
             return;
 
+        } else if((boost::asio::error::eof == error) ||
+                       (boost::asio::error::connection_reset == error)){
+            std::cout << "EOF ERROR DO DISCONNECT" << std::endl;
         } else {
-            /* std::cout << "error in handle read: " << error << std::endl; */
+            std::cout << "error in handle read: " << error << std::endl;
         }
 
         return;

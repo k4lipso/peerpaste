@@ -408,6 +408,12 @@ public:
         routing_table_.print();
     }
 
+    /*
+     * THere are many edge cases not handled yet. for example:
+     * if freshly joined and the own hash is the new successor of the file hash
+     * you want to get, then it is not found
+     *
+     */
     void get(const std::string& data)
     {
         while(!routing_table_.is_valid()){
