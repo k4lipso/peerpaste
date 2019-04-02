@@ -103,6 +103,7 @@ public:
             return;
         }
         if(request_type == "get"){
+            std::cout << "HANDLE A GET" << std::endl;
             handle_get_request(transport_object);
             return;
         }
@@ -417,6 +418,7 @@ public:
     void get(const std::string& data)
     {
         while(!routing_table_.is_valid()){
+            std::cout << "invalid" << std::endl;
             std::this_thread::sleep_for(std::chrono::seconds(1));
         }
 

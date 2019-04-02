@@ -1,6 +1,6 @@
-#include "session.hpp"
-#include "message_queue.hpp"
-#include "message_converter.hpp"
+#include "peerpaste/session.hpp"
+#include "peerpaste/message_queue.hpp"
+#include "peerpaste/message_converter.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -25,13 +25,16 @@ using boost::asio::ip::tcp;
 
     Session::~Session ()
     {
-        socket_.shutdown(boost::asio::ip::tcp::socket::shutdown_both);
-        socket_.close();
     }
 
     boost::asio::ip::tcp::socket& Session::get_socket()
     {
         return socket_;
+    }
+
+    void Session::stop()
+    {
+        socket_.close();
     }
 
     void Session::write(const MessagePtr message)
@@ -119,6 +122,8 @@ using boost::asio::ip::tcp;
 
             //TODO: move out of if statement so it gets called everytime?
             if(!send_packet_queue.empty()){ start_packet_send(); }
+        } else if (error != boost::asio::error::operation_aborted){
+            stop();
         }
     }
 
@@ -158,11 +163,8 @@ using boost::asio::ip::tcp;
             do_read_message(msg_len);
             return;
 
-        } else if((boost::asio::error::eof == error) ||
-                       (boost::asio::error::connection_reset == error)){
-            std::cout << "EOF ERROR DO DISCONNECT" << std::endl;
-        } else {
-            std::cout << "error in handle read: " << error << std::endl;
+        } else if (error != boost::asio::error::operation_aborted){
+            stop();
         }
 
         return;

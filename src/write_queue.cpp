@@ -1,5 +1,5 @@
-#include "write_queue.hpp"
-#include "session.hpp"
+#include "peerpaste/write_queue.hpp"
+#include "peerpaste/session.hpp"
 
 #include <deque>
 

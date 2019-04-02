@@ -93,6 +93,7 @@ public:
         if(original_message->get_request_type() == "get"){
             auto succ = messages_.front()->get_peers().at(0);
             request_->set_connection(std::make_shared<Peer>(succ));
+            std::cout << "return get" << std::endl;
             return request_;
         }
 

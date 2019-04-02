@@ -1,9 +1,9 @@
-#include "peer.hpp"
-#include "message.hpp"
-#include "message_converter.hpp"
-#include "message_queue.cpp"
-#include "message_handler.hpp"
-#include "aggregator.hpp"
+#include "peerpaste/peer.hpp"
+#include "peerpaste/message.hpp"
+#include "peerpaste/message_converter.hpp"
+#include "peerpaste/message_queue.hpp"
+#include "peerpaste/message_handler.hpp"
+#include "peerpaste/aggregator.hpp"
 
 #include <iostream>
 #include <string>

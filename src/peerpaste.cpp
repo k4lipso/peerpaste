@@ -11,7 +11,7 @@
 #include <boost/array.hpp>
 #include <boost/program_options.hpp>
 
-#include "server.hpp"
+#include "peerpaste/server.hpp"
 
 namespace po = boost::program_options;
 

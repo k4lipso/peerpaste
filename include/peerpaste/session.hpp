@@ -43,6 +43,7 @@ public:
         std::cout << "Session Name: " << name_ << '\n';
     }
 private:
+    void stop();
     void queue_message(const std::vector<uint8_t>& message);
     void start_packet_send();
     void packet_send_done(boost::system::error_code const & error);

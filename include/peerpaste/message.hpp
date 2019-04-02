@@ -13,7 +13,7 @@ public:
 
     const void print() const
     {
-        return;
+        /* return; */
         if(get_request_type() == "get_predecessor" ||
                     get_request_type() == "notify"){
             return;
