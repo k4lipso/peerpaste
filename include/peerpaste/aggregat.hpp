@@ -8,98 +8,22 @@
 #include <set>
 #include <memory>
 
+using MessagePtr = std::shared_ptr<Message>;
+using RequestObjectPtr = std::shared_ptr<RequestObject>;
+
 class Aggregat
 {
 public:
-    typedef std::shared_ptr<Message> MessagePtr;
-    typedef std::shared_ptr<RequestObject> RequestObjectPtr;
 
-    Aggregat(RequestObjectPtr request) : request_(request) {}
-    Aggregat(RequestObjectPtr request, std::unordered_set<std::string> ids)
-                    : request_(request),
-                      correlational_ids(ids) {}
+    Aggregat(RequestObjectPtr request);
+    Aggregat(RequestObjectPtr request, std::unordered_set<std::string> ids);
 
-    void add_id(const std::string& id)
-    {
-        correlational_ids.insert(id);
-    }
-
-    const bool has_id(const std::string& id) const noexcept
-    {
-        auto search = correlational_ids.find(id);
-        if(search != correlational_ids.end()) {
-            return true;
-        }
-
-        return false;
-    }
-
-    const bool is_complete() const noexcept
-    {
-        return correlational_ids.empty();
-    }
-
+    void add_id(const std::string& id);
+    const bool has_id(const std::string& id) const noexcept;
+    const bool is_complete() const noexcept;
     //Returns true if message was added, false if not
-    bool add_message(MessagePtr message)
-    {
-        if(!has_id(message->get_correlational_id())){
-            /* std::cout << "id not found in add message" << std::endl; */
-            return false;
-        }
-
-        if(message->is_request()){
-            std::cout << "add_message failed, message is no response"
-                      << std::endl;
-            return false;
-        }
-
-        auto id = message->get_correlational_id();
-        auto pos = correlational_ids.find(message->get_correlational_id());
-        //delete id from set
-        correlational_ids.erase(pos);
-        //add msg to vec
-        messages_.push_back(message);
-        return true;
-    }
-
-    const RequestObjectPtr get_result_message() const
-    {
-        auto original_message = request_->get_message();
-        auto result = std::make_shared<RequestObject>();
-
-        //If request is find_successor and in messages_ is only one object
-        //with a query response, then this is a is a join
-        if(original_message->get_request_type() == "find_successor"){
-            if(messages_.size() == 1 && messages_.front()->get_request_type() == "query"){
-                auto query_message = messages_.front();
-                auto self = query_message->get_peers().front();
-                original_message->set_peers({ self });
-                original_message->generate_transaction_id();
-                return request_;
-            }
-            //both messages are "find_successor"
-            //so we forward the response from the second to the first
-            if(messages_.size() == 1 && messages_.front()->get_request_type() == "find_successor"){
-                auto successor = messages_.front()->get_peers().front();
-                request_->get_message()->set_peers( { successor } );
-                return request_;
-            }
-        }
-        if(original_message->get_request_type() == "put"){
-            auto succ = messages_.front()->get_peers().at(0);
-            request_->set_connection(std::make_shared<Peer>(succ));
-            return request_;
-        }
-        if(original_message->get_request_type() == "get"){
-            auto succ = messages_.front()->get_peers().at(0);
-            request_->set_connection(std::make_shared<Peer>(succ));
-            std::cout << "return get" << std::endl;
-            return request_;
-        }
-
-        std::cout << "No pattern matched in get_result_message()" << '\n';
-        return nullptr;
-    }
+    bool add_message(MessagePtr message);
+    const RequestObjectPtr get_result_message() const;
 
 private:
     std::unordered_set<std::string> correlational_ids;
