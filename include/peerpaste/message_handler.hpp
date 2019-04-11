@@ -73,7 +73,7 @@ public:
         if(is_request){
             handle_request(std::move(transport_object));
         } else {
-            handle_response(transport_object);
+            handle_response(std::move(transport_object));
         }
         handle_message();
     }
@@ -87,31 +87,30 @@ public:
             return;
         }
         if(request_type == "find_successor"){
-            handle_find_successor_request(transport_object);
+            handle_find_successor_request(std::move(transport_object));
             return;
         }
         if(request_type == "get_predecessor"){
-            handle_get_predecessor_request(transport_object);
+            handle_get_predecessor_request(std::move(transport_object));
             return;
         }
         if(request_type == "notify"){
-            handle_notify(transport_object);
+            handle_notify(std::move(transport_object));
             return;
         }
         if(request_type == "put"){
-            handle_put_request(transport_object);
+            handle_put_request(std::move(transport_object));
             return;
         }
         if(request_type == "get"){
-            std::cout << "HANDLE A GET" << std::endl;
-            handle_get_request(transport_object);
+            handle_get_request(std::move(transport_object));
             return;
         }
 
         /* std::cout << "UNKNOWN REQUEST TYPE: " << request_type << '\n'; */
     }
 
-    void handle_get_request(const RequestObjectPtr transport_object)
+    void handle_get_request(RequestObjectPtr&& transport_object)
     {
         auto message = transport_object->get_message();
         auto data = message->get_data();
@@ -130,7 +129,7 @@ public:
         push_to_write_queue(response);
     }
 
-    void handle_put_request(const RequestObjectPtr transport_object)
+    void handle_put_request(RequestObjectPtr&& transport_object)
     {
         auto data = transport_object->get_message()->get_data();
         auto data_id = util::generate_sha256(data, "");
@@ -145,7 +144,7 @@ public:
         push_to_write_queue(response);
     }
 
-    void handle_find_successor_request(const RequestObjectPtr transport_object)
+    void handle_find_successor_request(RequestObjectPtr&& transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
@@ -262,7 +261,7 @@ public:
         push_to_write_queue(response);
     }
 
-    void handle_get_predecessor_request(const RequestObjectPtr transport_object)
+    void handle_get_predecessor_request(RequestObjectPtr&& transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 0){
@@ -287,7 +286,7 @@ public:
         push_to_write_queue(response_object);
     }
 
-    void handle_response(const RequestObjectPtr transport_object)
+    void handle_response(RequestObjectPtr&& transport_object)
     {
         //Get the CorrelationID to check if there is an OpenRequest matching
         //that ID
@@ -300,16 +299,14 @@ public:
             auto request_object = open_requests_.at(correlational_id);
             open_requests_.erase(correlational_id);
 
+            auto message = transport_object->get_message();
+
             //Check if the request has a handler function
             if(request_object->has_handler()){
                 //call the handler function passing the response object
-                request_object->call(transport_object);
-            } else {
-                /* std::cout << "handle response: no handler specified" << '\n'; */
+                request_object->call(std::move(transport_object));
             }
-
             //Get the response message
-            auto message = transport_object->get_message();
             //Check if there is an aggregat waiting for a message
             auto possible_request = aggregator_.add_aggregat(message);
             if(possible_request != nullptr){
@@ -384,7 +381,7 @@ public:
         return;
     }
 
-    void handle_notify(const RequestObjectPtr transport_object)
+    void handle_notify(RequestObjectPtr&& transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
