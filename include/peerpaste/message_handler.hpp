@@ -376,7 +376,7 @@ public:
         push_to_write_queue(request);
     }
 
-    void handle_notify_response(const RequestObjectUPtr transport_object)
+    void handle_notify_response(RequestObjectUPtr&& transport_object)
     {
         std::cout << "handle_notify_response" << '\n';
         return;
@@ -457,7 +457,7 @@ public:
         push_to_write_queue(get_request);
     }
 
-    void handle_get_response(const RequestObjectUPtr transport_object)
+    void handle_get_response(RequestObjectUPtr&& transport_object)
     {
         std::cout << "GET RESPONSE HANDLER" << std::endl;
 
@@ -524,7 +524,7 @@ public:
         push_to_write_queue(put_request);
     }
 
-    void handle_put_response(const RequestObjectUPtr transport_object)
+    void handle_put_response(RequestObjectUPtr&& transport_object)
     {
         /* std::cout << "###############################" << std::endl; */
         /* std::cout << "######HANDLE_PUT_RESPONSE######" << std::endl; */
@@ -578,7 +578,7 @@ public:
         push_to_write_queue(request);
     }
 
-    void handle_join_response(const RequestObjectUPtr transport_object)
+    void handle_join_response(RequestObjectUPtr&& transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
@@ -590,7 +590,7 @@ public:
         routing_table_.print();
     }
 
-    void handle_query_response(const RequestObjectUPtr transport_object)
+    void handle_query_response(RequestObjectUPtr&& transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() == 1){
@@ -604,7 +604,7 @@ public:
         }
     }
 
-    void handle_stabilize(const RequestObjectUPtr transport_object)
+    void handle_stabilize(RequestObjectUPtr&& transport_object)
     {
         auto message = transport_object->get_message();
 
