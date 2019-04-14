@@ -16,7 +16,8 @@ class MessageHandler
 public:
     typedef std::shared_ptr<Message> MessagePtr;
     typedef std::shared_ptr<Session> SessionPtr;
-    typedef std::shared_ptr<RequestObject> RequestObjectPtr;
+    typedef std::unique_ptr<RequestObject> RequestObjectUPtr;
+    typedef std::shared_ptr<RequestObject> RequestObjectSPtr;
     typedef std::shared_ptr<Peer> PeerPtr;
 
     MessageHandler (boost::asio::io_context& io_context, short port) :
@@ -44,15 +45,15 @@ public:
     ~MessageHandler () {}
 
     //TODO: pass rvalue reference to only allow std::move()
-    void push_to_write_queue(const RequestObjectPtr transport_object)
+    void push_to_write_queue(RequestObjectSPtr shared_transport_object)
     {
-        auto is_request = transport_object->get_message()->is_request();
+        auto is_request = shared_transport_object->get_message()->is_request();
         if(is_request){
-            auto transaction_id = transport_object->get_message()->get_transaction_id();
+            auto transaction_id = shared_transport_object->get_message()->get_transaction_id();
             //TODO: store ptrs in open_requests
-            open_requests_[transaction_id] = transport_object;
+            open_requests_[transaction_id] = shared_transport_object;
         }
-        write_queue_->push_back(transport_object);
+        write_queue_->push_back(shared_transport_object);
     }
 
     void handle_message()
@@ -62,7 +63,7 @@ public:
             return;
         }
 
-        auto transport_object = std::move(message_queue_->front());
+        auto transport_object = message_queue_->front();
         message_queue_->pop_front();
 
         const bool is_request = transport_object->get_message()->is_request();
@@ -78,7 +79,7 @@ public:
         handle_message();
     }
 
-    void handle_request(RequestObjectPtr&& transport_object)
+    void handle_request(RequestObjectUPtr&& transport_object)
     {
         auto request_type = transport_object->get_request_type();
 
@@ -110,7 +111,7 @@ public:
         /* std::cout << "UNKNOWN REQUEST TYPE: " << request_type << '\n'; */
     }
 
-    void handle_get_request(RequestObjectPtr&& transport_object)
+    void handle_get_request(RequestObjectUPtr&& transport_object)
     {
         auto message = transport_object->get_message();
         auto data = message->get_data();
@@ -129,7 +130,7 @@ public:
         push_to_write_queue(response);
     }
 
-    void handle_put_request(RequestObjectPtr&& transport_object)
+    void handle_put_request(RequestObjectUPtr&& transport_object)
     {
         auto data = transport_object->get_message()->get_data();
         auto data_id = util::generate_sha256(data, "");
@@ -144,7 +145,7 @@ public:
         push_to_write_queue(response);
     }
 
-    void handle_find_successor_request(RequestObjectPtr&& transport_object)
+    void handle_find_successor_request(RequestObjectUPtr&& transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
@@ -237,7 +238,7 @@ public:
         return self;
     }
 
-    void handle_query_request(RequestObjectPtr&& transport_object)
+    void handle_query_request(RequestObjectUPtr&& transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
@@ -261,7 +262,7 @@ public:
         push_to_write_queue(response);
     }
 
-    void handle_get_predecessor_request(RequestObjectPtr&& transport_object)
+    void handle_get_predecessor_request(RequestObjectUPtr&& transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 0){
@@ -286,7 +287,7 @@ public:
         push_to_write_queue(response_object);
     }
 
-    void handle_response(RequestObjectPtr&& transport_object)
+    void handle_response(RequestObjectUPtr&& transport_object)
     {
         //Get the CorrelationID to check if there is an OpenRequest matching
         //that ID
@@ -375,13 +376,13 @@ public:
         push_to_write_queue(request);
     }
 
-    void handle_notify_response(const RequestObjectPtr transport_object)
+    void handle_notify_response(const RequestObjectUPtr transport_object)
     {
         std::cout << "handle_notify_response" << '\n';
         return;
     }
 
-    void handle_notify(RequestObjectPtr&& transport_object)
+    void handle_notify(RequestObjectUPtr&& transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
@@ -456,7 +457,7 @@ public:
         push_to_write_queue(get_request);
     }
 
-    void handle_get_response(const RequestObjectPtr transport_object)
+    void handle_get_response(const RequestObjectUPtr transport_object)
     {
         std::cout << "GET RESPONSE HANDLER" << std::endl;
 
@@ -523,7 +524,7 @@ public:
         push_to_write_queue(put_request);
     }
 
-    void handle_put_response(const RequestObjectPtr transport_object)
+    void handle_put_response(const RequestObjectUPtr transport_object)
     {
         /* std::cout << "###############################" << std::endl; */
         /* std::cout << "######HANDLE_PUT_RESPONSE######" << std::endl; */
@@ -577,7 +578,7 @@ public:
         push_to_write_queue(request);
     }
 
-    void handle_join_response(const RequestObjectPtr transport_object)
+    void handle_join_response(const RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
@@ -589,7 +590,7 @@ public:
         routing_table_.print();
     }
 
-    void handle_query_response(const RequestObjectPtr transport_object)
+    void handle_query_response(const RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() == 1){
@@ -603,7 +604,7 @@ public:
         }
     }
 
-    void handle_stabilize(const RequestObjectPtr transport_object)
+    void handle_stabilize(const RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
 
@@ -648,7 +649,7 @@ private:
     //                        Peer to send the request
     /* std::map<std::string, std::function<void(MessagePtr)>> open_requests_; */
     //TODO: delete objects when they got handled
-    std::map<std::string, RequestObjectPtr> open_requests_;
+    std::map<std::string, RequestObjectSPtr> open_requests_;
 
     Aggregator aggregator_;
 };

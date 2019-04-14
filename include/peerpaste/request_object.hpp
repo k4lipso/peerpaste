@@ -8,15 +8,18 @@
 #include <variant>
 #include <optional>
 
+class RequestObject;
+
+using MessagePtr = std::shared_ptr<Message>;
+using PeerPtr = std::shared_ptr<Peer>;
+using SessionPtr = std::shared_ptr<Session>;
+using RequestObjectUPtr = std::unique_ptr<RequestObject>;
+using RequestObjectSPtr = std::shared_ptr<RequestObject>;
+using HandlerFunction = std::function<void(RequestObjectUPtr)>;
 
 class RequestObject
 {
 public:
-    using MessagePtr = std::shared_ptr<Message>;
-    using PeerPtr = std::shared_ptr<Peer>;
-    using SessionPtr = std::shared_ptr<Session>;
-    using RequestObjectPtr = std::shared_ptr<RequestObject>;
-    using HandlerFunction = std::function<void(RequestObjectPtr)>;
 
     RequestObject() {}
     ~RequestObject () {}
@@ -32,10 +35,10 @@ public:
      * which will execute the function with the response as an
      * argument
      */
-    void call(RequestObjectPtr request)
+    void call(RequestObjectUPtr request)
     {
         //throw exeption if no value
-        if(handler_.has_value()) handler_.value()(request);
+        if(handler_.has_value()) handler_.value()(std::move(request));
     }
 
     void set_handler(HandlerFunction handler)
