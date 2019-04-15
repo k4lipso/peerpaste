@@ -122,6 +122,10 @@ public:
             handle_notify(std::move(transport_object));
             return;
         }
+        if(request_type == "check_predecessor"){
+            handle_check_predecessor(std::move(transport_object));
+            return;
+        }
         if(request_type == "put"){
             handle_put_request(std::move(transport_object));
             return;
@@ -364,6 +368,50 @@ public:
         request->set_message(get_predecessor_msg);
         request->set_connection(target);
         push_to_write_queue(request);
+    }
+
+    void check_predecessor()
+    {
+        auto target = routing_table_.get_predecessor();
+        if(target == nullptr){
+            /* std::cout << "Notifi: error, no successor found" << '\n'; */
+            return;
+        }
+
+        auto notify_message = std::make_shared<Message>();
+        notify_message->set_header(Header(true, 0, 0, "check_predecessor", "", "", ""));
+        notify_message->generate_transaction_id();
+        auto transaction_id = notify_message->get_transaction_id();
+
+        auto handler = std::bind(&MessageHandler::handle_check_predecessor_response,
+                                 this,
+                                 std::placeholders::_1);
+
+        auto request = std::make_shared<RequestObject>();
+        request->set_message(notify_message);
+        request->set_handler(handler);
+        request->set_connection(target);
+        push_to_write_queue(request);
+    }
+
+    void handle_check_predecessor_response(RequestObjectUPtr&& transport_object)
+    {
+        if(!transport_object->get_message()->is_request()){
+            return;
+        }
+        routing_table_.set_predecessor(nullptr);
+    }
+
+    void handle_check_predecessor(RequestObjectUPtr&& transport_object)
+    {
+        //Generate and push response
+        auto message = transport_object->get_message();
+        auto response = message->generate_response();
+        response->generate_transaction_id();
+
+        auto response_object = std::make_shared<RequestObject>(*transport_object);
+        response_object->set_message(response);
+        push_to_write_queue(response_object);
     }
 
     void notify()
@@ -655,14 +703,10 @@ public:
         }
     }
 
-    /* const RoutingTable get_routing_table() */
-    /* { */
-    /*     return routing_table_; */
-    /* } */
-
-    void handle_find_successor_response(MessagePtr message);
-    void handle_check_predecessor_response(MessagePtr message);
-    void handle_get_predecessor_response(MessagePtr message);
+    const RoutingTable get_routing_table()
+    {
+        return routing_table_;
+    }
 
 private:
 
