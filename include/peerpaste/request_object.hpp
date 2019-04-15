@@ -128,7 +128,6 @@ public:
     auto is_valid(){
         std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
         auto dur = std::chrono::duration_cast<std::chrono::seconds>(end - start_).count();
-        std::cout << "dur = " << dur << std::endl;
         //at startup duration is somehow > 1000 so we filter by the && statement
         //TODO: find why dur is so bit at the beginning
         if(dur > 10){

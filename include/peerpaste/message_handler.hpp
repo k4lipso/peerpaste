@@ -24,7 +24,9 @@ public:
     MessageHandler (boost::asio::io_context& io_context, short port) :
                         routing_table_(),
                         aggregator_(),
-                        storage_(nullptr)
+                        storage_(nullptr),
+                        stabilize_flag_(false),
+                        check_predecessor_flag_(false)
     {
         //TODO: setup self more accurate
         routing_table_.get_self()->set_port(std::to_string(port));
@@ -40,11 +42,26 @@ public:
 
     void init()
     {
-        std::cout << "FOO" << std::endl;
         auto self = routing_table_.get_self();
-        std::cout << "FOO" << std::endl;
         routing_table_.set_successor(self);
-        std::cout << "FOO" << std::endl;
+    }
+
+    void run()
+    {
+        handle_message();
+
+        if(not stabilize_flag_){
+            std::cout << "STABILIZE" << std::endl;
+            stabilize();
+        }
+        if(not check_predecessor_flag_){
+            std::cout << "CHECK PREDECESSOR" << std::endl;
+            check_predecessor();
+        }
+
+        handle_timeouts();
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        run();
     }
 
     ~MessageHandler () {}
@@ -368,6 +385,8 @@ public:
         request->set_message(get_predecessor_msg);
         request->set_connection(target);
         push_to_write_queue(request);
+
+        stabilize_flag_ = true;
     }
 
     void check_predecessor()
@@ -392,10 +411,12 @@ public:
         request->set_handler(handler);
         request->set_connection(target);
         push_to_write_queue(request);
+        check_predecessor_flag_ = true;
     }
 
     void handle_check_predecessor_response(RequestObjectUPtr&& transport_object)
     {
+        check_predecessor_flag_ = false;
         if(!transport_object->get_message()->is_request()){
             return;
         }
@@ -683,17 +704,21 @@ public:
         std::cout << "HANDLE STABILIZ" << std::endl;
         auto message = transport_object->get_message();
 
-        if(message->get_peers().size() != 1){
+        if(message->get_peers().size() != 1 || message->is_request()){
             //TODO: handle invalid message
             std::cout << "invalid message size at handle_stabilize" << '\n';
-            std::lock_guard<std::mutex> guard(mutex_);
+            /* std::lock_guard<std::mutex> guard(mutex_); */
             routing_table_.set_successor(routing_table_.get_self());
+            stabilize_flag_ = false;
+            notify();
             return;
         }
 
         auto successors_predecessor = message->get_peers().front();
         auto successor = routing_table_.get_successor();
         auto self = routing_table_.get_self();
+        std::cout << message->is_request() << std::endl;
+        std::cout << "FOODASDASDASKJDHkjh" << std::endl;
 
         if(util::between(self->get_id(),
                          successors_predecessor.get_id(),
@@ -701,6 +726,8 @@ public:
             std::cout << "IS BETWEEN" << std::endl;
             routing_table_.set_successor(std::make_shared<Peer>(successors_predecessor));
         }
+        notify();
+        stabilize_flag_ = false;
     }
 
     const RoutingTable get_routing_table()
@@ -727,5 +754,8 @@ private:
     Aggregator aggregator_;
 
     mutable std::mutex mutex_;
+
+    bool stabilize_flag_;
+    bool check_predecessor_flag_;
 };
 #endif /* MESSAGE_HANDLER_HPP */

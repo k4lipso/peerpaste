@@ -44,6 +44,7 @@ public:
         accept_connections();
         message_handler_.init();
         run();
+        message_handler_.run();
     }
 
     void start_client(std::string addr, uint16_t server_port, uint16_t own_port)
@@ -52,6 +53,7 @@ public:
         accept_connections();
         message_handler_.join(addr, std::to_string(server_port));
         run();
+        message_handler_.run();
     }
 
     void put(std::string data)
@@ -72,11 +74,12 @@ private:
 
     void run()
     {
-        message_handler_.handle_timeouts();
-        message_handler_.handle_message();
-        message_handler_.stabilize();
-        message_handler_.check_predecessor();
-        message_handler_.notify();
+        /* message_handler_.handle_timeouts(); */
+        /* message_handler_.handle_message(); */
+        /* message_handler_.run(); */
+        /* message_handler_.stabilize(); */
+        /* message_handler_.check_predecessor(); */
+        /* message_handler_.notify(); */
         handle_write_queue();
         if(send_routing_information_){
             send_routing_information_internal();
