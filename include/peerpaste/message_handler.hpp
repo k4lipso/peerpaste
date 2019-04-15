@@ -10,6 +10,7 @@
 #include "aggregator.hpp"
 #include "storage.hpp"
 #include <functional>
+#include <mutex>
 
 class MessageHandler
 {
@@ -39,7 +40,11 @@ public:
 
     void init()
     {
-        routing_table_.set_successor(routing_table_.get_self());
+        std::cout << "FOO" << std::endl;
+        auto self = routing_table_.get_self();
+        std::cout << "FOO" << std::endl;
+        routing_table_.set_successor(self);
+        std::cout << "FOO" << std::endl;
     }
 
     ~MessageHandler () {}
@@ -58,6 +63,7 @@ public:
 
     void handle_message()
     {
+        routing_table_.print();
         const bool message_queue_is_empty = message_queue_->empty();
         if(message_queue_is_empty){
             return;
@@ -77,6 +83,23 @@ public:
             handle_response(std::move(transport_object));
         }
         handle_message();
+    }
+
+    void handle_timeouts()
+    {
+        //for every obj in open_request
+        for(auto iter = open_requests_.begin();
+                 iter != open_requests_.end(); iter++){
+            auto req_obj = iter->second;
+            //if its still valid continue
+            if(req_obj->is_valid()) continue;
+            std::cout << "FOUND INVALID OBJECT, CALL" << std::endl;
+            std::cout << req_obj->get_request_type() << std::endl;
+            //call handler_function with original obj
+            req_obj->call(req_obj);
+            //erase object from open_request
+            open_requests_.erase(iter);
+        }
     }
 
     void handle_request(RequestObjectUPtr&& transport_object)
@@ -322,16 +345,15 @@ public:
 
     void stabilize()
     {
+        auto target = routing_table_.get_successor();
+        if(target == nullptr){
+            return;
+        }
 
         auto get_predecessor_msg = std::make_shared<Message>();
         get_predecessor_msg->set_header(Header(true, 0, 0, "get_predecessor", "", "", ""));
         get_predecessor_msg->generate_transaction_id();
         auto transaction_id = get_predecessor_msg->get_transaction_id();
-
-        auto target = routing_table_.get_successor();
-        if(target == nullptr){
-            return;
-        }
 
         auto handler = std::bind(&MessageHandler::handle_stabilize,
                                  this,
@@ -378,7 +400,6 @@ public:
 
     void handle_notify_response(RequestObjectUPtr&& transport_object)
     {
-        std::cout << "handle_notify_response" << '\n';
         return;
     }
 
@@ -387,7 +408,7 @@ public:
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
             //TODO: handle invalid msg
-            /* std::cout << "handle notify invalid message" << '\n'; */
+            std::cout << "handle notify invalid message" << '\n';
             return;
         }
 
@@ -404,7 +425,14 @@ public:
         if(util::between(predecessor_id, notify_peer_id, self_id)){
             routing_table_.set_predecessor(notify_peer);
         }
-        routing_table_.print();
+
+        //Generate and push response
+        auto response = message->generate_response();
+        response->generate_transaction_id();
+
+        auto response_object = std::make_shared<RequestObject>(*transport_object);
+        response_object->set_message(response);
+        push_to_write_queue(response_object);
     }
 
     /*
@@ -587,7 +615,6 @@ public:
 
         auto successor = std::make_shared<Peer>(message->get_peers().front());
         routing_table_.set_successor(successor);
-        routing_table_.print();
     }
 
     void handle_query_response(RequestObjectUPtr&& transport_object)
@@ -597,7 +624,6 @@ public:
             //TODO: make  message peers to be shared_ptrs
             auto peer = std::make_shared<Peer>(message->get_peers().front());
             routing_table_.set_self(peer);
-            routing_table_.get_self()->print();
         } else {
             /* std::cout << "WRONG MESSAGE SIZE() handle_query_response" << '\n'; */
             //TODO: handle invalid message
@@ -606,30 +632,33 @@ public:
 
     void handle_stabilize(RequestObjectUPtr&& transport_object)
     {
+        std::cout << "HANDLE STABILIZ" << std::endl;
         auto message = transport_object->get_message();
 
         if(message->get_peers().size() != 1){
             //TODO: handle invalid message
-            /* std::cout << "invalid message size at handle_stabilize" << '\n'; */
+            std::cout << "invalid message size at handle_stabilize" << '\n';
+            std::lock_guard<std::mutex> guard(mutex_);
+            routing_table_.set_successor(routing_table_.get_self());
             return;
         }
 
-        auto self = routing_table_.get_self();
-        auto successor = routing_table_.get_successor();
         auto successors_predecessor = message->get_peers().front();
+        auto successor = routing_table_.get_successor();
+        auto self = routing_table_.get_self();
 
         if(util::between(self->get_id(),
                          successors_predecessor.get_id(),
                          successor->get_id())){
+            std::cout << "IS BETWEEN" << std::endl;
             routing_table_.set_successor(std::make_shared<Peer>(successors_predecessor));
         }
-        routing_table_.print();
     }
 
-    const RoutingTable get_routing_table()
-    {
-        return routing_table_;
-    }
+    /* const RoutingTable get_routing_table() */
+    /* { */
+    /*     return routing_table_; */
+    /* } */
 
     void handle_find_successor_response(MessagePtr message);
     void handle_check_predecessor_response(MessagePtr message);
@@ -652,5 +681,7 @@ private:
     std::map<std::string, RequestObjectSPtr> open_requests_;
 
     Aggregator aggregator_;
+
+    mutable std::mutex mutex_;
 };
 #endif /* MESSAGE_HANDLER_HPP */

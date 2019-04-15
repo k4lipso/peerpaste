@@ -14,14 +14,15 @@ using MessagePtr = std::shared_ptr<Message>;
 using PeerPtr = std::shared_ptr<Peer>;
 using SessionPtr = std::shared_ptr<Session>;
 using RequestObjectUPtr = std::unique_ptr<RequestObject>;
-using RequestObjectSPtr = std::shared_ptr<RequestObject>;
 using HandlerFunction = std::function<void(RequestObjectUPtr)>;
 
 class RequestObject
 {
 public:
 
-    RequestObject() {}
+    RequestObject() {
+        start_ = std::chrono::steady_clock::now();
+    }
     ~RequestObject () {}
 
     /*
@@ -39,6 +40,13 @@ public:
     {
         //throw exeption if no value
         if(handler_.has_value()) handler_.value()(std::move(request));
+    }
+
+    void call(std::shared_ptr<RequestObject> request)
+    {
+        //throw exeption if no value
+        auto unique_request = std::make_unique<RequestObject>(*request.get());
+        if(handler_.has_value()) handler_.value()(std::move(unique_request));
     }
 
     void set_handler(HandlerFunction handler)
@@ -109,10 +117,31 @@ public:
         return get_peer()->get_ip();
     }
 
+    void set_time_point(){
+        start_ = std::chrono::steady_clock::now();
+    }
+
+    auto get_time_point(){
+        return start_;
+    }
+
+    auto is_valid(){
+        std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
+        auto dur = std::chrono::duration_cast<std::chrono::seconds>(end - start_).count();
+        std::cout << "dur = " << dur << std::endl;
+        //at startup duration is somehow > 1000 so we filter by the && statement
+        //TODO: find why dur is so bit at the beginning
+        if(dur > 10){
+            return false;
+        }
+        return true;
+    }
+
 private:
-    std::optional<HandlerFunction> handler_;
     MessagePtr message_;
+    std::optional<HandlerFunction> handler_;
     std::variant<PeerPtr, SessionPtr> connection_;
+    std::chrono::steady_clock::time_point start_;
 };
 
 #endif /* ifndef REQUEST_OBJECT_HPP */

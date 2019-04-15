@@ -1,3 +1,5 @@
+#include <mutex>
+
 class RoutingTable
 {
 public:
@@ -6,7 +8,6 @@ public:
 
     void print() const
     {
-        return;
         std::cout << "#### ROUTINGTABLE BEGIN ####" << '\n';
         std::cout << "SELF:" << '\n';
         self_->print();
@@ -16,7 +17,9 @@ public:
         }
         std::cout << "FINGERTABLE: " << '\n';
         for(const auto peer : peers_){
-            peer->print();
+            if(peer != nullptr){
+                peer->print();
+            }
             std::cout << "######" << '\n';
         }
         std::cout << "#### ROUTINGTABLE END ####" << '\n';

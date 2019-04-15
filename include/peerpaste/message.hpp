@@ -89,7 +89,11 @@ public:
 
     void generate_transaction_id()
     {
-        auto transaction_id = util::generate_sha256(stringify());
+	auto end = std::chrono::system_clock::now();
+    	std::time_t end_time = std::chrono::system_clock::to_time_t(end);
+	auto foo = std::to_string(end_time);
+
+        auto transaction_id = util::generate_sha256(stringify() + foo);
         header_.set_transaction_id(transaction_id);
     }
 

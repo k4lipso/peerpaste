@@ -31,6 +31,9 @@ MESSAGE("Boost Libraries: ${Boost_LOG_LIBRARY}")
 MESSAGE("PROTOBUF INCLUDE DIRS ${PROTOBUF_INCLUDE_DIRS}")
 MESSAGE("PROTOBUF LIBRARIES ${PROTOBUF_LIBRARIES}")
 
+# Add sanitizer
+add_definitions(-Wall -fsanitize=address -g3 -fno-omit-frame-pointer)
+
 add_library(libpeerpaste
     "include/peerpaste/peer.hpp"
     "include/peerpaste/header.hpp"
@@ -78,6 +81,7 @@ target_link_libraries(peerpaste
     PUBLIC
         ${Boost_LIBRARIES}
         libpeerpaste
+ 	-fsanitize=address
 )
 
 if(BUILD_TESTS)
