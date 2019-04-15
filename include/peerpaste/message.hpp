@@ -15,7 +15,8 @@ public:
     {
         /* return; */
         if(get_request_type() == "get_predecessor" ||
-                    get_request_type() == "notify"){
+           get_request_type() == "notify" ||
+           get_request_type() == "check_predecessor"){
             return;
         }
         std::cout << "########## MESSAGE BEGIN ##########" << '\n';

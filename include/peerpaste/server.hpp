@@ -44,7 +44,6 @@ public:
         accept_connections();
         message_handler_.init();
         run();
-        message_handler_.run();
     }
 
     void start_client(std::string addr, uint16_t server_port, uint16_t own_port)
@@ -53,7 +52,6 @@ public:
         accept_connections();
         message_handler_.join(addr, std::to_string(server_port));
         run();
-        message_handler_.run();
     }
 
     void put(std::string data)
@@ -80,18 +78,19 @@ private:
         /* message_handler_.stabilize(); */
         /* message_handler_.check_predecessor(); */
         /* message_handler_.notify(); */
+        message_handler_.run();
         handle_write_queue();
-        if(send_routing_information_){
-            send_routing_information_internal();
-        }
-
-        timer_.expires_at(timer_.expiry() + boost::asio::chrono::milliseconds(500));
+        timer_.expires_at(timer_.expiry() + boost::asio::chrono::milliseconds(100));
         timer_.async_wait(boost::bind(&Server::run, this));
     }
 
     //TODO: using move() for request?
     void handle_write_queue()
     {
+        if(send_routing_information_){
+            send_routing_information_internal();
+        }
+
         bool write_queue_is_empty = write_queue_->empty();
         if(write_queue_is_empty){
             return;

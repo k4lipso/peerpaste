@@ -51,17 +51,15 @@ public:
         handle_message();
 
         if(not stabilize_flag_){
-            std::cout << "STABILIZE" << std::endl;
             stabilize();
         }
         if(not check_predecessor_flag_){
-            std::cout << "CHECK PREDECESSOR" << std::endl;
             check_predecessor();
         }
 
         handle_timeouts();
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        run();
+        /* std::this_thread::sleep_for(std::chrono::milliseconds(100)); */
+        /* run(); */
     }
 
     ~MessageHandler () {}
@@ -110,7 +108,6 @@ public:
             auto req_obj = iter->second;
             //if its still valid continue
             if(req_obj->is_valid()) continue;
-            std::cout << "FOUND INVALID OBJECT, CALL" << std::endl;
             std::cout << req_obj->get_request_type() << std::endl;
             //call handler_function with original obj
             req_obj->call(req_obj);
@@ -152,7 +149,7 @@ public:
             return;
         }
 
-        /* std::cout << "UNKNOWN REQUEST TYPE: " << request_type << '\n'; */
+        std::cout << "UNKNOWN REQUEST TYPE: " << request_type << '\n';
     }
 
     void handle_get_request(RequestObjectUPtr&& transport_object)
@@ -701,12 +698,10 @@ public:
 
     void handle_stabilize(RequestObjectUPtr&& transport_object)
     {
-        std::cout << "HANDLE STABILIZ" << std::endl;
         auto message = transport_object->get_message();
 
         if(message->get_peers().size() != 1 || message->is_request()){
             //TODO: handle invalid message
-            std::cout << "invalid message size at handle_stabilize" << '\n';
             /* std::lock_guard<std::mutex> guard(mutex_); */
             routing_table_.set_successor(routing_table_.get_self());
             stabilize_flag_ = false;
@@ -717,13 +712,10 @@ public:
         auto successors_predecessor = message->get_peers().front();
         auto successor = routing_table_.get_successor();
         auto self = routing_table_.get_self();
-        std::cout << message->is_request() << std::endl;
-        std::cout << "FOODASDASDASKJDHkjh" << std::endl;
 
         if(util::between(self->get_id(),
                          successors_predecessor.get_id(),
                          successor->get_id())){
-            std::cout << "IS BETWEEN" << std::endl;
             routing_table_.set_successor(std::make_shared<Peer>(successors_predecessor));
         }
         notify();

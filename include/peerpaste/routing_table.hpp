@@ -8,6 +8,7 @@ public:
 
     void print() const
     {
+        return;
         std::cout << "#### ROUTINGTABLE BEGIN ####" << '\n';
         std::cout << "SELF:" << '\n';
         self_->print();
