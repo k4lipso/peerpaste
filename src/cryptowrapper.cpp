@@ -1,6 +1,4 @@
-#include <sha.h>
-#include <filters.h>
-#include <hex.h>
+#include "peerpaste/cryptowrapper.hpp"
 
 namespace util {
 

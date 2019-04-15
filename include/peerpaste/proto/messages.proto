@@ -13,6 +13,8 @@ message Request
     /* optional request_options = 2; */
 
     repeated PeerInfo peerinfo = 2;
+
+    optional string data = 3;
 }
 
 message CommonHeader
@@ -35,8 +37,11 @@ message CommonHeader
     //A unique number to match responses with the originated requests.
     required string transaction_id = 5;
 
-    required string version = 6;
-    optional string response_code = 7;
+    //A unique number to match responses with the originated requests.
+    required string correlational_id = 6;
+
+    required string version = 7;
+    optional string response_code = 8;
 }
 
 message PeerInfo
@@ -47,6 +52,11 @@ message PeerInfo
     optional string peer_rtt = 4;
     optional string peer_uptime = 5;
     //various additional fields.. thinking..
+}
+
+message FileChunk {
+   optional int64 offset = 1;
+   optional bytes data = 2;
 }
 
 //message gerneral_object
