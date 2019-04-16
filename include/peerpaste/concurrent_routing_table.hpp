@@ -9,7 +9,11 @@ template<typename T>
 class ConcurrentRoutingTable
 {
     mutable std::mutex mutex_;
+    mutable bool self_is_set;
+    mutable bool predecessor_is_set;
+    mutable bool successor_is_set;
     std::condition_variable condition_;
+
     std::unique_ptr<T> self_;
     std::unique_ptr<T> predecessor_;
     std::vector<std::unique_ptr<T>> peers_;
@@ -25,30 +29,36 @@ public:
     {
         std::scoped_lock lk(mutex_);
         if(self_ == nullptr){
+            self_is_set = false;
             return false;
         }
         value = *self_.get();
+        return true;
     }
 
     void set_self(T self)
     {
         std::scoped_lock lk(mutex_);
         self_ = std::make_unique<T>(std::move(self));
+        self_is_set = true;
     }
 
     bool try_get_predecessor(T& value) const
     {
         std::scoped_lock lk(mutex_);
         if(predecessor_ == nullptr){
+            predecessor_is_set = false;
             return false;
         }
         value = *predecessor_.get();
+        return true;
     }
 
     void set_predecessor(T predecessor)
     {
         std::scoped_lock lk(mutex_);
         predecessor_ = std::make_unique<T>(std::move(predecessor));
+        predecessor_is_set = true;
         condition_.notify_all();
     }
 
@@ -56,15 +66,18 @@ public:
     {
         std::scoped_lock lk(mutex_);
         if(peers_.front() == nullptr){
+            successor_is_set = false;
             return false;
         }
         value = *peers_.front().get();
+        return true;
     }
 
     void set_successor(T sucessor)
     {
         std::scoped_lock lk(mutex_);
         peers_.at(0) = std::make_unique<T>(std::move(sucessor));
+        successor_is_set = true;
         condition_.notify_all();
     }
 
@@ -89,7 +102,11 @@ public:
     void wait_til_valid()
     {
         std::unique_lock lk(mutex_);
-        condition_.wait(lk, [this]{ return is_valid(); });
+        condition_.wait(lk, [this]{
+                    return self_is_set &&
+                           predecessor_is_set &&
+                           successor_is_set;
+                    });
     }
 
     /*
@@ -98,35 +115,7 @@ public:
     bool is_valid()
     {
         std::scoped_lock lk(mutex_);
-
-        if(not (peers_.at(0) != nullptr && peers_.at(0) != self_)){
-            return false;
-        }
-        if(predecessor_ != nullptr && predecessor_ != self_){
-            return true;
-        }
-        return false;
+        return self_is_set && predecessor_is_set && successor_is_set;
     }
-
-    void print() const
-    {
-        return;
-        /* std::cout << "#### ROUTINGTABLE BEGIN ####" << '\n'; */
-        /* std::cout << "SELF:" << '\n'; */
-        /* self_->print(); */
-        /* std::cout << "PREDECESSOR: " << '\n'; */
-        /* if(predecessor_ != nullptr){ */
-        /*     predecessor_->print(); */
-        /* } */
-        /* std::cout << "FINGERTABLE: " << '\n'; */
-        /* for(const auto peer : peers_){ */
-        /*     if(peer != nullptr){ */
-        /*         peer->print(); */
-        /*     } */
-        /*     std::cout << "######" << '\n'; */
-        /* } */
-        /* std::cout << "#### ROUTINGTABLE END ####" << '\n'; */
-    }
-
 };
 } // closing namespace peerpaste

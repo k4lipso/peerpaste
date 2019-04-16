@@ -72,6 +72,9 @@ TEST_CASE("Testing Peer Object", "[peerpaste::message::peer]")
     REQUIRE(peer.get_ip() == "10.0.0.1");
     REQUIRE(peer.get_port() == "1337");
 
+    REQUIRE(not (peer == Peer()));
+    REQUIRE(true == ( peer != Peer() ));
+
     peer.set_id("456DEF");
     peer.set_ip("20.2.2.2");
     peer.set_port("4242");
@@ -475,12 +478,29 @@ TEST_CASE( "Testing peerpaste::ConcurrentQueue", "[peerpaste::ConcurrentQueue]" 
 
     put1.join();
     get1.join();
-
 }
 
 TEST_CASE( "Testing peerpaste::ConcurrentRoutingTable", "[peerpaste::ConcurrentRoutingTable]" )
 {
     peerpaste::ConcurrentRoutingTable<Peer> ru;
+
+    auto is_valid = [&](){
+        std::cout << "Waiting for valid..." << std::endl;
+        ru.wait_til_valid();
+        std::cout << "unlocked..." << std::endl;
+    };
+    auto set_self = [&](Peer p){
+        ru.set_self(p);
+    };
+    auto set_succ = [&](Peer p){
+        ru.set_successor(p);
+    };
+    auto set_predecessor = [&](Peer p){
+        ru.set_predecessor(p);
+    };
+
+    std::thread valid_(is_valid);
+
     Peer peer1, peer2, peer3;
     REQUIRE(ru.try_get_self(peer1) == false);
     REQUIRE(ru.try_get_predecessor(peer2) == false);
@@ -498,8 +518,28 @@ TEST_CASE( "Testing peerpaste::ConcurrentRoutingTable", "[peerpaste::ConcurrentR
     REQUIRE(ru.try_get_self(peer1) == true);
     REQUIRE(ru.try_get_predecessor(peer2) == true);
     REQUIRE(ru.try_get_successor(peer3) == true);
-    //TODO: peer operator=()
-    /* REQUIRE(peer == peer1); */
-    /* REQUIRE(peer == peer2); */
-    /* REQUIRE(peer == peer3); */
+
+    REQUIRE(( peer == peer1 ) == true);
+    REQUIRE(( peer == peer2 ) == true);
+    REQUIRE(( peer == peer3 ) == true);
+
+    peer1.set_id("a");
+    peer2.set_id("b");
+    peer3.set_id("c");
+
+    std::thread set1(set_self, peer1);
+    std::thread set2(set_succ, peer2);
+    std::thread set3(set_predecessor, peer3);
+
+    valid_.join();
+    set1.join();
+    set2.join();
+    set3.join();
+
+    REQUIRE(ru.try_get_self(peer) == true);
+    REQUIRE((peer == peer1) == true);
+    REQUIRE(ru.try_get_successor(peer) == true);
+    REQUIRE((peer == peer2) == true);
+    REQUIRE(ru.try_get_predecessor(peer) == true);
+    REQUIRE((peer == peer3) == true);
 }

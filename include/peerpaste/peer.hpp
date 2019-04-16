@@ -19,6 +19,18 @@ public:
         id_(id), ip_(ip), port_(port)
     {}
 
+    bool operator==(const Peer& peer){
+        return get_id() == peer.get_id() &&
+               get_ip() == peer.get_ip() &&
+               get_port() == peer.get_port();
+    }
+
+    bool operator!=(const Peer& peer){
+        return get_id() != peer.get_id() ||
+               get_ip() != peer.get_ip() ||
+               get_port() != peer.get_port();
+    }
+
     const void print() const
     {
         std::cout << "IP: " << get_ip() << '\n';
