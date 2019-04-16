@@ -50,6 +50,8 @@ add_library(libpeerpaste
     "src/cryptowrapper.cpp"
     "include/peerpaste/storage.hpp"
     "include/peerpaste/proto/messages.pb.cc"
+    "include/peerpaste/concurrent_queue.hpp"
+    "include/peerpaste/concurrent_routing_table.hpp"
     )
 
 set_target_properties(libpeerpaste PROPERTIES LINKER_LANGUAGE CXX)
