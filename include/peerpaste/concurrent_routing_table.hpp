@@ -1,3 +1,6 @@
+#ifndef CONCURRENT_ROUTING_TABLE
+#define CONCURRENT_ROUTING_TABLE
+
 #include <mutex>
 #include <vector>
 #include <memory>
@@ -119,3 +122,4 @@ public:
     }
 };
 } // closing namespace peerpaste
+#endif /* ifndef CONCURRENT_ROUTING_TABLE */
