@@ -191,53 +191,53 @@ private:
 
     void send_routing_information_internal()
     {
-        auto routing_table_ = message_handler_->get_routing_table();
-        tcp::resolver resolver(io_context_);
-        auto endpoint = resolver.resolve("127.0.0.1", "8080");
-        tcp::socket socket(io_context_);
-        boost::asio::connect(socket, endpoint);
+        /* auto routing_table_ = message_handler_->get_routing_table(); */
+        /* tcp::resolver resolver(io_context_); */
+        /* auto endpoint = resolver.resolve("127.0.0.1", "8080"); */
+        /* tcp::socket socket(io_context_); */
+        /* boost::asio::connect(socket, endpoint); */
 
-        boost::asio::streambuf request;
-        std::ostream request_stream(&request);
+        /* boost::asio::streambuf request; */
+        /* std::ostream request_stream(&request); */
 
-        using boost::property_tree::ptree;
-        using boost::property_tree::read_json;
-        using boost::property_tree::write_json;
+        /* using boost::property_tree::ptree; */
+        /* using boost::property_tree::read_json; */
+        /* using boost::property_tree::write_json; */
 
-        ptree root, info;
-        if(routing_table_.get_successor() != nullptr){
-            info.put("successor", routing_table_.get_successor()->get_id());
-        } else {
-            info.put("successor", "");
-        }
-        if(routing_table_.get_predecessor() != nullptr){
-            info.put("predecessor", routing_table_.get_predecessor()->get_id());
-        } else {
-            info.put("predecessor", "");
-        }
-        root.put_child(routing_table_.get_self()->get_id(), info);
-        /* root.put ("some value", "8"); */
-        /* root.put ( "message", "value value: value!"); */
-        /* info.put("placeholder", "value"); */
-        /* info.put("value", "daf!"); */
-        /* info.put("module", "value"); */
-        /* root.put_child("exception", info); */
+        /* ptree root, info; */
+        /* if(routing_table_.get_successor() != nullptr){ */
+        /*     info.put("successor", routing_table_.get_successor()->get_id()); */
+        /* } else { */
+        /*     info.put("successor", ""); */
+        /* } */
+        /* if(routing_table_.get_predecessor() != nullptr){ */
+        /*     info.put("predecessor", routing_table_.get_predecessor()->get_id()); */
+        /* } else { */
+        /*     info.put("predecessor", ""); */
+        /* } */
+        /* root.put_child(routing_table_.get_self()->get_id(), info); */
+        /* /1* root.put ("some value", "8"); *1/ */
+        /* /1* root.put ( "message", "value value: value!"); *1/ */
+        /* /1* info.put("placeholder", "value"); *1/ */
+        /* /1* info.put("value", "daf!"); *1/ */
+        /* /1* info.put("module", "value"); *1/ */
+        /* /1* root.put_child("exception", info); *1/ */
 
-        std::ostringstream buf;
-        write_json (buf, root, false);
-        std::string json = buf.str();
+        /* std::ostringstream buf; */
+        /* write_json (buf, root, false); */
+        /* std::string json = buf.str(); */
 
-        request_stream << "POST / HTTP/1.1 \r\n";
-        request_stream << "Host:" << "lol" << "\r\n";
-        request_stream << "User-Agent: C/1.0";
-        request_stream << "Content-Type: application/json; charset=utf-8 \r\n";
-        request_stream << "Accept: */*\r\n";
-        request_stream << "Content-Length: " << json.length() << "\r\n";
-        request_stream << "Connection: close\r\n\r\n";  //NOTE THE Double line feed
-        request_stream << json;
+        /* request_stream << "POST / HTTP/1.1 \r\n"; */
+        /* request_stream << "Host:" << "lol" << "\r\n"; */
+        /* request_stream << "User-Agent: C/1.0"; */
+        /* request_stream << "Content-Type: application/json; charset=utf-8 \r\n"; */
+        /* request_stream << "Accept: *1/*\r\n"; */
+        /* request_stream << "Content-Length: " << json.length() << "\r\n"; */
+        /* request_stream << "Connection: close\r\n\r\n";  //NOTE THE Double line feed */
+        /* request_stream << json; */
 
-        // Send the request.
-        boost::asio::write(socket, request);
+        /* // Send the request. */
+        /* boost::asio::write(socket, request); */
     }
 
     boost::asio::io_context io_context_;
