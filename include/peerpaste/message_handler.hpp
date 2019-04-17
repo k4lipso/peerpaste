@@ -48,7 +48,7 @@ public:
 
     void run()
     {
-        handle_message();
+        /* handle_message(); */
 
         if(not stabilize_flag_){
             stabilize();
@@ -114,7 +114,7 @@ public:
         }
     }
 
-    void handle_request(RequestObjectUPtr&& transport_object)
+    void handle_request(RequestObjectUPtr transport_object)
     {
         auto request_type = transport_object->get_request_type();
 
@@ -150,7 +150,7 @@ public:
         std::cout << "UNKNOWN REQUEST TYPE: " << request_type << '\n';
     }
 
-    void handle_get_request(RequestObjectUPtr&& transport_object)
+    void handle_get_request(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
         auto data = message->get_data();
@@ -169,7 +169,7 @@ public:
         push_to_write_queue(response);
     }
 
-    void handle_put_request(RequestObjectUPtr&& transport_object)
+    void handle_put_request(RequestObjectUPtr transport_object)
     {
         auto data = transport_object->get_message()->get_data();
         auto data_id = util::generate_sha256(data, "");
@@ -184,7 +184,7 @@ public:
         push_to_write_queue(response);
     }
 
-    void handle_find_successor_request(RequestObjectUPtr&& transport_object)
+    void handle_find_successor_request(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
@@ -277,7 +277,7 @@ public:
         return self;
     }
 
-    void handle_query_request(RequestObjectUPtr&& transport_object)
+    void handle_query_request(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
@@ -301,7 +301,7 @@ public:
         push_to_write_queue(response);
     }
 
-    void handle_get_predecessor_request(RequestObjectUPtr&& transport_object)
+    void handle_get_predecessor_request(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 0){
@@ -326,7 +326,7 @@ public:
         push_to_write_queue(response_object);
     }
 
-    void handle_response(RequestObjectUPtr&& transport_object)
+    void handle_response(RequestObjectUPtr transport_object)
     {
         //Get the CorrelationID to check if there is an OpenRequest matching
         //that ID
@@ -409,7 +409,7 @@ public:
         check_predecessor_flag_ = true;
     }
 
-    void handle_check_predecessor_response(RequestObjectUPtr&& transport_object)
+    void handle_check_predecessor_response(RequestObjectUPtr transport_object)
     {
         check_predecessor_flag_ = false;
         if(!transport_object->get_message()->is_request()){
@@ -418,7 +418,7 @@ public:
         routing_table_.set_predecessor(nullptr);
     }
 
-    void handle_check_predecessor(RequestObjectUPtr&& transport_object)
+    void handle_check_predecessor(RequestObjectUPtr transport_object)
     {
         //Generate and push response
         auto message = transport_object->get_message();
@@ -462,12 +462,12 @@ public:
         push_to_write_queue(request);
     }
 
-    void handle_notify_response(RequestObjectUPtr&& transport_object)
+    void handle_notify_response(RequestObjectUPtr transport_object)
     {
         return;
     }
 
-    void handle_notify(RequestObjectUPtr&& transport_object)
+    void handle_notify(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
@@ -549,7 +549,7 @@ public:
         push_to_write_queue(get_request);
     }
 
-    void handle_get_response(RequestObjectUPtr&& transport_object)
+    void handle_get_response(RequestObjectUPtr transport_object)
     {
         std::cout << "GET RESPONSE HANDLER" << std::endl;
 
@@ -616,7 +616,7 @@ public:
         push_to_write_queue(put_request);
     }
 
-    void handle_put_response(RequestObjectUPtr&& transport_object)
+    void handle_put_response(RequestObjectUPtr transport_object)
     {
         /* std::cout << "###############################" << std::endl; */
         /* std::cout << "######HANDLE_PUT_RESPONSE######" << std::endl; */
@@ -670,7 +670,7 @@ public:
         push_to_write_queue(request);
     }
 
-    void handle_join_response(RequestObjectUPtr&& transport_object)
+    void handle_join_response(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
@@ -681,7 +681,7 @@ public:
         routing_table_.set_successor(successor);
     }
 
-    void handle_query_response(RequestObjectUPtr&& transport_object)
+    void handle_query_response(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() == 1){
@@ -694,7 +694,7 @@ public:
         }
     }
 
-    void handle_stabilize(RequestObjectUPtr&& transport_object)
+    void handle_stabilize(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
 

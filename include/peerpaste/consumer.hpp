@@ -35,10 +35,17 @@ public:
      */
     void run()
     {
+        std::thread t([&]() { run_internal(); });
+        t.detach();
+    }
+
+    void run_internal()
+    {
         ProtobufMessageConverter converter;
         while(run_){
             //Get unique_ptr to MsgPair from queue
             auto msg_pair = queue_->wait_and_pop();
+            std::cout << "GOT MSG" << std::endl;
             //Convert msg_buffer into Message object
             //TODO: handle failure on MessageFromSerialized!!!
             auto converted_message = converter.MessageFromSerialized(
@@ -61,15 +68,20 @@ public:
     void dispatch(std::unique_ptr<RequestObject> data_object)
     {
         auto is_request = data_object->is_request();
-        std::function<void()> function_handler;
+        /*
+         * We have to capture the data_obj by move. otherwise the session shared_ptr
+         * will call destructor when this function runs out of scope.
+         */
         if(is_request){
             //TODO: is this creating copy of msg_handler_? if so i have to pass std::ref() instead
-            function_handler = [&](){ msg_handler_->handle_request(std::move(data_object)); };
+            std::thread t([this, data_object = std::move(data_object)]() mutable
+                { msg_handler_->handle_request(std::move(data_object)); });
+            t.join();
         } else {
-            function_handler = [&](){ msg_handler_->handle_response(std::move(data_object)); };
+            std::thread t([this, data_object = std::move(data_object)]() mutable
+                { msg_handler_->handle_response(std::move(data_object)); });
+            t.join();
         }
-        std::thread t(function_handler);
-        t.detach();
     }
 
     void stop()

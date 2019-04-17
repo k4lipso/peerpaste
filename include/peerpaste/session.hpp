@@ -1,7 +1,8 @@
 #ifndef SESSION_HPP
 #define SESSION_HPP
 
-#include "message.hpp"
+#include "peerpaste/message.hpp"
+#include "peerpaste/concurrent_queue.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -30,6 +31,9 @@ public:
 
     //TODO: deeleeteeeee!
     Session (boost::asio::io_context& io_context);
+    Session (boost::asio::io_context& io_context,
+                std::shared_ptr<peerpaste::ConcurrentQueue<std::pair<std::vector<uint8_t>,
+                                                                     SessionPtr>>> msg_queue);
     ~Session ();
     boost::asio::ip::tcp::socket& get_socket();
     void write(const MessagePtr message);
@@ -61,6 +65,8 @@ private:
     std::deque<std::vector<uint8_t>> send_packet_queue;
     std::vector<uint8_t> readbuf_;
     std::shared_ptr<MessageQueue> message_queue_;
+    std::shared_ptr<peerpaste::ConcurrentQueue<std::pair<std::vector<uint8_t>,
+                                                         SessionPtr>>> msg_queue_;
 
     tcp::socket socket_;
     std::string name_;

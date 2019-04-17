@@ -31,6 +31,7 @@ public:
     Server(int thread_count = 4, int port = 1338)
         : port_(port),
           thread_count_(thread_count), acceptor_(io_context_),
+          queue_(std::make_shared<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>>()),
           message_handler_(std::make_shared<MessageHandler>( port )),
           message_dispatcher_(queue_, message_handler_),
           timer_(io_context_, boost::asio::chrono::seconds(1)),
@@ -46,6 +47,7 @@ public:
         start_listening(port_);
         accept_connections();
         message_handler_->init();
+        message_dispatcher_.run();
         run();
     }
 
@@ -54,6 +56,7 @@ public:
         start_listening(port_);
         accept_connections();
         message_handler_->join(addr, std::to_string(server_port));
+        message_dispatcher_.run();
         run();
     }
 
@@ -83,7 +86,7 @@ private:
         /* message_handler_.notify(); */
         message_handler_->run();
         handle_write_queue();
-        timer_.expires_at(timer_.expiry() + boost::asio::chrono::milliseconds(100));
+        timer_.expires_at(timer_.expiry() + boost::asio::chrono::milliseconds(200));
         timer_.async_wait(boost::bind(&Server::run, this));
     }
 
@@ -117,7 +120,7 @@ private:
             //should be more abstract so that the message_handler does not need
             //to know what kind of object sends the data somewhere
             auto peer = request->get_peer();
-            auto write_handler = std::make_shared<Session>(io_context_);
+            auto write_handler = std::make_shared<Session>(io_context_, queue_);
             write_handler->write_to(message, peer->get_ip(), peer->get_port());
             if(is_request){
                 write_handler->read();
@@ -150,7 +153,7 @@ private:
     void accept_connections()
     {
         auto handler =
-            std::make_shared<Session>(io_context_);
+            std::make_shared<Session>(io_context_, queue_);
 
 
         acceptor_.async_accept( handler->get_socket(),
@@ -176,7 +179,7 @@ private:
 
         handler->read();
 
-        auto new_handler = std::make_shared<Session>(io_context_);
+        auto new_handler = std::make_shared<Session>(io_context_, queue_);
 
         acceptor_.async_accept( new_handler->get_socket(),
                                 [=] (auto ec)

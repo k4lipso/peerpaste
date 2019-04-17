@@ -1,6 +1,7 @@
 #include "peerpaste/session.hpp"
 #include "peerpaste/message_queue.hpp"
 #include "peerpaste/message_converter.hpp"
+#include "peerpaste/concurrent_queue.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -23,9 +24,21 @@ using boost::asio::ip::tcp;
         message_queue_ = MessageQueue::GetInstance();
     }
 
-    Session::~Session ()
+    Session::Session (boost::asio::io_context& io_context,
+                std::shared_ptr<peerpaste::ConcurrentQueue<std::pair<std::vector<uint8_t>,
+                                                                     SessionPtr>>> msg_queue)
+        : service_(io_context),
+          write_strand_(io_context),
+          read_strand_(io_context),
+          socket_(io_context),
+          name_(std::to_string(++naming)),
+          msg_queue_(msg_queue)
     {
+        message_queue_ = MessageQueue::GetInstance();
     }
+
+    Session::~Session ()
+    {}
 
     boost::asio::ip::tcp::socket& Session::get_socket()
     {
@@ -133,9 +146,7 @@ using boost::asio::ip::tcp;
             auto begin = readbuf_.begin() + header_size_;
             auto end = readbuf_.end();
             std::vector<uint8_t> message_buf(begin, end);
-            ProtobufMessageConverter converter;
-            std::shared_ptr<Message> message_ptr = converter.MessageFromSerialized(message_buf);
-            message_queue_->push_back(message_ptr, shared_from_this());
+            msg_queue_->push(std::make_pair(std::move(message_buf), shared_from_this()));
         } else {
             std::cout << "error in handle read message: " << ec << std::endl;
             do_read_header();
