@@ -6,6 +6,7 @@
 #include "peerpaste/aggregator.hpp"
 #include "peerpaste/concurrent_queue.hpp"
 #include "peerpaste/concurrent_routing_table.hpp"
+#include "peerpaste/consumer.hpp"
 
 #include <iostream>
 #include <string>
@@ -485,9 +486,7 @@ TEST_CASE( "Testing peerpaste::ConcurrentRoutingTable", "[peerpaste::ConcurrentR
     peerpaste::ConcurrentRoutingTable<Peer> ru;
 
     auto is_valid = [&](){
-        std::cout << "Waiting for valid..." << std::endl;
         ru.wait_til_valid();
-        std::cout << "unlocked..." << std::endl;
     };
     auto set_self = [&](Peer p){
         ru.set_self(p);
@@ -542,4 +541,54 @@ TEST_CASE( "Testing peerpaste::ConcurrentRoutingTable", "[peerpaste::ConcurrentR
     REQUIRE((peer == peer2) == true);
     REQUIRE(ru.try_get_predecessor(peer) == true);
     REQUIRE((peer == peer3) == true);
+}
+
+TEST_CASE( "Testing peerpaste::MessageDispatcher", "[peerpaste::MessageDispatcher]" )
+{
+    boost::asio::io_context io_context;
+    auto msg_handler = std::make_shared<MessageHandler>(1337);
+    auto session = std::make_shared<Session>(io_context);
+    auto data_queue = std::make_shared<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>>();
+    peerpaste::MessageDispatcher msg_dispatcher(data_queue, msg_handler);
+    std::thread t1(&peerpaste::MessageDispatcher::run, std::ref(msg_dispatcher));
+    std::this_thread::sleep_for(std::chrono::seconds(4));
+
+    //BUF CREATION BEGIN
+    //Create a protobuf message
+    auto protobuf_message = std::make_shared<Request>();
+
+    //Add header
+    auto protobuf_header = protobuf_message->mutable_commonheader();
+    protobuf_header->set_t_flag(true);
+    protobuf_header->set_ttl(10);
+    protobuf_header->set_message_length(15);
+    protobuf_header->set_request_type("query");
+    protobuf_header->set_transaction_id("secret");
+    protobuf_header->set_correlational_id("");
+    protobuf_header->set_version("1.0.0");
+    protobuf_header->set_response_code("UNKNOWN");
+
+    //Add first peer
+    auto protobuf_peerinfo1 = protobuf_message->add_peerinfo();
+    protobuf_peerinfo1->set_peer_id("123ABC");
+    protobuf_peerinfo1->set_peer_ip("123ABC");
+    protobuf_peerinfo1->set_peer_port("123ABC");
+
+    //Add second peer
+    auto protobuf_peerinfo2 = protobuf_message->add_peerinfo();
+    protobuf_peerinfo2->set_peer_id("321CBA");
+    protobuf_peerinfo2->set_peer_ip("321CBA");
+    protobuf_peerinfo2->set_peer_port("321CBA");
+
+    //Create buffer and serialize protobuf message into it
+    std::vector<uint8_t> buf;
+    unsigned protobuf_message_size = protobuf_message->ByteSize();
+    buf.resize(protobuf_message_size);
+    protobuf_message->SerializeToArray(&buf[0], protobuf_message_size);
+    //BUF CREATION END
+    //TODO: create test msg factory
+
+    auto pair_ = std::make_pair(buf, session);
+    data_queue->push(pair_);
+    t1.join();
 }

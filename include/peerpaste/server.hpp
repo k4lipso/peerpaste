@@ -3,12 +3,14 @@
 
 #define VERSION "0.0.1"
 
-#include "session.hpp"
-#include "peer.hpp"
-#include "message.hpp"
-#include "message_handler.hpp"
-#include "request_object.hpp"
-#include "proto/messages.pb.h"
+#include "peerpaste/session.hpp"
+#include "peerpaste/peer.hpp"
+#include "peerpaste/message.hpp"
+#include "peerpaste/message_handler.hpp"
+#include "peerpaste/request_object.hpp"
+#include "peerpaste/consumer.hpp"
+#include "peerpaste/concurrent_queue.hpp"
+#include "peerpaste/proto/messages.pb.h"
 
 #include <string>
 #include <sstream>
@@ -29,7 +31,8 @@ public:
     Server(int thread_count = 4, int port = 1338)
         : port_(port),
           thread_count_(thread_count), acceptor_(io_context_),
-          message_handler_(io_context_, port),
+          message_handler_(std::make_shared<MessageHandler>( port )),
+          message_dispatcher_(queue_, message_handler_),
           timer_(io_context_, boost::asio::chrono::seconds(1)),
           read_strand_(io_context_),
           write_strand_(io_context_),
@@ -42,7 +45,7 @@ public:
     {
         start_listening(port_);
         accept_connections();
-        message_handler_.init();
+        message_handler_->init();
         run();
     }
 
@@ -50,18 +53,18 @@ public:
     {
         start_listening(port_);
         accept_connections();
-        message_handler_.join(addr, std::to_string(server_port));
+        message_handler_->join(addr, std::to_string(server_port));
         run();
     }
 
     void put(std::string data)
     {
-        message_handler_.put(data);
+        message_handler_->put(data);
     }
 
     void get(std::string data)
     {
-        message_handler_.get(data);
+        message_handler_->get(data);
     }
 
     void send_routing_information(const bool b){
@@ -78,7 +81,7 @@ private:
         /* message_handler_.stabilize(); */
         /* message_handler_.check_predecessor(); */
         /* message_handler_.notify(); */
-        message_handler_.run();
+        message_handler_->run();
         handle_write_queue();
         timer_.expires_at(timer_.expiry() + boost::asio::chrono::milliseconds(100));
         timer_.async_wait(boost::bind(&Server::run, this));
@@ -185,7 +188,7 @@ private:
 
     void send_routing_information_internal()
     {
-        auto routing_table_ = message_handler_.get_routing_table();
+        auto routing_table_ = message_handler_->get_routing_table();
         tcp::resolver resolver(io_context_);
         auto endpoint = resolver.resolve("127.0.0.1", "8080");
         tcp::socket socket(io_context_);
@@ -243,7 +246,9 @@ private:
     boost::asio::steady_timer timer_;
 
     std::shared_ptr<WriteQueue> write_queue_;
-    MessageHandler message_handler_;
+    std::shared_ptr<MessageHandler> message_handler_;
+    std::shared_ptr<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>> queue_;
+    peerpaste::MessageDispatcher message_dispatcher_;
 
     const int port_;
     bool send_routing_information_;

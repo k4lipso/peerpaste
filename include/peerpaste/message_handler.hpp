@@ -21,7 +21,7 @@ public:
     typedef std::shared_ptr<RequestObject> RequestObjectSPtr;
     typedef std::shared_ptr<Peer> PeerPtr;
 
-    MessageHandler (boost::asio::io_context& io_context, short port) :
+    MessageHandler (short port) :
                         routing_table_(),
                         aggregator_(),
                         storage_(nullptr),
@@ -58,8 +58,6 @@ public:
         }
 
         handle_timeouts();
-        /* std::this_thread::sleep_for(std::chrono::milliseconds(100)); */
-        /* run(); */
     }
 
     ~MessageHandler () {}
