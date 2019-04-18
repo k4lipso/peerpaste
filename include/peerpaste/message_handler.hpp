@@ -136,6 +136,10 @@ public:
             handle_check_predecessor(std::move(transport_object));
             return;
         }
+        if(request_type == "get_successor_list"){
+            handle_get_successr_list_request(std::move(transport_object));
+            return;
+        }
         if(request_type == "put"){
             handle_put_request(std::move(transport_object));
             return;
@@ -144,6 +148,7 @@ public:
             handle_get_request(std::move(transport_object));
             return;
         }
+
 
         std::cout << "UNKNOWN REQUEST TYPE: " << request_type << '\n';
     }
@@ -487,6 +492,8 @@ public:
         Peer predecessor;
         Peer self;
 
+        //TODO: if we have a predecessor node we should check if its alive!
+        //check the rectify operation in how_to_make_chord_correct.pdf
         if(not routing_table_.try_get_predecessor(predecessor)){
             std::cout << "cant handle notify: no predecessor set" << std::endl;
         }
@@ -690,6 +697,43 @@ public:
 
         auto successor = message->get_peers().front();
         routing_table_.set_successor(successor);
+
+        //Generate get_successor_list request
+        MessagePtr get_successor_list_request = std::make_shared<Message>();
+        Header get_successor_list_header(true, 0, 0, "get_successor_list", "", "", "");
+        get_successor_list_request->set_header(get_successor_list_header);
+
+        auto successor_handler = std::bind(&MessageHandler::handle_get_successor_list_response,
+                                                            this,
+                                                            std::placeholders::_1);
+
+        auto successor_list_request = std::make_shared<RequestObject>();
+        successor_list_request->set_handler(successor_handler);
+        successor_list_request->set_message(get_successor_list_request);
+        successor_list_request->set_connection(std::make_shared<Peer>(successor));
+
+        push_to_write_queue(successor_list_request);
+    }
+
+    void handle_get_successor_list_response(RequestObjectUPtr transport_object)
+    {
+        auto message = transport_object->get_message();
+        auto new_succ_list = message->get_peers();
+        routing_table_.replace_after_successor(new_succ_list);
+    }
+
+    void handle_get_successr_list_request(RequestObjectUPtr transport_object)
+    {
+        auto message = transport_object->get_message();
+
+        auto response_message = message->generate_response();
+        response_message->set_peers(routing_table_.get_peers());
+        response_message->generate_transaction_id();
+
+        auto response = std::make_shared<RequestObject>(*transport_object);
+        response->set_message(response_message);
+
+        push_to_write_queue(response);
     }
 
     void handle_query_response(RequestObjectUPtr transport_object)
