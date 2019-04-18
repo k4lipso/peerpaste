@@ -29,8 +29,6 @@ public:
     typedef std::shared_ptr<Session> SessionPtr;
     typedef std::shared_ptr<Message> MessagePtr;
 
-    //TODO: deeleeteeeee!
-    Session (boost::asio::io_context& io_context);
     Session (boost::asio::io_context& io_context,
                 std::shared_ptr<peerpaste::ConcurrentQueue<std::pair<std::vector<uint8_t>,
                                                                      SessionPtr>>> msg_queue);
@@ -64,7 +62,6 @@ private:
     boost::asio::io_service::strand read_strand_;
     std::deque<std::vector<uint8_t>> send_packet_queue;
     std::vector<uint8_t> readbuf_;
-    std::shared_ptr<MessageQueue> message_queue_;
     std::shared_ptr<peerpaste::ConcurrentQueue<std::pair<std::vector<uint8_t>,
                                                          SessionPtr>>> msg_queue_;
 

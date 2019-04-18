@@ -3,9 +3,6 @@
 
 #include "peerpaste/session.hpp"
 #include "peerpaste/message.hpp"
-#include "peerpaste/message_queue.hpp"
-#include "peerpaste/write_queue.hpp"
-#include "peerpaste/routing_table.hpp"
 #include "peerpaste/request_object.hpp"
 #include "peerpaste/aggregator.hpp"
 #include "peerpaste/storage.hpp"
@@ -38,9 +35,6 @@ public:
         routing_table_.set_self(Peer(self_id, self_ip, self_port));
 
         storage_ = std::make_unique<Storage>(self_id);
-
-        message_queue_ = MessageQueue::GetInstance();
-        write_queue_ = WriteQueue::GetInstance();
     }
 
     MessageHandler (short port) :
@@ -57,9 +51,6 @@ public:
         routing_table_.set_self(Peer(self_id, self_ip, self_port));
 
         storage_ = std::make_unique<Storage>(self_id);
-
-        message_queue_ = MessageQueue::GetInstance();
-        write_queue_ = WriteQueue::GetInstance();
     }
 
     void init(std::shared_ptr<peerpaste::ConcurrentQueue<RequestObject>> queue__)
@@ -102,29 +93,6 @@ public:
         }
         send_queue_->push(*shared_transport_object.get());
         routing_table_.print();
-    }
-
-    void handle_message()
-    {
-        const bool message_queue_is_empty = message_queue_->empty();
-        if(message_queue_is_empty){
-            return;
-        }
-
-        auto transport_object = message_queue_->front();
-        message_queue_->pop_front();
-
-        const bool is_request = transport_object->get_message()->is_request();
-        transport_object->get_message()->print();
-
-        //TODO: handle invalid messages here
-
-        if(is_request){
-            handle_request(std::move(transport_object));
-        } else {
-            handle_response(std::move(transport_object));
-        }
-        handle_message();
     }
 
     void handle_timeouts()
@@ -782,8 +750,6 @@ private:
     peerpaste::ConcurrentRoutingTable<Peer> routing_table_;
     std::shared_ptr<peerpaste::ConcurrentQueue<RequestObject>>  send_queue_;
     std::unique_ptr<Storage> storage_;
-    std::shared_ptr<MessageQueue> message_queue_;
-    std::shared_ptr<WriteQueue> write_queue_;
 
     //TODO:
     //std::map<string, RequestObject>

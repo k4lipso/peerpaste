@@ -1,5 +1,4 @@
 #include "peerpaste/session.hpp"
-#include "peerpaste/message_queue.hpp"
 #include "peerpaste/message_converter.hpp"
 #include "peerpaste/concurrent_queue.hpp"
 
@@ -13,17 +12,6 @@
 
 using boost::asio::ip::tcp;
 
-    //TODO: deeleeteeeee!
-    Session::Session (boost::asio::io_context& io_context)
-        : service_(io_context),
-          write_strand_(io_context),
-          read_strand_(io_context),
-          socket_(io_context),
-          name_(std::to_string(++naming))
-    {
-        message_queue_ = MessageQueue::GetInstance();
-    }
-
     Session::Session (boost::asio::io_context& io_context,
                 std::shared_ptr<peerpaste::ConcurrentQueue<std::pair<std::vector<uint8_t>,
                                                                      SessionPtr>>> msg_queue)
@@ -33,9 +21,7 @@ using boost::asio::ip::tcp;
           socket_(io_context),
           name_(std::to_string(++naming)),
           msg_queue_(msg_queue)
-    {
-        message_queue_ = MessageQueue::GetInstance();
-    }
+    {}
 
     Session::~Session ()
     {}

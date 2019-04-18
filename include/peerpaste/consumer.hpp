@@ -5,6 +5,7 @@
 #include "peerpaste/request_object.hpp"
 #include "peerpaste/message_converter.hpp"
 #include "peerpaste/message.hpp"
+#include "peerpaste/message_handler.hpp"
 #include "peerpaste/session.hpp"
 
 #include <utility>

@@ -6,7 +6,6 @@
 #include "peerpaste/session.hpp"
 #include "peerpaste/peer.hpp"
 #include "peerpaste/message.hpp"
-#include "peerpaste/message_handler.hpp"
 #include "peerpaste/request_object.hpp"
 #include "peerpaste/consumer.hpp"
 #include "peerpaste/concurrent_queue.hpp"
@@ -35,87 +34,16 @@ public:
           queue_(queue__),
           timer_(io_context_, boost::asio::chrono::seconds(1)),
           read_strand_(io_context_),
-          write_strand_(io_context_),
-          send_routing_information_(false)
-    {
-        write_queue_ = WriteQueue::GetInstance();
-    }
-
-    void start_server()
-    {
-        start_listening(port_);
-        accept_connections();
-        run();
-    }
-
-    void start_client(std::string addr, uint16_t server_port, uint16_t own_port)
-    {
-        start_listening(port_);
-        accept_connections();
-        run();
-    }
-
-    void send_routing_information(const bool b){
-        send_routing_information_ = b;
-    }
-
-private:
+          write_strand_(io_context_)
+    {}
 
     void run()
     {
-        /* message_handler_.handle_timeouts(); */
-        /* message_handler_.handle_message(); */
-        /* message_handler_.run(); */
-        /* message_handler_.stabilize(); */
-        /* message_handler_.check_predecessor(); */
-        /* message_handler_.notify(); */
-        /* message_handler_->run(); */
-        /* handle_write_queue(); */
-        timer_.expires_at(timer_.expiry() + boost::asio::chrono::milliseconds(200));
-        timer_.async_wait(boost::bind(&Server::run, this));
+        start_listening(port_);
+        accept_connections();
     }
 
-    //TODO: using move() for request?
-    void handle_write_queue()
-    {
-        if(send_routing_information_){
-            send_routing_information_internal();
-        }
-
-        bool write_queue_is_empty = write_queue_->empty();
-        if(write_queue_is_empty){
-            return;
-        }
-
-        //TODO: store as ptr in write_queue!
-        auto request = write_queue_->front();
-        write_queue_->pop_front();
-        auto message = request->get_message();
-        auto is_request = message->is_request();
-
-        if(request->is_session()){
-            auto session = request->get_session();
-            /* session->write(message); */
-            if(is_request){
-                session->read();
-            }
-        } else {
-            //TODO: this is too session/boost specific
-            //when using a test_socket or something like that this code
-            //should be more abstract so that the message_handler does not need
-            //to know what kind of object sends the data somewhere
-            auto peer = request->get_peer();
-            auto write_handler = std::make_shared<Session>(io_context_, queue_);
-            /* write_handler->write_to(message, peer->get_ip(), peer->get_port()); */
-            if(is_request){
-                write_handler->read();
-            }
-        }
-
-        request->set_time_point();
-        handle_write_queue();
-    }
-
+private:
 
     /**
      * Starts listening on the given port
@@ -233,11 +161,8 @@ private:
     boost::asio::ip::tcp::acceptor acceptor_;
     boost::asio::steady_timer timer_;
 
-    std::shared_ptr<WriteQueue> write_queue_;
     std::shared_ptr<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>> queue_;
-
     const int port_;
-    bool send_routing_information_;
 };
 
 #endif /* SERVER_H */

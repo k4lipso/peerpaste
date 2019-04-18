@@ -58,19 +58,16 @@ int main(int argc, char** argv)
             return 0;
         }
 
+        server->run();
+
         if (vm.count("join")) {
             //TODO: add a lot of boundary checking
             auto vec = vm["join"].as<std::vector<std::string>>();
             auto host_ip = vec.at(0);
             auto host_port = vec.at(1);
-            server->start_client(host_ip, std::atoi(host_port.c_str()), 4);
             msg_handler->join(host_ip, host_port);
-        } else {
-            server->start_server();
         }
-            std::cout << "FOO" << std::endl;
-            msg_dispatcher->run();
-            std::cout << "FOO" << std::endl;
+        msg_dispatcher->run();
 
         if (vm.count("put")) {
             std::ifstream t(vm["put"].as<std::string>());
@@ -85,7 +82,7 @@ int main(int argc, char** argv)
         }
 
         if (vm.count("debug")) {
-            server->send_routing_information(true);
+            /* server->send_routing_information(true); */
         }
     }
     catch (const po::error& ex) {

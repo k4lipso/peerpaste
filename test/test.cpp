@@ -1,7 +1,6 @@
 #include "peerpaste/peer.hpp"
 #include "peerpaste/message.hpp"
 #include "peerpaste/message_converter.hpp"
-#include "peerpaste/message_queue.hpp"
 #include "peerpaste/message_handler.hpp"
 #include "peerpaste/aggregator.hpp"
 #include "peerpaste/concurrent_queue.hpp"
@@ -388,59 +387,6 @@ TEST_CASE( "Testing Aggregator", "[]" )
     REQUIRE(aggregator.add_aggregat(message2) != nullptr);
 }
 
-TEST_CASE( "Testing MessageQueue", "[]" )
-{
-    //TODO: MERGE WRITE/MESSAGEQUEUE SOMEHOW TO SIMPLIFY TESTIN
-    /* auto message = std::make_shared<Message>(); */
-    /* boost::asio::io_context io_context; */
-    /* auto session = std::make_shared<Session>(io_context); */
-    /* auto test_pair = std::make_pair(message, session); */
-    /* auto message_queue = MessageQueue::GetInstance(); */
-
-    /* REQUIRE(message_queue->size() == 0); */
-    /* message_queue->push_back(message, session); */
-    /* REQUIRE(message_queue->size() == 1); */
-    /* REQUIRE(test_pair == message_queue->front()); */
-
-    /* auto message_queue2 = MessageQueue::GetInstance(); */
-    /* REQUIRE(message_queue2->size() == message_queue->size()); */
-
-    /* message_queue->pop_front(); */
-    /* REQUIRE(message_queue->size() == 0); */
-    /* REQUIRE(message_queue2->size() == 0); */
-}
-
-TEST_CASE( "Testing RoutingTable", "[]" )
-{
-    auto peer1 = std::make_shared<Peer>();
-    peer1->set_id("1");
-    peer1->set_ip("1");
-    peer1->set_port("1");
-
-    auto peer2 = std::make_shared<Peer>();
-    peer2->set_id("2");
-    peer2->set_ip("2");
-    peer2->set_port("2");
-
-    auto routing_table = std::make_shared<RoutingTable>();
-    REQUIRE(routing_table->size() == 0);
-
-    routing_table->set_self(peer1);
-    routing_table->set_predecessor(peer1);
-    routing_table->set_successor(peer1);
-
-    REQUIRE(routing_table->get_self() == peer1);
-    REQUIRE(routing_table->get_predecessor() == peer1);
-    REQUIRE(routing_table->size() == 1);
-
-    routing_table->push_back(peer2);
-    REQUIRE(routing_table->size() == 2);
-
-    auto peers = routing_table->get_peers();
-    REQUIRE(peers[0] == peer1);
-    REQUIRE(peers[1] == peer2);
-}
-
 TEST_CASE( "Testing util::between()", "[util::between()]" )
 {
     std::string a = "a";
@@ -545,50 +491,50 @@ TEST_CASE( "Testing peerpaste::ConcurrentRoutingTable", "[peerpaste::ConcurrentR
 
 TEST_CASE( "Testing peerpaste::MessageDispatcher", "[peerpaste::MessageDispatcher]" )
 {
-    boost::asio::io_context io_context;
-    auto msg_handler = std::make_shared<MessageHandler>(1337);
-    auto session = std::make_shared<Session>(io_context);
-    auto data_queue = std::make_shared<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>>();
-    peerpaste::MessageDispatcher msg_dispatcher(data_queue, msg_handler);
-    std::thread t1(&peerpaste::MessageDispatcher::run, std::ref(msg_dispatcher));
-    std::this_thread::sleep_for(std::chrono::seconds(4));
+    /* boost::asio::io_context io_context; */
+    /* auto msg_handler = std::make_shared<MessageHandler>(1337); */
+    /* auto session = std::make_shared<Session>(io_context); */
+    /* auto data_queue = std::make_shared<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>>(); */
+    /* peerpaste::MessageDispatcher msg_dispatcher(data_queue, msg_handler); */
+    /* std::thread t1(&peerpaste::MessageDispatcher::run, std::ref(msg_dispatcher)); */
+    /* std::this_thread::sleep_for(std::chrono::seconds(4)); */
 
-    //BUF CREATION BEGIN
-    //Create a protobuf message
-    auto protobuf_message = std::make_shared<Request>();
+    /* //BUF CREATION BEGIN */
+    /* //Create a protobuf message */
+    /* auto protobuf_message = std::make_shared<Request>(); */
 
-    //Add header
-    auto protobuf_header = protobuf_message->mutable_commonheader();
-    protobuf_header->set_t_flag(true);
-    protobuf_header->set_ttl(10);
-    protobuf_header->set_message_length(15);
-    protobuf_header->set_request_type("query");
-    protobuf_header->set_transaction_id("secret");
-    protobuf_header->set_correlational_id("");
-    protobuf_header->set_version("1.0.0");
-    protobuf_header->set_response_code("UNKNOWN");
+    /* //Add header */
+    /* auto protobuf_header = protobuf_message->mutable_commonheader(); */
+    /* protobuf_header->set_t_flag(true); */
+    /* protobuf_header->set_ttl(10); */
+    /* protobuf_header->set_message_length(15); */
+    /* protobuf_header->set_request_type("query"); */
+    /* protobuf_header->set_transaction_id("secret"); */
+    /* protobuf_header->set_correlational_id(""); */
+    /* protobuf_header->set_version("1.0.0"); */
+    /* protobuf_header->set_response_code("UNKNOWN"); */
 
-    //Add first peer
-    auto protobuf_peerinfo1 = protobuf_message->add_peerinfo();
-    protobuf_peerinfo1->set_peer_id("123ABC");
-    protobuf_peerinfo1->set_peer_ip("123ABC");
-    protobuf_peerinfo1->set_peer_port("123ABC");
+    /* //Add first peer */
+    /* auto protobuf_peerinfo1 = protobuf_message->add_peerinfo(); */
+    /* protobuf_peerinfo1->set_peer_id("123ABC"); */
+    /* protobuf_peerinfo1->set_peer_ip("123ABC"); */
+    /* protobuf_peerinfo1->set_peer_port("123ABC"); */
 
-    //Add second peer
-    auto protobuf_peerinfo2 = protobuf_message->add_peerinfo();
-    protobuf_peerinfo2->set_peer_id("321CBA");
-    protobuf_peerinfo2->set_peer_ip("321CBA");
-    protobuf_peerinfo2->set_peer_port("321CBA");
+    /* //Add second peer */
+    /* auto protobuf_peerinfo2 = protobuf_message->add_peerinfo(); */
+    /* protobuf_peerinfo2->set_peer_id("321CBA"); */
+    /* protobuf_peerinfo2->set_peer_ip("321CBA"); */
+    /* protobuf_peerinfo2->set_peer_port("321CBA"); */
 
-    //Create buffer and serialize protobuf message into it
-    std::vector<uint8_t> buf;
-    unsigned protobuf_message_size = protobuf_message->ByteSize();
-    buf.resize(protobuf_message_size);
-    protobuf_message->SerializeToArray(&buf[0], protobuf_message_size);
-    //BUF CREATION END
-    //TODO: create test msg factory
+    /* //Create buffer and serialize protobuf message into it */
+    /* std::vector<uint8_t> buf; */
+    /* unsigned protobuf_message_size = protobuf_message->ByteSize(); */
+    /* buf.resize(protobuf_message_size); */
+    /* protobuf_message->SerializeToArray(&buf[0], protobuf_message_size); */
+    /* //BUF CREATION END */
+    /* //TODO: create test msg factory */
 
-    auto pair_ = std::make_pair(buf, session);
-    data_queue->push(pair_);
-    t1.join();
+    /* auto pair_ = std::make_pair(buf, session); */
+    /* data_queue->push(pair_); */
+    /* t1.join(); */
 }
