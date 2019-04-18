@@ -50,37 +50,27 @@ using boost::asio::ip::tcp;
         socket_.close();
     }
 
-    void Session::write(const MessagePtr message)
+    void Session::write(const std::vector<uint8_t>& encoded_message)
     {
-        ProtobufMessageConverter converter;
-        auto message_buf = converter.SerializedFromMessage(message);
-        std::vector<boost::uint8_t> encoded_buf;
-        encoded_buf.resize(header_size_);
-        encode_header(encoded_buf, message_buf.size());
-        encoded_buf.insert(encoded_buf.end(),
-                           std::make_move_iterator(message_buf.begin()),
-                           std::make_move_iterator(message_buf.end())
-                           );
-
-        service_.post( write_strand_.wrap( [me = shared_from_this(), encoded_buf] ()
+        service_.post( write_strand_.wrap( [me = shared_from_this(), encoded_message] ()
                                             {
-                                                me->queue_message(encoded_buf);
+                                                me->queue_message(encoded_message);
                                             } ) );
     }
 
-    void Session::write_to(const MessagePtr message, std::string address,
+    void Session::write_to(const std::vector<uint8_t>& encoded_message, std::string address,
                                              std::string port)
     {
         tcp::resolver resolver(service_);
         auto endpoint = resolver.resolve(address, port);
 
         boost::asio::async_connect(socket_, endpoint,
-                [this, me = shared_from_this(), endpoint, message]
+                [this, me = shared_from_this(), endpoint, encoded_message]
                 (boost::system::error_code ec, tcp::endpoint)
                 {
                     if(!ec)
                     {
-                        me->write(message);
+                        me->write(encoded_message);
                     } else {
                         std::cout << "error: " << ec << std::endl;
                     }

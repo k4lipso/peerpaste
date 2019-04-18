@@ -17,6 +17,7 @@
 static int naming = 0;
 
 using boost::asio::ip::tcp;
+using DataBuffer = std::vector<boost::uint8_t>;
 
 //Forward declaration
 class MessageQueue;
@@ -27,7 +28,6 @@ class Session
 public:
     typedef std::shared_ptr<Session> SessionPtr;
     typedef std::shared_ptr<Message> MessagePtr;
-    typedef std::vector<boost::uint8_t> DataBuffer;
 
     //TODO: deeleeteeeee!
     Session (boost::asio::io_context& io_context);
@@ -36,8 +36,8 @@ public:
                                                                      SessionPtr>>> msg_queue);
     ~Session ();
     boost::asio::ip::tcp::socket& get_socket();
-    void write(const MessagePtr message);
-    void write_to(const MessagePtr message, std::string address,
+    void write(const std::vector<uint8_t>& encoded_message);
+    void write_to(const std::vector<uint8_t>& encoded_message, std::string address,
                                                         std::string port);
     void read();
     const std::string get_client_ip() const;

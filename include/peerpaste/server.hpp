@@ -28,12 +28,11 @@ using boost::asio::ip::tcp;
 class Server
 {
 public:
-    Server(int thread_count = 4, int port = 1338)
+    Server(int thread_count, int port,
+           std::shared_ptr<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>> queue__)
         : port_(port),
           thread_count_(thread_count), acceptor_(io_context_),
-          queue_(std::make_shared<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>>()),
-          message_handler_(std::make_shared<MessageHandler>( port )),
-          message_dispatcher_(queue_, message_handler_),
+          queue_(queue__),
           timer_(io_context_, boost::asio::chrono::seconds(1)),
           read_strand_(io_context_),
           write_strand_(io_context_),
@@ -46,8 +45,6 @@ public:
     {
         start_listening(port_);
         accept_connections();
-        message_handler_->init();
-        message_dispatcher_.run();
         run();
     }
 
@@ -55,19 +52,7 @@ public:
     {
         start_listening(port_);
         accept_connections();
-        message_handler_->join(addr, std::to_string(server_port));
-        message_dispatcher_.run();
         run();
-    }
-
-    void put(std::string data)
-    {
-        message_handler_->put(data);
-    }
-
-    void get(std::string data)
-    {
-        message_handler_->get(data);
     }
 
     void send_routing_information(const bool b){
@@ -84,8 +69,8 @@ private:
         /* message_handler_.stabilize(); */
         /* message_handler_.check_predecessor(); */
         /* message_handler_.notify(); */
-        message_handler_->run();
-        handle_write_queue();
+        /* message_handler_->run(); */
+        /* handle_write_queue(); */
         timer_.expires_at(timer_.expiry() + boost::asio::chrono::milliseconds(200));
         timer_.async_wait(boost::bind(&Server::run, this));
     }
@@ -110,7 +95,7 @@ private:
 
         if(request->is_session()){
             auto session = request->get_session();
-            session->write(message);
+            /* session->write(message); */
             if(is_request){
                 session->read();
             }
@@ -121,7 +106,7 @@ private:
             //to know what kind of object sends the data somewhere
             auto peer = request->get_peer();
             auto write_handler = std::make_shared<Session>(io_context_, queue_);
-            write_handler->write_to(message, peer->get_ip(), peer->get_port());
+            /* write_handler->write_to(message, peer->get_ip(), peer->get_port()); */
             if(is_request){
                 write_handler->read();
             }
@@ -249,9 +234,7 @@ private:
     boost::asio::steady_timer timer_;
 
     std::shared_ptr<WriteQueue> write_queue_;
-    std::shared_ptr<MessageHandler> message_handler_;
     std::shared_ptr<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>> queue_;
-    peerpaste::MessageDispatcher message_dispatcher_;
 
     const int port_;
     bool send_routing_information_;

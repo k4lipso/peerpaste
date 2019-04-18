@@ -22,6 +22,27 @@ public:
     typedef std::shared_ptr<RequestObject> RequestObjectSPtr;
     typedef std::shared_ptr<Peer> PeerPtr;
 
+    MessageHandler (short port,
+                    std::shared_ptr<peerpaste::ConcurrentQueue<RequestObject>> queue_) :
+                        send_queue_(queue_),
+                        routing_table_(),
+                        aggregator_(),
+                        storage_(nullptr),
+                        stabilize_flag_(false),
+                        check_predecessor_flag_(false)
+    {
+        //TODO: setup self more accurate
+        auto self_ip = "127.0.0.1";
+        auto self_port = std::to_string(port);
+        auto self_id = util::generate_sha256(self_ip, self_port);
+        routing_table_.set_self(Peer(self_id, self_ip, self_port));
+
+        storage_ = std::make_unique<Storage>(self_id);
+
+        message_queue_ = MessageQueue::GetInstance();
+        write_queue_ = WriteQueue::GetInstance();
+    }
+
     MessageHandler (short port) :
                         routing_table_(),
                         aggregator_(),
@@ -41,8 +62,9 @@ public:
         write_queue_ = WriteQueue::GetInstance();
     }
 
-    void init()
+    void init(std::shared_ptr<peerpaste::ConcurrentQueue<RequestObject>> queue__)
     {
+        send_queue_ = queue__;
         Peer self;
         if(routing_table_.try_get_self(self)){
             routing_table_.set_successor(self);
@@ -63,6 +85,8 @@ public:
         }
 
         handle_timeouts();
+        std::this_thread::sleep_for(std::chrono::milliseconds(400));
+        run();
     }
 
     ~MessageHandler () {}
@@ -76,7 +100,7 @@ public:
             //TODO: store ptrs in open_requests
             open_requests_[transaction_id] = shared_transport_object;
         }
-        write_queue_->push_back(shared_transport_object);
+        send_queue_->push(*shared_transport_object.get());
         routing_table_.print();
     }
 
@@ -111,6 +135,7 @@ public:
             auto req_obj = iter->second;
             //if its still valid continue
             if(req_obj->is_valid()) continue;
+            std::cout << "Dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" << std::endl;
             std::cout << req_obj->get_request_type() << std::endl;
             //call handler_function with original obj
             req_obj->call(req_obj);
@@ -400,7 +425,7 @@ public:
     void check_predecessor()
     {
         Peer target;
-        if(not routing_table_.try_get_successor(target)){
+        if(not routing_table_.try_get_predecessor(target)){
             return;
         }
 
@@ -719,6 +744,7 @@ public:
         Peer self;
         if(not routing_table_.try_get_self(self)){
             std::cout << "Cant handle stabilize: self not set" << std::endl;
+            return;
         }
 
         if(message->get_peers().size() != 1 || message->is_request()){
@@ -734,6 +760,7 @@ public:
         Peer successor;
         if(not routing_table_.try_get_successor(successor)){
             std::cout << "Cant handle stabilize: successor not set" << std::endl;
+            return;
         }
 
         if(util::between(self.get_id(),
@@ -753,6 +780,7 @@ public:
 private:
 
     peerpaste::ConcurrentRoutingTable<Peer> routing_table_;
+    std::shared_ptr<peerpaste::ConcurrentQueue<RequestObject>>  send_queue_;
     std::unique_ptr<Storage> storage_;
     std::shared_ptr<MessageQueue> message_queue_;
     std::shared_ptr<WriteQueue> write_queue_;
