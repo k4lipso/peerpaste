@@ -103,7 +103,6 @@ public:
             auto req_obj = iter->second;
             //if its still valid continue
             if(req_obj->is_valid()) continue;
-            std::cout << "Dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd" << std::endl;
             std::cout << req_obj->get_request_type() << std::endl;
             //call handler_function with original obj
             req_obj->call(req_obj);
@@ -124,8 +123,8 @@ public:
             handle_find_successor_request(std::move(transport_object));
             return;
         }
-        if(request_type == "get_predecessor"){
-            handle_get_predecessor_request(std::move(transport_object));
+        if(request_type == "get_predecessor_and_succ_list"){
+            get_predecessor_and_succ_list_request(std::move(transport_object));
             return;
         }
         if(request_type == "notify"){
@@ -137,7 +136,11 @@ public:
             return;
         }
         if(request_type == "get_successor_list"){
-            handle_get_successr_list_request(std::move(transport_object));
+            handle_get_successor_list_request(std::move(transport_object));
+            return;
+        }
+        if(request_type == "get_self_and_successor_list"){
+            handle_get_self_and_successor_list_request(std::move(transport_object));
             return;
         }
         if(request_type == "put"){
@@ -312,7 +315,7 @@ public:
         push_to_write_queue(response);
     }
 
-    void handle_get_predecessor_request(RequestObjectUPtr transport_object)
+    void get_predecessor_and_succ_list_request(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 0){
@@ -323,7 +326,9 @@ public:
         auto response = message->generate_response();
         Peer predecessor;
         if(routing_table_.try_get_predecessor(predecessor)){
-            response->set_peers( { predecessor } );
+            auto peers = routing_table_.get_peers();
+            peers.insert(peers.begin(), predecessor);
+            response->set_peers(peers);
         } else {
             //TODO: send invalid message here, so that requestor knows that there
             //is no predecessor
@@ -370,6 +375,7 @@ public:
         }
     }
 
+    //TODO: add stabilization according to "how to make chord correct", using the extended succ list
     void stabilize()
     {
         Peer target;
@@ -378,7 +384,7 @@ public:
         }
 
         auto get_predecessor_msg = std::make_shared<Message>();
-        get_predecessor_msg->set_header(Header(true, 0, 0, "get_predecessor", "", "", ""));
+        get_predecessor_msg->set_header(Header(true, 0, 0, "get_predecessor_and_succ_list", "", "", ""));
         get_predecessor_msg->generate_transaction_id();
         auto transaction_id = get_predecessor_msg->get_transaction_id();
 
@@ -390,7 +396,9 @@ public:
         request->set_handler(handler);
         request->set_message(get_predecessor_msg);
         request->set_connection(std::make_shared<Peer>(target));
+        assert(not request->is_session());
         push_to_write_queue(request);
+        assert(not request->is_session());
 
         stabilize_flag_ = true;
     }
@@ -722,7 +730,43 @@ public:
         routing_table_.replace_after_successor(new_succ_list);
     }
 
-    void handle_get_successr_list_request(RequestObjectUPtr transport_object)
+    void handle_set_pred_succ_list(RequestObjectUPtr transport_object)
+    {
+        if(transport_object->is_request()){
+            notify();
+            stabilize_flag_ = false;
+            return;
+        }
+        auto message = transport_object->get_message();
+        auto new_succ_list = message->get_peers();
+        routing_table_.replace_successor_list(new_succ_list);
+        notify();
+        stabilize_flag_ = false;
+
+    }
+
+    void handle_get_self_and_successor_list_request(RequestObjectUPtr transport_object)
+    {
+        auto message = transport_object->get_message();
+
+        auto response_message = message->generate_response();
+        auto succ_list = routing_table_.get_peers();
+
+        Peer self;
+        if(not routing_table_.try_get_self(self)){
+            std::cout << "couldnt get self in handle_get_self_and_successor_list_request\n";
+        }
+        succ_list.insert(succ_list.begin(), self);
+        response_message->set_peers(succ_list);
+        response_message->generate_transaction_id();
+
+        auto response = std::make_shared<RequestObject>(*transport_object);
+        response->set_message(response_message);
+
+        push_to_write_queue(response);
+    }
+
+    void handle_get_successor_list_request(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
 
@@ -759,35 +803,57 @@ public:
             return;
         }
 
-        if(message->get_peers().size() != 1 || message->is_request()){
+        if(message->get_peers().size() < 1 || message->is_request()){
             //TODO: handle invalid message
-            routing_table_.set_successor(self);
+            //TODO: CHange to pop_front()
+            routing_table_.pop_front();
             stabilize_flag_ = false;
             notify();
             return;
         }
 
-        auto successors_predecessor = message->get_peers().front();
-
+        //get peers, they consists of: {predecessor, successor_list}
+        auto peers = message->get_peers();
+        //get the predecessor and erase him aftwerwards
+        auto successors_predecessor = peers.front();
+        if(peers.size() > 1){
+            peers.erase(peers.begin());
+        }
+        //get own successor
         Peer successor;
         if(not routing_table_.try_get_successor(successor)){
             std::cout << "Cant handle stabilize: successor not set" << std::endl;
             return;
         }
 
+        //insert the peer at beginning of his succ list to make it our own succ list
+        peers.insert(peers.begin(), successor);
+        routing_table_.replace_successor_list(peers);
+
+
+        //check if successors predecessor will be our new successor
         if(util::between(self.get_id(),
                          successors_predecessor.get_id(),
                          successor.get_id())){
-            routing_table_.set_successor(successors_predecessor);
-        }
-        notify();
-        stabilize_flag_ = false;
-    }
+            MessagePtr get_successor_list_request = std::make_shared<Message>();
+            Header get_successor_list_header(true, 0, 0, "get_self_and_successor_list", "", "", "");
+            get_successor_list_request->set_header(get_successor_list_header);
 
-    /* const RoutingTable get_routing_table() */
-    /* { */
-    /*     return routing_table_; */
-    /* } */
+            auto successor_handler = std::bind(&MessageHandler::handle_set_pred_succ_list,
+                                                                this,
+                                                                std::placeholders::_1);
+
+            auto successor_list_request = std::make_shared<RequestObject>();
+            successor_list_request->set_handler(successor_handler);
+            successor_list_request->set_message(get_successor_list_request);
+            successor_list_request->set_connection(std::make_shared<Peer>(successors_predecessor));
+
+            push_to_write_queue(successor_list_request);
+        } else {
+            notify();
+            stabilize_flag_ = false;
+        }
+    }
 
 private:
 

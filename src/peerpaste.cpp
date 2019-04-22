@@ -67,6 +67,7 @@ int main(int argc, char** argv)
             auto host_port = vec.at(1);
             msg_handler->join(host_ip, host_port);
         }
+
         msg_dispatcher->run();
 
         if (vm.count("put")) {
@@ -81,9 +82,6 @@ int main(int argc, char** argv)
             /* server->get(data_hash); */
         }
 
-        if (vm.count("debug")) {
-            /* server->send_routing_information(true); */
-        }
     }
     catch (const po::error& ex) {
         return -1;

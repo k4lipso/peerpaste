@@ -147,6 +147,17 @@ public:
         return successor_list_;
     }
 
+    void pop_front()
+    {
+        std::scoped_lock lk(mutex_);
+        if(successor_list_.size() <= 1){
+            std::cout << "Cant pop fron, succ list to small" << std::endl;
+            return;
+        }
+        successor_list_.erase(successor_list_.begin());
+
+    }
+
     void wait_til_valid()
     {
         std::unique_lock lk(mutex_);
