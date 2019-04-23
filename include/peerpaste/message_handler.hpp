@@ -204,12 +204,10 @@ public:
             //We have to use aggregator
             //to request successor remotely befor responding
             auto successor_predecessor = closest_preceding_node(id);
-            auto new_request = std::make_shared<Message>();
-            Header header(true, 0, 0, "find_successor", "", "", "");
-            new_request->set_header(header);
-            new_request->set_peers( { message->get_peers().front() } );
-            new_request->generate_transaction_id();
-            auto transaction_id = new_request->get_transaction_id();
+            auto new_request = std::make_shared<Message>(
+                                Message::create_request("find_successor",
+                                                        { message->get_peers().front() }));
+            auto transaction_id = new_request->generate_transaction_id();
 
             //Request that requests successor from another peer
             auto request = std::make_shared<RequestObject>();
@@ -383,9 +381,8 @@ public:
             return;
         }
 
-        auto get_predecessor_msg = std::make_shared<Message>();
-        get_predecessor_msg->set_header(Header(true, 0, 0, "get_predecessor_and_succ_list", "", "", ""));
-        get_predecessor_msg->generate_transaction_id();
+        auto get_predecessor_msg = std::make_shared<Message>(
+                            Message::create_request("get_predecessor_and_succ_list"));
         auto transaction_id = get_predecessor_msg->get_transaction_id();
 
         auto handler = std::bind(&MessageHandler::handle_stabilize,
@@ -410,9 +407,8 @@ public:
             return;
         }
 
-        auto notify_message = std::make_shared<Message>();
-        notify_message->set_header(Header(true, 0, 0, "check_predecessor", "", "", ""));
-        notify_message->generate_transaction_id();
+        auto notify_message = std::make_shared<Message>(
+                            Message::create_request("check_predecessor"));
         auto transaction_id = notify_message->get_transaction_id();
 
         auto handler = std::bind(&MessageHandler::handle_check_predecessor_response,
@@ -460,10 +456,8 @@ public:
             return;
         }
 
-        auto notify_message = std::make_shared<Message>();
-        notify_message->set_header(Header(true, 0, 0, "notify", "", "", ""));
-        notify_message->add_peer(self);
-        notify_message->generate_transaction_id();
+        auto notify_message = std::make_shared<Message>(
+                            Message::create_request("notify", { self }));
         auto transaction_id = notify_message->get_transaction_id();
 
         auto handler = std::bind(&MessageHandler::handle_notify_response,
@@ -532,46 +526,45 @@ public:
      * you want to get, then it is not found
      *
      */
-    void get(const std::string& data)
-    {
-        routing_table_.wait_til_valid();
+    /* void get(const std::string& data) */
+    /* { */
+        /* routing_table_.wait_til_valid(); */
 
-        auto get_request_message = std::make_shared<Message>();
-        Header get_request_message_header(true, 0, 0, "get", "", "", "");
-        get_request_message->set_header(get_request_message_header);
-        get_request_message->set_data(data);
-        get_request_message->generate_transaction_id();
+        /* auto get_request_message = std::make_shared<Message>(); */
+        /* Header get_request_message_header(true, 0, 0, "get", "", "", ""); */
+        /* get_request_message->set_header(get_request_message_header); */
+        /* get_request_message->set_data(data); */
+        /* get_request_message->generate_transaction_id(); */
 
-        auto get_request = std::make_shared<RequestObject>();
-        auto get_request_handler = std::bind(&MessageHandler::handle_get_response,
-                                                              this,
-                                                              std::placeholders::_1);
-        get_request->set_handler(get_request_handler);
-        get_request->set_message(get_request_message);
+        /* auto get_request = std::make_shared<RequestObject>(); */
+        /* auto get_request_handler = std::bind(&MessageHandler::handle_get_response, */
+        /*                                                       this, */
+        /*                                                       std::placeholders::_1); */
+        /* get_request->set_handler(get_request_handler); */
+        /* get_request->set_message(get_request_message); */
 
-        auto succ = find_successor(data);
+        /* auto succ = find_successor(data); */
 
-        //if no successor is found
-        if(succ == nullptr){
-            //We have to use agggregat
-            auto succ_prede = closest_preceding_node(data);
-            auto new_request = std::make_shared<Message>();
-            Header header(true, 0, 0, "find_successor", "", "", "");
-            new_request->set_header(header);
-            new_request->set_peers({ Peer(data, "", "") });
-            new_request->generate_transaction_id();
-            auto transaction_id = new_request->get_transaction_id();
+        /* //if no successor is found */
+        /* if(succ == nullptr){ */
+        /*     //We have to use agggregat */
+        /*     auto succ_prede = closest_preceding_node(data); */
+        /*     auto new_request = std::make_shared<Message>(); */
+        /*     Header header(true, 0, 0, "find_successor", "", "", ""); */
+        /*     new_request->set_header(header); */
+        /*     new_request->set_peers({ Peer(data, "", "") }); */
+        /*     auto transaction_id = new_request->generate_transaction_id(); */
 
-            auto request = std::make_shared<RequestObject>();
-            request->set_message(new_request);
-            request->set_connection(succ_prede);
-            aggregator_.add_aggregat(get_request, { transaction_id });
-            push_to_write_queue(request);
-            return;
-        }
-        get_request->set_connection(succ);
-        push_to_write_queue(get_request);
-    }
+        /*     auto request = std::make_shared<RequestObject>(); */
+        /*     request->set_message(new_request); */
+        /*     request->set_connection(succ_prede); */
+        /*     aggregator_.add_aggregat(get_request, { transaction_id }); */
+        /*     push_to_write_queue(request); */
+        /*     return; */
+        /* } */
+        /* get_request->set_connection(succ); */
+        /* push_to_write_queue(get_request); */
+    /* } */
 
     void handle_get_response(RequestObjectUPtr transport_object)
     {
@@ -580,64 +573,63 @@ public:
         std::cout << transport_object->get_message()->get_data() << std::endl;
     }
 
-    void put(const std::string& data)
-    {
-        routing_table_.wait_til_valid();
+    /* void put(const std::string& data) */
+    /* { */
+        /* routing_table_.wait_til_valid(); */
 
-        //generate data id
-        auto data_id = util::generate_sha256(data, "");
+        /* //generate data id */
+        /* auto data_id = util::generate_sha256(data, ""); */
 
-        //TODO: generate put request here, holding the data string
-        //then check if we know the successor allready.
-        //if that is the case just send the put request
-        //if it is not the case:
-        //generate find successor request for the data_id
-        //create an aggregat which waits till successor is found
-        //and then sends the put request
+        /* //TODO: generate put request here, holding the data string */
+        /* //then check if we know the successor allready. */
+        /* //if that is the case just send the put request */
+        /* //if it is not the case: */
+        /* //generate find successor request for the data_id */
+        /* //create an aggregat which waits till successor is found */
+        /* //and then sends the put request */
 
-        //also the message object needs the be aware of the new data string
-        //and the protobuf message converter too
-        auto put_request_message = std::make_shared<Message>();
-        Header put_request_message_header(true, 0,0, "put", "", "", "");
-        put_request_message->set_header(put_request_message_header);
-        put_request_message->set_data(data);
-        put_request_message->generate_transaction_id();
+        /* //also the message object needs the be aware of the new data string */
+        /* //and the protobuf message converter too */
+        /* auto put_request_message = std::make_shared<Message>(); */
+        /* Header put_request_message_header(true, 0,0, "put", "", "", ""); */
+        /* put_request_message->set_header(put_request_message_header); */
+        /* put_request_message->set_data(data); */
+        /* put_request_message->generate_transaction_id(); */
 
-        auto put_request = std::make_shared<RequestObject>();
+        /* auto put_request = std::make_shared<RequestObject>(); */
 
-        auto put_request_handler = std::bind(&MessageHandler::handle_put_response,
-                                                            this,
-                                                            std::placeholders::_1);
+        /* auto put_request_handler = std::bind(&MessageHandler::handle_put_response, */
+        /*                                                     this, */
+        /*                                                     std::placeholders::_1); */
 
-        put_request->set_handler(put_request_handler);
-        put_request->set_message(put_request_message);
+        /* put_request->set_handler(put_request_handler); */
+        /* put_request->set_message(put_request_message); */
 
-        //try to find successor
-        auto succ = find_successor(data_id);
-        /* std::cout << "Find Succ of data_id:" << std::endl; */
-        /* std::cout << succ->get_id() << std::endl; */
+        /* //try to find successor */
+        /* auto succ = find_successor(data_id); */
+        /* /1* std::cout << "Find Succ of data_id:" << std::endl; *1/ */
+        /* /1* std::cout << succ->get_id() << std::endl; *1/ */
 
-        //if no successor is found
-        if(succ == nullptr){
-            //We have to use agggregat
-            auto succ_prede = closest_preceding_node(data_id);
-            auto new_request = std::make_shared<Message>();
-            Header header(true, 0, 0, "find_successor", "", "", "");
-            new_request->set_header(header);
-            new_request->set_peers({ Peer(data_id, "", "") });
-            new_request->generate_transaction_id();
-            auto transaction_id = new_request->get_transaction_id();
+        /* //if no successor is found */
+        /* if(succ == nullptr){ */
+        /*     //We have to use agggregat */
+        /*     auto succ_prede = closest_preceding_node(data_id); */
+        /*     auto new_request = std::make_shared<Message>(); */
+        /*     Header header(true, 0, 0, "find_successor", "", "", ""); */
+        /*     new_request->set_header(header); */
+        /*     new_request->set_peers({ Peer(data_id, "", "") }); */
+        /*     auto transaction_id = new_request->generate_transaction_id(); */
 
-            auto request = std::make_shared<RequestObject>();
-            request->set_message(new_request);
-            request->set_connection(succ_prede);
-            aggregator_.add_aggregat(put_request, { transaction_id });
-            push_to_write_queue(request);
-            return;
-        }
-        put_request->set_connection(succ);
-        push_to_write_queue(put_request);
-    }
+        /*     auto request = std::make_shared<RequestObject>(); */
+        /*     request->set_message(new_request); */
+        /*     request->set_connection(succ_prede); */
+        /*     aggregator_.add_aggregat(put_request, { transaction_id }); */
+        /*     push_to_write_queue(request); */
+        /*     return; */
+        /* } */
+        /* put_request->set_connection(succ); */
+        /* push_to_write_queue(put_request); */
+    /* } */
 
     void handle_put_response(RequestObjectUPtr transport_object)
     {
@@ -650,18 +642,14 @@ public:
 
     void join(std::string address, std::string port)
     {
-        //Generate Query
-        MessagePtr query_request = std::make_shared<Message>();
-
-        Header query_header(true, 0, 0, "query", "", "", "");
         Peer self;
         if(not routing_table_.try_get_self(self)){
             std::cout << "Cant join, self not set" << std::endl;
         }
 
-        query_request->set_header(query_header);
-        query_request->add_peer(self);
-        query_request->generate_transaction_id();
+        //Generate Query
+        auto query_request = std::make_shared<Message>(
+                            Message::create_request("query", { self }));
         auto transaction_id = query_request->get_transaction_id();
 
         auto target = std::make_shared<Peer>("", address, port);
@@ -676,10 +664,8 @@ public:
         request->set_connection(target);
 
         //Generate Find Successor Request
-        MessagePtr find_successor_request = std::make_shared<Message>();
-        Header find_succressor_header(true, 0, 0, "find_successor", "", "", "");
-        find_successor_request->set_header(find_succressor_header);
-        /* find_successor_request->generate_transaction_id(); */
+        auto find_successor_request = std::make_shared<Message>(
+                            Message::create_request("find_successor"));
 
         auto successor_handler = std::bind(&MessageHandler::handle_join_response,
                                                             this,
@@ -707,9 +693,8 @@ public:
         routing_table_.set_successor(successor);
 
         //Generate get_successor_list request
-        MessagePtr get_successor_list_request = std::make_shared<Message>();
-        Header get_successor_list_header(true, 0, 0, "get_successor_list", "", "", "");
-        get_successor_list_request->set_header(get_successor_list_header);
+        auto get_successor_list_request = std::make_shared<Message>(
+                            Message::create_request("get_successor_list"));
 
         auto successor_handler = std::bind(&MessageHandler::handle_get_successor_list_response,
                                                             this,
@@ -835,9 +820,8 @@ public:
         if(util::between(self.get_id(),
                          successors_predecessor.get_id(),
                          successor.get_id())){
-            MessagePtr get_successor_list_request = std::make_shared<Message>();
-            Header get_successor_list_header(true, 0, 0, "get_self_and_successor_list", "", "", "");
-            get_successor_list_request->set_header(get_successor_list_header);
+            auto get_successor_list_request = std::make_shared<Message>(
+                            Message::create_request("get_self_and_successor_list"));
 
             auto successor_handler = std::bind(&MessageHandler::handle_set_pred_succ_list,
                                                                 this,

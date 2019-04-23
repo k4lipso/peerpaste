@@ -11,6 +11,28 @@ class Message
 public:
     Message() : data_("") {}
 
+    /*
+     * generates a Message object. it should not be modified anymore,
+     * otherwise transaction_id would be invalid and must be regenerated
+     */
+    static Message create_request(std::string request_type)
+    {
+        Message msg;
+        msg.set_header(Header(true, 0, 0, request_type, "", "", ""));
+        msg.generate_transaction_id();
+        return msg;
+    }
+
+    static Message create_request(std::string request_type,
+                                  std::vector<Peer> peers)
+    {
+        Message msg;
+        msg.set_header(Header(true, 0, 0, request_type, "", "", ""));
+        msg.set_peers(std::move(peers));
+        msg.generate_transaction_id();
+        return msg;
+    }
+
     const void print() const
     {
         /* return; */
@@ -88,7 +110,7 @@ public:
         return header_.is_request();
     }
 
-    void generate_transaction_id()
+    std::string generate_transaction_id()
     {
 	auto end = std::chrono::system_clock::now();
     	std::time_t end_time = std::chrono::system_clock::to_time_t(end);
@@ -96,6 +118,7 @@ public:
 
         auto transaction_id = util::generate_sha256(stringify() + foo);
         header_.set_transaction_id(transaction_id);
+        return transaction_id;
     }
 
     const std::string get_transaction_id() const
