@@ -30,8 +30,10 @@ int main(int argc, char** argv)
 
     po::variables_map vm;
     boost::asio::io_context io_context;
-        auto foo = boost::asio::make_work_guard(io_context);
+    auto foo = boost::asio::make_work_guard(io_context);
     std::unique_ptr<Server> server = nullptr;
+    std::unique_ptr<peerpaste::MessageDispatcher> msg_dispatcher = nullptr;
+    std::shared_ptr<MessageHandler> msg_handler = nullptr;
 
     try
     {
@@ -44,38 +46,42 @@ int main(int argc, char** argv)
         }
 
         if (vm.count("port")) {
-            server = std::make_unique<Server>(4, vm["port"].as<unsigned>());
+            msg_handler = std::make_shared<MessageHandler>(vm["port"].as<unsigned>());
+            msg_dispatcher = std::make_unique<peerpaste::MessageDispatcher>(msg_handler, io_context);
+            msg_handler->init(msg_dispatcher->get_send_queue());
+            server = std::make_unique<Server>(4,
+                                              vm["port"].as<unsigned>(),
+                                              msg_dispatcher->get_receive_queue());
         }
         else {
             std::cout << "You have to specify a port using the --port option\n";
             return 0;
         }
 
+        server->run();
+
         if (vm.count("join")) {
             //TODO: add a lot of boundary checking
             auto vec = vm["join"].as<std::vector<std::string>>();
             auto host_ip = vec.at(0);
             auto host_port = vec.at(1);
-            server->start_client(host_ip, std::atoi(host_port.c_str()), 4);
-        } else {
-            server->start_server();
+            msg_handler->join(host_ip, host_port);
         }
+
+        msg_dispatcher->run();
 
         if (vm.count("put")) {
             std::ifstream t(vm["put"].as<std::string>());
             std::string str((std::istreambuf_iterator<char>(t)),
                              std::istreambuf_iterator<char>());
-            server->put(str);
+            /* server->put(str); */
         }
 
         if (vm.count("get")) {
             std::string data_hash = vm["get"].as<std::string>();
-            server->get(data_hash);
+            /* server->get(data_hash); */
         }
 
-        if (vm.count("debug")) {
-            server->send_routing_information(true);
-        }
     }
     catch (const po::error& ex) {
         return -1;

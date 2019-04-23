@@ -40,10 +40,7 @@ add_library(libpeerpaste
     "include/peerpaste/message.hpp"
     "src/session.cpp"
     "include/peerpaste/message_converter.hpp"
-    "src/message_queue.cpp"
-    "src/write_queue.cpp"
     "include/peerpaste/server.hpp"
-    "include/peerpaste/routing_table.hpp"
     "include/peerpaste/message_handler.hpp"
     "src/aggregator.cpp"
     "src/aggregat.cpp"
@@ -52,6 +49,8 @@ add_library(libpeerpaste
     "include/peerpaste/proto/messages.pb.cc"
     "include/peerpaste/concurrent_queue.hpp"
     "include/peerpaste/concurrent_routing_table.hpp"
+    "include/peerpaste/consumer.hpp"
+    "include/peerpaste/concurrent_request_handler.hpp"
     )
 
 set_target_properties(libpeerpaste PROPERTIES LINKER_LANGUAGE CXX)

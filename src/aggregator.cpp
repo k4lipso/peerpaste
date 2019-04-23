@@ -4,6 +4,7 @@ Aggregator::Aggregator(){}
 
 const RequestObjectPtr Aggregator::add_aggregat(MessagePtr message)
 {
+    std::scoped_lock lk(mutex_);
     //for every aggregat
     for(auto aggregat = aggregats_.begin();
              aggregat != aggregats_.end();
@@ -27,5 +28,6 @@ const RequestObjectPtr Aggregator::add_aggregat(MessagePtr message)
 
 void Aggregator::add_aggregat(RequestObjectPtr request, std::unordered_set<std::string> ids)
 {
+    std::scoped_lock lk(mutex_);
     aggregats_.push_back(Aggregat(request, ids));
 }

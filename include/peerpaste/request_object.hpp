@@ -109,6 +109,11 @@ public:
         return message_->get_request_type();
     }
 
+    bool is_request() const
+    {
+        return message_->is_request();
+    }
+
     const std::string get_client_ip() const
     {
         if(is_session()){
