@@ -10,7 +10,7 @@ template<typename T>
 class ConcurrentRequestHandler
 {
 public:
-    ConcurrentRequestHandler();
+    ConcurrentRequestHandler() {}
 
     T& operator[](std::string id)
     {
@@ -32,7 +32,7 @@ public:
     bool try_find_and_erase(const std::string& id, T& request)
     {
         std::scoped_lock lk(mutex_);
-        auto search = request_.find(id);
+        auto search = requests_.find(id);
         if(search == requests_.end()){
             return false;
         }

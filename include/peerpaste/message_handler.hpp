@@ -7,6 +7,7 @@
 #include "peerpaste/aggregator.hpp"
 #include "peerpaste/storage.hpp"
 #include "peerpaste/concurrent_routing_table.hpp"
+#include "peerpaste/concurrent_request_handler.hpp"
 #include <functional>
 #include <mutex>
 
@@ -75,7 +76,7 @@ public:
             check_predecessor();
         }
 
-        handle_timeouts();
+        open_requests_.handle_timeouts();
         std::this_thread::sleep_for(std::chrono::milliseconds(400));
         run();
     }
@@ -89,26 +90,10 @@ public:
         if(is_request){
             auto transaction_id = shared_transport_object->get_message()->get_transaction_id();
             //TODO: store ptrs in open_requests
-            open_requests_[transaction_id] = shared_transport_object;
+            open_requests_.set(transaction_id, shared_transport_object);
         }
         send_queue_->push(*shared_transport_object.get());
         routing_table_.print();
-    }
-
-    void handle_timeouts()
-    {
-        //for every obj in open_request
-        for(auto iter = open_requests_.begin();
-                 iter != open_requests_.end(); iter++){
-            auto req_obj = iter->second;
-            //if its still valid continue
-            if(req_obj->is_valid()) continue;
-            std::cout << req_obj->get_request_type() << std::endl;
-            //call handler_function with original obj
-            req_obj->call(req_obj);
-            //erase object from open_request
-            open_requests_.erase(iter);
-        }
     }
 
     void handle_request(RequestObjectUPtr transport_object)
@@ -345,14 +330,8 @@ public:
         //Get the CorrelationID to check if there is an OpenRequest matching
         //that ID
         auto correlational_id = transport_object->get_correlational_id();
-        auto search = open_requests_.find(correlational_id);
-
-        //if there is an open request
-        if(search != open_requests_.end()){
-            //Get the request object and erase it from the container
-            auto request_object = open_requests_.at(correlational_id);
-            open_requests_.erase(correlational_id);
-
+        RequestObjectSPtr request_object;
+        if(open_requests_.try_find_and_erase(correlational_id, request_object)){
             auto message = transport_object->get_message();
 
             //Check if the request has a handler function
@@ -366,9 +345,8 @@ public:
             if(possible_request != nullptr){
                 push_to_write_queue(possible_request);
             }
-
         } else {
-            /* std::cout << "[MessageHandler] (handle_response) INVALID MSG " << '\n'; */
+            std::cout << "[MessageHandler] (handle_response) INVALID MSG " << '\n';
             //TODO: handle invalid message
         }
     }
@@ -842,18 +820,9 @@ public:
 private:
 
     peerpaste::ConcurrentRoutingTable<Peer> routing_table_;
+    peerpaste::ConcurrentRequestHandler<RequestObjectSPtr> open_requests_;
     std::shared_ptr<peerpaste::ConcurrentQueue<RequestObject>>  send_queue_;
     std::unique_ptr<Storage> storage_;
-
-    //TODO:
-    //std::map<string, RequestObject>
-    //RequestObject contains: function ptr,
-    //                        message (with timestamp!),
-    //                        Peer to send the request
-    /* std::map<std::string, std::function<void(MessagePtr)>> open_requests_; */
-    //TODO: delete objects when they got handled
-    std::map<std::string, RequestObjectSPtr> open_requests_;
-
     Aggregator aggregator_;
 
     mutable std::mutex mutex_;
