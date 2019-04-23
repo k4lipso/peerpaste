@@ -25,6 +25,28 @@ public:
     }
     ~RequestObject () {}
 
+    static RequestObject create_request_object(Message msg,
+                                               std::variant<Peer, SessionPtr> connection)
+    {
+        RequestObject request;
+        request.set_message(std::make_shared<Message>(msg));
+        set_connection(request, connection);
+
+        return request;
+    }
+
+    static RequestObject create_request_object(Message msg,
+                                               std::variant<Peer, SessionPtr> connection,
+                                               HandlerFunction fct)
+    {
+        RequestObject request;
+        request.set_message(std::make_shared<Message>(msg));
+        request.set_handler(fct);
+        set_connection(request, connection);
+
+        return request;
+    }
+
     /*
      * Calls the optional handlerfunction with the
      * given request object
@@ -137,6 +159,15 @@ public:
     }
 
 private:
+    static void set_connection(RequestObject& req, std::variant<Peer, SessionPtr> connection)
+    {
+        if(std::holds_alternative<SessionPtr>(connection)){
+            req.set_connection(std::get<SessionPtr>(connection));
+        } else {
+            req.set_connection(std::make_shared<Peer>(std::get<Peer>(connection)));
+        }
+    }
+
     MessagePtr message_;
     std::optional<HandlerFunction> handler_;
     std::variant<PeerPtr, SessionPtr> connection_;
