@@ -1,6 +1,6 @@
 #include "peerpaste/session.hpp"
-#include "peerpaste/message_queue.hpp"
 #include "peerpaste/message_converter.hpp"
+#include "peerpaste/concurrent_queue.hpp"
 
 #include <boost/asio.hpp>
 #include <boost/bind.hpp>
@@ -12,20 +12,19 @@
 
 using boost::asio::ip::tcp;
 
-    //TODO: deeleeteeeee!
-    Session::Session (boost::asio::io_context& io_context)
+    Session::Session (boost::asio::io_context& io_context,
+                std::shared_ptr<peerpaste::ConcurrentQueue<std::pair<std::vector<uint8_t>,
+                                                                     SessionPtr>>> msg_queue)
         : service_(io_context),
           write_strand_(io_context),
           read_strand_(io_context),
           socket_(io_context),
-          name_(std::to_string(++naming))
-    {
-        message_queue_ = MessageQueue::GetInstance();
-    }
+          name_(std::to_string(++naming)),
+          msg_queue_(msg_queue)
+    {}
 
     Session::~Session ()
-    {
-    }
+    {}
 
     boost::asio::ip::tcp::socket& Session::get_socket()
     {
@@ -37,37 +36,27 @@ using boost::asio::ip::tcp;
         socket_.close();
     }
 
-    void Session::write(const MessagePtr message)
+    void Session::write(const std::vector<uint8_t>& encoded_message)
     {
-        ProtobufMessageConverter converter;
-        auto message_buf = converter.SerializedFromMessage(message);
-        std::vector<boost::uint8_t> encoded_buf;
-        encoded_buf.resize(header_size_);
-        encode_header(encoded_buf, message_buf.size());
-        encoded_buf.insert(encoded_buf.end(),
-                           std::make_move_iterator(message_buf.begin()),
-                           std::make_move_iterator(message_buf.end())
-                           );
-
-        service_.post( write_strand_.wrap( [me = shared_from_this(), encoded_buf] ()
+        service_.post( write_strand_.wrap( [me = shared_from_this(), encoded_message] ()
                                             {
-                                                me->queue_message(encoded_buf);
+                                                me->queue_message(encoded_message);
                                             } ) );
     }
 
-    void Session::write_to(const MessagePtr message, std::string address,
+    void Session::write_to(const std::vector<uint8_t>& encoded_message, std::string address,
                                              std::string port)
     {
         tcp::resolver resolver(service_);
         auto endpoint = resolver.resolve(address, port);
 
         boost::asio::async_connect(socket_, endpoint,
-                [this, me = shared_from_this(), endpoint, message]
+                [this, me = shared_from_this(), endpoint, encoded_message]
                 (boost::system::error_code ec, tcp::endpoint)
                 {
                     if(!ec)
                     {
-                        me->write(message);
+                        me->write(encoded_message);
                     } else {
                         std::cout << "error: " << ec << std::endl;
                     }
@@ -133,9 +122,7 @@ using boost::asio::ip::tcp;
             auto begin = readbuf_.begin() + header_size_;
             auto end = readbuf_.end();
             std::vector<uint8_t> message_buf(begin, end);
-            ProtobufMessageConverter converter;
-            std::shared_ptr<Message> message_ptr = converter.MessageFromSerialized(message_buf);
-            message_queue_->push_back(message_ptr, shared_from_this());
+            msg_queue_->push(std::make_pair(std::move(message_buf), shared_from_this()));
         } else {
             std::cout << "error in handle read message: " << ec << std::endl;
             do_read_header();

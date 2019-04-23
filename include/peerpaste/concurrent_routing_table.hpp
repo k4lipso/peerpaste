@@ -19,14 +19,12 @@ class ConcurrentRoutingTable
 
     std::unique_ptr<T> self_;
     std::unique_ptr<T> predecessor_;
-    std::vector<std::unique_ptr<T>> peers_;
+    std::vector<T> successor_list_;
 
 public:
 
     ConcurrentRoutingTable()
-    {
-        peers_.push_back(nullptr);
-    }
+    {}
 
     bool try_get_self(T& value) const
     {
@@ -36,6 +34,13 @@ public:
             return false;
         }
         value = *self_.get();
+        return true;
+    }
+
+    bool has_self() const
+    {
+        std::scoped_lock lk(mutex_);
+        if(self_ == nullptr) return false;
         return true;
     }
 
@@ -57,6 +62,13 @@ public:
         return true;
     }
 
+    bool has_predecessor() const
+    {
+        std::scoped_lock lk(mutex_);
+        if(predecessor_ == nullptr) return false;
+        return true;
+    }
+
     void set_predecessor(T predecessor)
     {
         std::scoped_lock lk(mutex_);
@@ -65,41 +77,85 @@ public:
         condition_.notify_all();
     }
 
+    void reset_predecessor()
+    {
+        std::scoped_lock lk(mutex_);
+        predecessor_ = nullptr;
+    }
+
     bool try_get_successor(T& value) const
     {
         std::scoped_lock lk(mutex_);
-        if(peers_.front() == nullptr){
+        if(successor_list_.empty()){
             successor_is_set = false;
             return false;
         }
-        value = *peers_.front().get();
+        value = successor_list_.front();
+        return true;
+    }
+
+    bool has_sucessor() const
+    {
+        std::scoped_lock lk(mutex_);
+        if(successor_list_.empty()) return false;
         return true;
     }
 
     void set_successor(T sucessor)
     {
         std::scoped_lock lk(mutex_);
-        peers_.at(0) = std::make_unique<T>(std::move(sucessor));
+        if(successor_list_.empty()){
+            successor_list_.push_back(std::move(sucessor));
+        } else {
+            successor_list_.at(0) = std::move(sucessor);
+        }
         successor_is_set = true;
         condition_.notify_all();
+    }
+
+    void replace_successor_list(std::vector<T> new_succ_list)
+    {
+        std::scoped_lock lk(mutex_);
+        successor_list_ = std::move(new_succ_list);
+        successor_list_.resize(3);
+    }
+
+    void replace_after_successor(std::vector<T> new_succ_list)
+    {
+        std::scoped_lock lk(mutex_);
+        successor_list_.insert(successor_list_.begin() + 1,
+                               new_succ_list.begin(),
+                               new_succ_list.end());
+        successor_list_.resize(3);
     }
 
     size_t size() const
     {
         std::scoped_lock lk(mutex_);
-        return peers_.size();
+        return successor_list_.size();
     }
 
     void push_back(T value)
     {
         std::scoped_lock lk(mutex_);
-        peers_.push_back(std::make_unique<T>(value));
+        successor_list_.push_back(std::move(value));
     }
 
-    std::vector<std::unique_ptr<T>> get_peers() const
+    std::vector<T> get_peers() const
     {
         std::scoped_lock lk(mutex_);
-        return peers_;
+        return successor_list_;
+    }
+
+    void pop_front()
+    {
+        std::scoped_lock lk(mutex_);
+        if(successor_list_.size() <= 1){
+            std::cout << "Cant pop fron, succ list to small" << std::endl;
+            return;
+        }
+        successor_list_.erase(successor_list_.begin());
+
     }
 
     void wait_til_valid()
@@ -120,6 +176,31 @@ public:
         std::scoped_lock lk(mutex_);
         return self_is_set && predecessor_is_set && successor_is_set;
     }
+
+    void print() const
+    {
+        std::scoped_lock lk(mutex_);
+        std::cout << "#### ROUTINGTABLE BEGIN ####" << '\n';
+        std::cout << "SELF:" << '\n';
+        self_->print();
+        std::cout << "PREDECESSOR: " << '\n';
+        if(predecessor_ != nullptr){
+            predecessor_->print();
+        }
+        std::cout << "FINGERTABLE: " << '\n';
+        for(const auto& element : successor_list_){
+            element.print();
+        }
+        /* for (auto it = successor_list_.begin(); */
+        /*      it < successor_list_.end(); it++) { */
+        /*     if(*it != nullptr){ */
+        /*         *it->print(); */
+        /*     } */
+        /*     std::cout << "######" << '\n'; */
+        /* } */
+        std::cout << "#### ROUTINGTABLE END ####" << '\n';
+    }
+
 };
 } // closing namespace peerpaste
 #endif /* ifndef CONCURRENT_ROUTING_TABLE */

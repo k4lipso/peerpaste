@@ -50,7 +50,7 @@ public:
     {
         /* auto new_value_ptr = std::make_unique<T>(std::move(new_value)); */
         std::scoped_lock lk(mutex_);
-        queue_.push(std::make_unique<T>(new_value));
+        queue_.push(std::make_unique<T>(std::move(new_value)));
         condition_.notify_one();
     }
 };
