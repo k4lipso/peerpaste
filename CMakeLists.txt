@@ -38,7 +38,7 @@ add_library(libpeerpaste
     "include/peerpaste/peer.hpp"
     "include/peerpaste/header.hpp"
     "include/peerpaste/message.hpp"
-    "src/session.cpp"
+    "src/boost_session.cpp"
     "include/peerpaste/message_converter.hpp"
     "include/peerpaste/server.hpp"
     "include/peerpaste/message_handler.hpp"

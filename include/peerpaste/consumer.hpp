@@ -6,7 +6,7 @@
 #include "peerpaste/message_converter.hpp"
 #include "peerpaste/message.hpp"
 #include "peerpaste/message_handler.hpp"
-#include "peerpaste/session.hpp"
+#include "peerpaste/boost_session.hpp"
 
 #include <utility>
 #include <memory>
@@ -15,9 +15,9 @@
 namespace peerpaste {
 
 using MsgPtr = std::unique_ptr<Message>;
-using SessionPtr = std::shared_ptr<Session>;
-using MsgBufPair = std::pair<std::vector<uint8_t>, SessionPtr>;
-using MsgPair = std::pair<MsgPtr, SessionPtr>;
+using BoostSessionPtr = std::shared_ptr<BoostSession>;
+using MsgBufPair = std::pair<std::vector<uint8_t>, BoostSessionPtr>;
+using MsgPair = std::pair<MsgPtr, BoostSessionPtr>;
 
 class MessageDispatcher
 {
@@ -114,7 +114,7 @@ public:
                 //should be more abstract so that the message_handler does not need
                 //to know what kind of object sends the data somewhere
                 auto peer = send_object->get_peer();
-                auto write_handler = std::make_shared<Session>(service_, queue_);
+                auto write_handler = std::make_shared<BoostSession>(service_, queue_);
                 write_handler->write_to(encoded_buf, peer->get_ip(), peer->get_port());
                 if(message_is_request){
                     write_handler->read();

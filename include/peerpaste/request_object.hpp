@@ -3,7 +3,8 @@
 
 #include "message.hpp"
 #include "peer.hpp"
-#include "session.hpp"
+//TODO: change to abstract session
+#include "boost_session.hpp"
 
 #include <variant>
 #include <optional>
@@ -12,7 +13,7 @@ class RequestObject;
 
 using MessagePtr = std::shared_ptr<Message>;
 using PeerPtr = std::shared_ptr<Peer>;
-using SessionPtr = std::shared_ptr<Session>;
+using SessionPtr = std::shared_ptr<BoostSession>;
 using RequestObjectUPtr = std::unique_ptr<RequestObject>;
 using HandlerFunction = std::function<void(RequestObjectUPtr)>;
 

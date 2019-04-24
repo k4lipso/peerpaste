@@ -1,7 +1,6 @@
 #ifndef MESSAGE_HANDLER_HPP
 #define MESSAGE_HANDLER_HPP
 
-#include "peerpaste/session.hpp"
 #include "peerpaste/message.hpp"
 #include "peerpaste/request_object.hpp"
 #include "peerpaste/aggregator.hpp"
@@ -15,7 +14,6 @@ class MessageHandler
 {
 public:
     typedef std::shared_ptr<Message> MessagePtr;
-    typedef std::shared_ptr<Session> SessionPtr;
     typedef std::unique_ptr<RequestObject> RequestObjectUPtr;
     typedef std::shared_ptr<RequestObject> RequestObjectSPtr;
     typedef std::shared_ptr<Peer> PeerPtr;

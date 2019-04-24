@@ -3,7 +3,7 @@
 
 #define VERSION "0.0.1"
 
-#include "peerpaste/session.hpp"
+#include "peerpaste/boost_session.hpp"
 #include "peerpaste/peer.hpp"
 #include "peerpaste/message.hpp"
 #include "peerpaste/request_object.hpp"
@@ -66,7 +66,7 @@ private:
     void accept_connections()
     {
         auto handler =
-            std::make_shared<Session>(io_context_, queue_);
+            std::make_shared<BoostSession>(io_context_, queue_);
 
 
         acceptor_.async_accept( handler->get_socket(),
@@ -82,7 +82,7 @@ private:
         }
     }
 
-    void handle_new_connection(Session::SessionPtr handler,
+    void handle_new_connection(SessionPtr handler,
             const boost::system::error_code& ec)
     {
         if(ec) {
@@ -92,7 +92,7 @@ private:
 
         handler->read();
 
-        auto new_handler = std::make_shared<Session>(io_context_, queue_);
+        auto new_handler = std::make_shared<BoostSession>(io_context_, queue_);
 
         acceptor_.async_accept( new_handler->get_socket(),
                                 [=] (auto ec)

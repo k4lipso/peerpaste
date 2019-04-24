@@ -1,4 +1,4 @@
-#include "peerpaste/session.hpp"
+#include "peerpaste/boost_session.hpp"
 #include "peerpaste/message_converter.hpp"
 #include "peerpaste/concurrent_queue.hpp"
 
@@ -12,31 +12,30 @@
 
 using boost::asio::ip::tcp;
 
-    Session::Session (boost::asio::io_context& io_context,
+    BoostSession::BoostSession (boost::asio::io_context& io_context,
                 std::shared_ptr<peerpaste::ConcurrentQueue<std::pair<std::vector<uint8_t>,
-                                                                     SessionPtr>>> msg_queue)
+                                                                     BoostSessionPtr>>> msg_queue)
         : service_(io_context),
           write_strand_(io_context),
           read_strand_(io_context),
           socket_(io_context),
-          name_(std::to_string(++naming)),
           msg_queue_(msg_queue)
     {}
 
-    Session::~Session ()
+    BoostSession::~BoostSession ()
     {}
 
-    boost::asio::ip::tcp::socket& Session::get_socket()
+    boost::asio::ip::tcp::socket& BoostSession::get_socket()
     {
         return socket_;
     }
 
-    void Session::stop()
+    void BoostSession::stop()
     {
         socket_.close();
     }
 
-    void Session::write(const std::vector<uint8_t>& encoded_message)
+    void BoostSession::write(const std::vector<uint8_t>& encoded_message)
     {
         service_.post( write_strand_.wrap( [me = shared_from_this(), encoded_message] ()
                                             {
@@ -44,8 +43,9 @@ using boost::asio::ip::tcp;
                                             } ) );
     }
 
-    void Session::write_to(const std::vector<uint8_t>& encoded_message, std::string address,
-                                             std::string port)
+    void BoostSession::write_to(const std::vector<uint8_t>& encoded_message,
+                                const std::string& address,
+                                const std::string& port)
     {
         tcp::resolver resolver(service_);
         auto endpoint = resolver.resolve(address, port);
@@ -63,22 +63,22 @@ using boost::asio::ip::tcp;
                 });
     }
 
-    void Session::read()
+    void BoostSession::read()
     {
         do_read_header();
     }
 
-    const std::string Session::get_client_ip() const
+    const std::string BoostSession::get_client_ip() const
     {
         return socket_.remote_endpoint().address().to_string();
     }
 
-    const unsigned Session::get_client_port() const
+    const unsigned BoostSession::get_client_port() const
     {
         return socket_.remote_endpoint().port();
     }
 
-    void Session::queue_message(const std::vector<uint8_t>& message)
+    void BoostSession::queue_message(const std::vector<uint8_t>& message)
     {
         bool write_in_progress = !send_packet_queue.empty();
         send_packet_queue.push_back(std::move(message));
@@ -89,7 +89,7 @@ using boost::asio::ip::tcp;
         }
     }
 
-    void Session::start_packet_send()
+    void BoostSession::start_packet_send()
     {
         async_write(socket_,
                     boost::asio::buffer(send_packet_queue.front()),
@@ -102,7 +102,7 @@ using boost::asio::ip::tcp;
                     ));
     }
 
-    void Session::packet_send_done(boost::system::error_code const & error)
+    void BoostSession::packet_send_done(boost::system::error_code const & error)
     {
         if(!error)
         {
@@ -116,7 +116,7 @@ using boost::asio::ip::tcp;
         }
     }
 
-    void Session::handle_read_message(const boost::system::error_code& ec)
+    void BoostSession::handle_read_message(const boost::system::error_code& ec)
     {
         if(!ec){
             auto begin = readbuf_.begin() + header_size_;
@@ -129,7 +129,7 @@ using boost::asio::ip::tcp;
         }
     }
 
-    void Session::do_read_message(unsigned msg_len)
+    void BoostSession::do_read_message(unsigned msg_len)
     {
         readbuf_.resize(header_size_ + msg_len);
         boost::asio::mutable_buffers_1 buf = boost::asio::buffer(&readbuf_[header_size_], msg_len);
@@ -142,7 +142,7 @@ using boost::asio::ip::tcp;
                                 });
     }
 
-    void Session::handle_read_header(const boost::system::error_code& error)
+    void BoostSession::handle_read_header(const boost::system::error_code& error)
     {
         if(!error){
             unsigned msg_len = decode_header(readbuf_);
@@ -158,7 +158,7 @@ using boost::asio::ip::tcp;
     }
 
     //TODO: this function has to post to the read_strand_
-    void Session::do_read_header()
+    void BoostSession::do_read_header()
     {
         readbuf_.resize(header_size_);
 
@@ -171,7 +171,7 @@ using boost::asio::ip::tcp;
                                 });
     }
 
-    unsigned Session::decode_header(const DataBuffer& buf) const
+    unsigned BoostSession::decode_header(const DataBuffer& buf) const
     {
         if(buf.size() < header_size_)
             return 0;
@@ -182,7 +182,7 @@ using boost::asio::ip::tcp;
         return msg_size;
     }
 
-    void Session::encode_header(DataBuffer& buf, unsigned size) const
+    void BoostSession::encode_header(DataBuffer& buf, unsigned size) const
     {
         assert(buf.size() >= header_size_);
         buf[0] = static_cast<boost::uint8_t>((size >> 24) & 0xFF);
