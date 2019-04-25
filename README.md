@@ -1,3 +1,4 @@
 # PeerPaste
 
-Dezentralized, Crypted Pastebin based on the Choord P2P Algorithm
+Pre alpha implementation of a Chord based DHT for storing arbitrary text data. 
+Buildsystem does not handle dependencys yet.
