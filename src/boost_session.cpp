@@ -14,13 +14,14 @@ using boost::asio::ip::tcp;
 
     BoostSession::BoostSession (boost::asio::io_context& io_context,
                 std::shared_ptr<peerpaste::ConcurrentQueue<std::pair<std::vector<uint8_t>,
-                                                                     BoostSessionPtr>>> msg_queue)
+                                                                     SessionPtr>>> msg_queue)
         : service_(io_context),
           write_strand_(io_context),
           read_strand_(io_context),
-          socket_(io_context),
-          msg_queue_(msg_queue)
-    {}
+          socket_(io_context)
+    {
+        msg_queue_ = std::move(msg_queue);
+    }
 
     BoostSession::~BoostSession ()
     {}

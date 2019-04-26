@@ -6,6 +6,7 @@
 #include "peerpaste/message_converter.hpp"
 #include "peerpaste/message.hpp"
 #include "peerpaste/message_handler.hpp"
+#include "peerpaste/session.hpp"
 #include "peerpaste/boost_session.hpp"
 
 #include <utility>
@@ -15,9 +16,9 @@
 namespace peerpaste {
 
 using MsgPtr = std::unique_ptr<Message>;
-using BoostSessionPtr = std::shared_ptr<BoostSession>;
-using MsgBufPair = std::pair<std::vector<uint8_t>, BoostSessionPtr>;
-using MsgPair = std::pair<MsgPtr, BoostSessionPtr>;
+using SessionPtr = std::shared_ptr<Session>;
+using MsgBufPair = std::pair<std::vector<uint8_t>, SessionPtr>;
+using MsgPair = std::pair<MsgPtr, SessionPtr>;
 
 class MessageDispatcher
 {

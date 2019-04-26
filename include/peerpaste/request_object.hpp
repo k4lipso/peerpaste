@@ -13,7 +13,7 @@ class RequestObject;
 
 using MessagePtr = std::shared_ptr<Message>;
 using PeerPtr = std::shared_ptr<Peer>;
-using SessionPtr = std::shared_ptr<BoostSession>;
+using SessionPtr = std::shared_ptr<Session>;
 using RequestObjectUPtr = std::unique_ptr<RequestObject>;
 using HandlerFunction = std::function<void(RequestObjectUPtr)>;
 
