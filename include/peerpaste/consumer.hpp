@@ -12,6 +12,8 @@
 #include <utility>
 #include <memory>
 #include <vector>
+#include <boost/property_tree/ptree.hpp>
+#include <boost/property_tree/json_parser.hpp>
 
 namespace peerpaste {
 
@@ -22,11 +24,6 @@ using MsgPair = std::pair<MsgPtr, SessionPtr>;
 
 class MessageDispatcher
 {
-    boost::asio::io_service& service_;
-    std::shared_ptr<ConcurrentQueue<MsgBufPair>> queue_;
-    std::shared_ptr<ConcurrentQueue<RequestObject>>  send_queue_;
-    std::shared_ptr<MessageHandler> msg_handler_;
-    bool run_ = true;
 public:
     //TODO: should init both queues and provide getter() functions to get shared_ptrs of them
     MessageDispatcher (std::shared_ptr<MessageHandler> msg_handler,
@@ -55,7 +52,7 @@ public:
         t1.detach();
         std::thread t2([&]() { run_send_internal(); });
         t2.detach();
-        std::thread t3([&]() { msg_handler_->run(); });
+        std::thread t3([&]() { send_routing_information_internal(); });
         t3.detach();
     }
 
@@ -72,7 +69,6 @@ public:
             //create RequestObject
             auto data_object = std::make_unique<RequestObject>();
             //set msg
-            converted_message->print();
             data_object->set_message(std::move(converted_message));
             //set conn
             data_object->set_connection(std::move(std::get<1>(*msg_pair.get())));
@@ -150,11 +146,11 @@ public:
             //TODO: is this creating copy of msg_handler_? if so i have to pass std::ref() instead
             std::thread t([this, data_object = std::move(data_object)]() mutable
                 { msg_handler_->handle_request(std::move(data_object)); });
-            t.join();
+            t.detach();
         } else {
             std::thread t([this, data_object = std::move(data_object)]() mutable
                 { msg_handler_->handle_response(std::move(data_object)); });
-            t.join();
+            t.detach();
         }
     }
 
@@ -162,6 +158,60 @@ public:
     {
         run_ = false;
     }
+
+    void send_routing_information_internal()
+    {
+        auto routing_info = msg_handler_->get_routing_information();
+        auto pre = std::get<0>(routing_info);
+        auto self = std::get<1>(routing_info);
+        auto succ = std::get<2>(routing_info);
+        if(not self.is_valid()){
+            return;
+        }
+
+        tcp::resolver resolver(service_);
+        auto endpoint = resolver.resolve("127.0.0.1", "8080");
+        tcp::socket socket(service_);
+        boost::asio::connect(socket, endpoint);
+
+        boost::asio::streambuf request;
+        std::ostream request_stream(&request);
+
+        using boost::property_tree::ptree;
+        using boost::property_tree::read_json;
+        using boost::property_tree::write_json;
+
+        ptree root, info;
+        info.put("successor", succ.get_id());
+        info.put("predecessor", pre.get_id());
+        root.put_child(self.get_id(), info);
+
+        std::ostringstream buf;
+        write_json (buf, root, false);
+        std::string json = buf.str();
+
+        request_stream << "POST / HTTP/1.1 \r\n";
+        request_stream << "Host:" << "lol" << "\r\n";
+        request_stream << "User-Agent: C/1.0";
+        request_stream << "Content-Type: application/json; charset=utf-8 \r\n";
+        request_stream << "Accept: */*\r\n";
+        request_stream << "Content-Length: " << json.length() << "\r\n";
+        request_stream << "Connection: close\r\n\r\n";  //NOTE THE Double line feed
+        request_stream << json;
+
+        // Send the request.
+        boost::asio::write(socket, request);
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+        send_routing_information_internal();
+    }
+
+private:
+    boost::asio::io_service& service_;
+    std::shared_ptr<ConcurrentQueue<MsgBufPair>> queue_;
+    std::shared_ptr<ConcurrentQueue<RequestObject>>  send_queue_;
+    std::shared_ptr<MessageHandler> msg_handler_;
+    bool run_ = true;
+
 };
 
 } // closing namespace peerpaste

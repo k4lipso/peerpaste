@@ -75,6 +75,11 @@ public:
         return str.str();
     }
 
+    bool is_valid()
+    {
+        return (id_ != "") && (ip_ != "") && (port_ != "");
+    }
+
 private:
     std::string id_;
     std::string ip_;

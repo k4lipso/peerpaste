@@ -51,7 +51,6 @@ bool Aggregat::add_message(MessagePtr message)
 const RequestObjectPtr Aggregat::get_result_message() const
 {
     auto original_message = request_->get_message();
-    auto result = std::make_shared<RequestObject>();
 
     //If request is find_successor and in messages_ is only one object
     //with a query response, then this is a is a join
@@ -72,8 +71,12 @@ const RequestObjectPtr Aggregat::get_result_message() const
         }
     }
     if(original_message->get_request_type() == "put"){
-        auto succ = messages_.front()->get_peers().at(0);
-        request_->set_connection(std::make_shared<Peer>(succ));
+        //put request aggregat is waiting for a data id which is sent
+        //when the data was stored successfully
+        //TODO: validation
+        auto data_id = messages_.front()->get_data();
+        original_message->set_data(data_id);
+        /* original_message->generate_transaction_id(); */
         return request_;
     }
     if(original_message->get_request_type() == "get"){
