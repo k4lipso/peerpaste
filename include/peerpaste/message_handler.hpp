@@ -1,7 +1,6 @@
 #ifndef MESSAGE_HANDLER_HPP
 #define MESSAGE_HANDLER_HPP
 
-#include "peerpaste/session.hpp"
 #include "peerpaste/message.hpp"
 #include "peerpaste/request_object.hpp"
 #include "peerpaste/aggregator.hpp"
@@ -15,7 +14,6 @@ class MessageHandler
 {
 public:
     typedef std::shared_ptr<Message> MessagePtr;
-    typedef std::shared_ptr<Session> SessionPtr;
     typedef std::unique_ptr<RequestObject> RequestObjectUPtr;
     typedef std::shared_ptr<RequestObject> RequestObjectSPtr;
     typedef std::shared_ptr<Peer> PeerPtr;
@@ -35,6 +33,7 @@ public:
         auto self_id = util::generate_sha256(self_ip, self_port);
         routing_table_.set_self(Peer(self_id, self_ip, self_port));
 
+        std::cout << "OWN ID: " << self_id << std::endl;
         storage_ = std::make_unique<Storage>(self_id);
     }
 
@@ -51,6 +50,7 @@ public:
         auto self_id = util::generate_sha256(self_ip, self_port);
         routing_table_.set_self(Peer(self_id, self_ip, self_port));
 
+        std::cout << "OWN ID: " << self_id << std::endl;
         storage_ = std::make_unique<Storage>(self_id);
     }
 
@@ -93,7 +93,6 @@ public:
             open_requests_.set(transaction_id, shared_transport_object);
         }
         send_queue_->push(*shared_transport_object.get());
-        routing_table_.print();
     }
 
     void handle_request(RequestObjectUPtr transport_object)
@@ -132,8 +131,16 @@ public:
             handle_put_request(std::move(transport_object));
             return;
         }
+        if(request_type == "store"){
+            handle_store(std::move(transport_object));
+            return;
+        }
         if(request_type == "get"){
             handle_get_request(std::move(transport_object));
+            return;
+        }
+        if(request_type == "get_internal"){
+            handle_get_internal(std::move(transport_object));
             return;
         }
 
@@ -144,34 +151,130 @@ public:
     void handle_get_request(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
+        auto response_msg = message->generate_response();
+        auto response = std::make_shared<RequestObject>(*transport_object.get());
+        response->set_message(response_msg);
         auto data = message->get_data();
-
-        auto response_message = message->generate_response();
-
-        if(storage_->exists(data)){
-            response_message->set_data(storage_->get(data));
-        } else {
-            response_message->set_data("Could not Find file, try again later");
+        //get self to check if find_successor returned self
+        Peer self;
+        if(not routing_table_.try_get_self(self)){
+            std::cout << "cant handle_put request, self not defined" << std::endl;
+            return;
         }
+        auto succ = find_successor(data);
+        if(succ == nullptr){
+            auto find_succ_req_msg = std::make_shared<Message>(
+                    Message::create_request("get"));
+            find_succ_req_msg->set_data(data);
+            auto transaction_id = find_succ_req_msg->generate_transaction_id();
+            auto find_succ_req = std::make_unique<RequestObject>();
+            find_succ_req->set_message(find_succ_req_msg);
+            find_succ_req->set_connection(closest_preceding_node(data));
 
-        response_message->generate_transaction_id();
-        auto response = std::make_shared<RequestObject>(*transport_object);
-        response->set_message(response_message);
+            aggregator_.add_aggregat(std::move(response), { transaction_id });
+            push_to_write_queue(std::move(find_succ_req));
+            return;
+
+        } else if(succ->get_id() == self.get_id()){
+            if(storage_->exists(data)){
+                response_msg->set_data(storage_->get(data));
+            } else {
+                response_msg->set_data("Could not Find file, try again later");
+            }
+            response_msg->generate_transaction_id();
+            push_to_write_queue(response);
+            return;
+        }
+        auto get_internal_message = std::make_shared<Message>(
+                Message::create_request("get_internal"));
+        get_internal_message->set_data(data);
+        auto transaction_id = get_internal_message->generate_transaction_id();
+        auto get_internal_request = std::make_unique<RequestObject>();
+        get_internal_request->set_message(get_internal_message);
+        get_internal_request->set_connection(succ);
+
+        aggregator_.add_aggregat(std::move(response), { transaction_id });
+        push_to_write_queue(std::move(get_internal_request));
+    }
+
+    void handle_get_internal(RequestObjectUPtr transport_object)
+    {
+        auto message = transport_object->get_message();
+        auto data = message->get_data();
+        auto response_msg = message->generate_response();
+        auto response = std::make_shared<RequestObject>(*transport_object.get());
+        if(storage_->exists(data)){
+            response_msg->set_data(storage_->get(data));
+        } else {
+            response_msg->set_data("Could not Find file, try again later");
+        }
+        response->set_message(response_msg);
         push_to_write_queue(response);
     }
 
     void handle_put_request(RequestObjectUPtr transport_object)
     {
-        auto data = transport_object->get_message()->get_data();
+        //get msg and generate response
+        auto msg = transport_object->get_message();
+        auto response_msg = msg->generate_response();
+        auto response = std::make_shared<RequestObject>(*transport_object.get());
+        response->set_message(response_msg);
+        //get data and generate id
+        auto data = msg->get_data();
         auto data_id = util::generate_sha256(data, "");
-        storage_->put(data, data_id);
+        //get self to check if find_successor returned self
+        Peer self;
+        if(not routing_table_.try_get_self(self)){
+            std::cout << "cant handle_put request, self not defined" << std::endl;
+            return;
+        }
+        //try to find successor
+        auto succ = find_successor(data_id);
+        //if no successor is found
+        if(succ == nullptr){
+            //we have to forward put request to another peer
+            //We have to use agggregat
+            auto new_put_request = std::make_unique<RequestObject>(*transport_object.get());
+            new_put_request->get_message()->set_data(data);
+            auto transaction_id = new_put_request->get_message()->generate_transaction_id();
+            auto succ_prede = closest_preceding_node(data_id);
+            new_put_request->set_connection(succ_prede);
 
+            aggregator_.add_aggregat(std::move(response), { transaction_id });
+            push_to_write_queue(std::move(new_put_request));
+            return;
+        } else if(succ->get_id() == self.get_id()) {
+            //we are the right peer to store the data!
+            storage_->put(data, data_id);
+            response_msg->set_data(data_id);
+            /* response_msg->generate_transaction_id(); */
+            push_to_write_queue(response);
+            return;
+        }
+        //we know the successor so we forward the data
+        auto store_message = std::make_shared<Message>(
+                Message::create_request("store"));
+        store_message->set_data(data);
+        auto transaction_id = store_message->generate_transaction_id();
+        auto new_put_request = std::make_unique<RequestObject>();
+        new_put_request->set_message(store_message);
+        new_put_request->set_connection(succ);
+
+        aggregator_.add_aggregat(std::move(response), { transaction_id });
+
+        push_to_write_queue(std::move(new_put_request));
+    }
+
+    void handle_store(RequestObjectUPtr transport_object)
+    {
         auto message = transport_object->get_message();
-        auto response_message = message->generate_response();
-        response_message->set_data(data_id);
-        response_message->generate_transaction_id();
-        auto response = std::make_shared<RequestObject>(*transport_object);
-        response->set_message(response_message);
+        auto data = message->get_data();
+        auto data_id = util::generate_sha256(data, "");
+        auto response_msg = message->generate_response();
+        auto response = std::make_shared<RequestObject>(*transport_object.get());
+        response->set_message(response_msg);
+        storage_->put(data, data_id);
+        response_msg->set_data(data_id);
         push_to_write_queue(response);
     }
 
@@ -219,6 +322,7 @@ public:
         push_to_write_queue(response);
     }
 
+    //TODO: ADD TESTING!
     std::shared_ptr<Peer> find_successor(const std::string& id)
     {
         Peer self;
@@ -229,6 +333,7 @@ public:
 
         //if peers are empty there is no successor
         if(routing_table_.size() == 0){
+            std::cout << "ALLALALALALA" << std::endl;
             auto predecessor = closest_preceding_node(id);
             if(predecessor->get_id() == self.get_id()){
                 return std::make_shared<Peer>(self);
@@ -347,6 +452,7 @@ public:
             }
         } else {
             std::cout << "[MessageHandler] (handle_response) INVALID MSG " << '\n';
+            transport_object->get_message()->print();
             //TODO: handle invalid message
         }
     }
@@ -551,63 +657,76 @@ public:
         std::cout << transport_object->get_message()->get_data() << std::endl;
     }
 
-    /* void put(const std::string& data) */
-    /* { */
-        /* routing_table_.wait_til_valid(); */
+    void get(const std::string& ip,
+             const std::string& port,
+             const std::string& data)
+    {
+        auto data_key = data.substr(0, 64);
+        auto data_hash = data.substr(64, 64);
+        auto get_request_message = std::make_shared<Message>(
+                                            Message::create_request("get"));
+        get_request_message->set_data(data_hash);
+        auto transaction_id = get_request_message->generate_transaction_id();
 
-        /* //generate data id */
-        /* auto data_id = util::generate_sha256(data, ""); */
+        auto get_request = std::make_shared<RequestObject>();
 
-        /* //TODO: generate put request here, holding the data string */
-        /* //then check if we know the successor allready. */
-        /* //if that is the case just send the put request */
-        /* //if it is not the case: */
-        /* //generate find successor request for the data_id */
-        /* //create an aggregat which waits till successor is found */
-        /* //and then sends the put request */
+        auto get_request_handler = std::bind(&MessageHandler::handle_get_response,
+                                                            this,
+                                                            std::placeholders::_1);
 
-        /* //also the message object needs the be aware of the new data string */
-        /* //and the protobuf message converter too */
-        /* auto put_request_message = std::make_shared<Message>(); */
-        /* Header put_request_message_header(true, 0,0, "put", "", "", ""); */
-        /* put_request_message->set_header(put_request_message_header); */
-        /* put_request_message->set_data(data); */
-        /* put_request_message->generate_transaction_id(); */
+        /* get_request->set_handler(get_request_handler); */
+        get_request->set_message(get_request_message);
+        get_request->set_connection(std::make_shared<Peer>(Peer("", ip, port)));
 
-        /* auto put_request = std::make_shared<RequestObject>(); */
+        //create dummy request for storing data_id
+        auto dummy_message = std::make_shared<Message>(
+                                Message::create_request("get_dummy"));
+        dummy_message->set_data(data_key);
+        auto dummy_request = std::make_shared<RequestObject>();
+        dummy_request->set_message(dummy_message);
+        aggregator_.add_aggregat(dummy_request, { transaction_id });
 
-        /* auto put_request_handler = std::bind(&MessageHandler::handle_put_response, */
-        /*                                                     this, */
-        /*                                                     std::placeholders::_1); */
+        push_to_write_queue(get_request);
+    }
 
-        /* put_request->set_handler(put_request_handler); */
-        /* put_request->set_message(put_request_message); */
+    void put(const std::string& ip,
+             const std::string& port,
+             const std::string& data)
+    {
+        //generate data id
+        auto data_id = util::generate_sha256(data, "");
+        std::cout << data_id << std::endl;
 
-        /* //try to find successor */
-        /* auto succ = find_successor(data_id); */
-        /* /1* std::cout << "Find Succ of data_id:" << std::endl; *1/ */
-        /* /1* std::cout << succ->get_id() << std::endl; *1/ */
+        //TODO: generate put request here, holding the data string
+        //then check if we know the successor allready.
+        //if that is the case just send the put request
+        //if it is not the case:
+        //generate find successor request for the data_id
+        //create an aggregat which waits till successor is found
+        //and then sends the put request
 
-        /* //if no successor is found */
-        /* if(succ == nullptr){ */
-        /*     //We have to use agggregat */
-        /*     auto succ_prede = closest_preceding_node(data_id); */
-        /*     auto new_request = std::make_shared<Message>(); */
-        /*     Header header(true, 0, 0, "find_successor", "", "", ""); */
-        /*     new_request->set_header(header); */
-        /*     new_request->set_peers({ Peer(data_id, "", "") }); */
-        /*     auto transaction_id = new_request->generate_transaction_id(); */
+        //also the message object needs the be aware of the new data string
+        //and the protobuf message converter too
+        auto put_request_message = std::make_shared<Message>(
+                                            Message::create_request("put"));
+        put_request_message->set_data(util::encrypt(data_id, data));
+        auto transaction_id = put_request_message->generate_transaction_id();
 
-        /*     auto request = std::make_shared<RequestObject>(); */
-        /*     request->set_message(new_request); */
-        /*     request->set_connection(succ_prede); */
-        /*     aggregator_.add_aggregat(put_request, { transaction_id }); */
-        /*     push_to_write_queue(request); */
-        /*     return; */
-        /* } */
-        /* put_request->set_connection(succ); */
-        /* push_to_write_queue(put_request); */
-    /* } */
+        auto put_request = std::make_shared<RequestObject>();
+
+        put_request->set_message(put_request_message);
+        put_request->set_connection(std::make_shared<Peer>(Peer("", ip, port)));
+
+        //create dummy request for storing data_id
+        auto dummy_message = std::make_shared<Message>(
+                                Message::create_request("put_dummy"));
+        dummy_message->set_data(data_id);
+        auto dummy_request = std::make_shared<RequestObject>();
+        dummy_request->set_message(dummy_message);
+        aggregator_.add_aggregat(dummy_request, { transaction_id });
+
+        push_to_write_queue(put_request);
+    }
 
     void handle_put_response(RequestObjectUPtr transport_object)
     {
@@ -815,6 +934,15 @@ public:
             notify();
             stabilize_flag_ = false;
         }
+    }
+
+    std::tuple<Peer, Peer, Peer> get_routing_information()
+    {
+        Peer pre, self, succ;
+        routing_table_.try_get_predecessor(pre);
+        routing_table_.try_get_self(self);
+        routing_table_.try_get_successor(succ);
+        return std::make_tuple(pre, self, succ);
     }
 
 private:

@@ -24,8 +24,8 @@ int main(int argc, char** argv)
         ("help,h", "Display help message")
         ("port,p", po::value<unsigned>(), "Port to listen on")
         ("join,j", po::value<std::vector<std::string>>()->multitoken()->composing(), "IP and Port of Host to connect to")
-        ("put", po::value<std::string>(), "Path to text file")
-        ("get", po::value<std::string>(), "Hash of a stored Paste")
+        ("put", po::value<std::vector<std::string>>()->multitoken()->composing(), "Path to text file")
+        ("get", po::value<std::vector<std::string>>()->multitoken()->composing(), "Hash of a stored Paste")
         ("debug", "Send routing information to localhost");
 
     po::variables_map vm;
@@ -71,15 +71,26 @@ int main(int argc, char** argv)
         msg_dispatcher->run();
 
         if (vm.count("put")) {
-            std::ifstream t(vm["put"].as<std::string>());
+            auto vec = vm["put"].as<std::vector<std::string>>();
+            std::cout << vec.size() << std::endl;
+            auto ip = vec.at(0);
+            auto port = vec.at(1);
+            std::ifstream t(vec.at(2));
             std::string str((std::istreambuf_iterator<char>(t)),
                              std::istreambuf_iterator<char>());
-            /* server->put(str); */
-        }
+            msg_handler->put(ip, port, str);
+        } else if(vm.count("get")) {
+            auto vec = vm["get"].as<std::vector<std::string>>();
 
-        if (vm.count("get")) {
-            std::string data_hash = vm["get"].as<std::string>();
-            /* server->get(data_hash); */
+            auto ip = vec.at(0);
+            auto port = vec.at(1);
+            auto data = vec.at(2);
+            msg_handler->get(ip, port, data);
+        } else {
+            //only call msg_handler.run() when this node
+            //should be part of the ring
+            std::thread t3([&]() { msg_handler->run(); });
+            t3.detach();
         }
 
     }

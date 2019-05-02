@@ -43,6 +43,7 @@ public:
 
     void handle_timeouts()
     {
+        std::scoped_lock lk(mutex_);
         //for every obj in open_request
         for(auto iter = requests_.begin();
                  iter != requests_.end(); iter++){

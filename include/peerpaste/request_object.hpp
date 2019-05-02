@@ -3,7 +3,8 @@
 
 #include "message.hpp"
 #include "peer.hpp"
-#include "session.hpp"
+//TODO: change to abstract session
+#include "boost_session.hpp"
 
 #include <variant>
 #include <optional>

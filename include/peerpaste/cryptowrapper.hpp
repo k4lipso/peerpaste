@@ -4,6 +4,9 @@
 #include <sha.h>
 #include <filters.h>
 #include <hex.h>
+#include <sodium.h>
+#include <cctype>
+#include <iostream>
 
 namespace util {
 
@@ -12,6 +15,9 @@ namespace util {
      */
     const std::string generate_sha256(const std::string& data);
     const std::string generate_sha256(const std::string& ip, const std::string& port);
+    const std::string encrypt(const std::string& key_str, const std::string& data);
+    const std::string decrypt(const std::string& key_str, const std::string& data);
+
     const bool between(const std::string& id_1, const std::string& id_2,
                                                 const std::string& id_3);
     const size_t generate_hash(const std::string& data);
