@@ -80,6 +80,11 @@ const RequestObjectPtr Aggregat::get_result_message() const
         return request_;
     }
     if(original_message->get_request_type() == "get"){
+        auto data = messages_.front()->get_data();
+        original_message->set_data(data);
+        return request_;
+    }
+    if(original_message->get_request_type() == "get"){
         auto succ = messages_.front()->get_peers().at(0);
         request_->set_connection(std::make_shared<Peer>(succ));
         std::cout << "return get" << std::endl;
