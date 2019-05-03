@@ -8,6 +8,7 @@ set(CMAKE_BUILD_TYPE Debug)
 project("PeerPaste" CXX)
 
 option(BUILD_TESTS "test will be build" OFF)
+option(DEBUG "sanitizers activated" OFF)
 
 find_package (Threads REQUIRED)
 
@@ -32,7 +33,6 @@ MESSAGE("PROTOBUF INCLUDE DIRS ${PROTOBUF_INCLUDE_DIRS}")
 MESSAGE("PROTOBUF LIBRARIES ${PROTOBUF_LIBRARIES}")
 
 # Add sanitizer
-add_definitions(-Wall -fsanitize=address -g3 -fno-omit-frame-pointer)
 
 add_library(libpeerpaste
     "include/peerpaste/peer.hpp"
@@ -70,6 +70,7 @@ target_link_libraries(libpeerpaste
         ${Boost_LIBRARY_DIRS}
         ${PROTOBUF_LIBRARIES}
         ${CRYPTOPP_LIBRARIES}
+        -lsodium
     )
 
 add_executable(peerpaste src/peerpaste.cpp)
@@ -82,9 +83,32 @@ target_link_libraries(peerpaste
     PUBLIC
         ${Boost_LIBRARIES}
         libpeerpaste
- 	-fsanitize=address
+        # if(DEBUG)
+        #     -fsanitize=address
+        # endif()
+)
+
+add_executable(foo src/aes.cpp)
+
+target_include_directories(foo
+    PUBLIC
+        ${CRYPTOPP_INCLUDE_DIR}
+        "/usr/include/cryptopp"
+        # use botan config cflags to find that:
+        "/usr/include/botan-2"
+)
+
+target_link_libraries(foo
+    PUBLIC
+        ${Boost_LIBRARIES}
+        # use botan config libs to find that:
+        "-lbotan-2 -lbz2 -ldl -llzma -lrt -lz"
+        ${CRYPTOPP_LIBRARIES}
 )
 
 if(BUILD_TESTS)
     add_subdirectory(test)
+endif()
+if(DEBUG)
+    add_definitions(-Wall -fsanitize=address -g3 -fno-omit-frame-pointer)
 endif()
