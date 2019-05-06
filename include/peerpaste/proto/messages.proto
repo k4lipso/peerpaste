@@ -14,7 +14,7 @@ message Request
 
     repeated PeerInfo peerinfo = 2;
 
-    optional string data = 3;
+    optional bytes data = 3;
 }
 
 message CommonHeader
