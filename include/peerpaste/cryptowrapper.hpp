@@ -1,5 +1,4 @@
-#ifndef CRYPTOWRAPPER_HPP
-#define CRYPTOWRAPPER_HPP
+#pragma once
 
 #include <sha.h>
 #include <filters.h>
@@ -7,6 +6,55 @@
 #include <sodium.h>
 #include <cctype>
 #include <iostream>
+
+#include <boost/log/common.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/utility/setup/file.hpp>
+#include <boost/log/utility/setup/console.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/attributes/timer.hpp>
+#include <boost/log/attributes/named_scope.hpp>
+#include <boost/log/sources/logger.hpp>
+#include <boost/log/support/date_time.hpp>
+namespace logging = boost::log;
+namespace sinks = boost::log::sinks;
+namespace attrs = boost::log::attributes;
+namespace src = boost::log::sources;
+namespace expr = boost::log::expressions;
+namespace keywords = boost::log::keywords;
+
+enum severity_level
+{
+    info,
+    warning,
+    error,
+    critical,
+    debug,
+    message_out,
+    message_in
+};
+
+// The formatting logic for the severity level
+template< typename CharT, typename TraitsT >
+inline std::basic_ostream< CharT, TraitsT >& operator<< (
+    std::basic_ostream< CharT, TraitsT >& strm, severity_level lvl)
+{
+    static const char* const str[] =
+    {
+        "info",
+        "warning",
+        "error",
+        "critical",
+        "debug",
+        "message_out",
+        "message_in"
+    };
+    if (static_cast< std::size_t >(lvl) < (sizeof(str) / sizeof(*str)))
+        strm << str[lvl];
+    else
+        strm << static_cast< int >(lvl);
+    return strm;
+}
 
 namespace util {
 
@@ -22,19 +70,21 @@ namespace util {
                                                 const std::string& id_3);
     const size_t generate_hash(const std::string& data);
     const size_t generate_limited_hash(const std::string& data, const size_t limit);
-    /**
-     * Generates an SHA256 hash from the given string using crypto++
-     */
-    /* void generate_sha256(const std::string& data, std::string& hashed) */
+
+    void log(severity_level lvl, const std::string& message);
+
+
+    /* enum severity_level */
     /* { */
-    /*     CryptoPP::SHA256 hash; */
+    /*     info, */
+    /*     warning, */
+    /*     error, */
+    /*     critical, */
+    /*     debug, */
+    /*     message_out, */
+    /*     message_in */
+    /* }; */
 
-    /*     CryptoPP::StringSource s(data, true, */
-    /*                               new CryptoPP::HashFilter(hash, */
-    /*                               new CryptoPP::HexEncoder(new CryptoPP::StringSink(hashed)))); */
-
-    /* } */
+    /* void log(severity_level lvl, const std::string& message); */
 
 }
-
-#endif /* CRYPTOWRAPPER_HPP */

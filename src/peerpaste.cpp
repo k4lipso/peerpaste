@@ -8,9 +8,13 @@
 #include <fstream>
 
 #include <boost/asio.hpp>
+#include <boost/log/core.hpp>
+#include <boost/log/trivial.hpp>
+#include <boost/log/expressions.hpp>
 #include <boost/array.hpp>
 #include <boost/program_options.hpp>
 
+#include "peerpaste/cryptowrapper.hpp"
 #include "peerpaste/server.hpp"
 
 namespace po = boost::program_options;
@@ -26,6 +30,8 @@ int main(int argc, char** argv)
         ("join,j", po::value<std::vector<std::string>>()->multitoken()->composing(), "IP and Port of Host to connect to")
         ("put", po::value<std::vector<std::string>>()->multitoken()->composing(), "Path to text file")
         ("get", po::value<std::vector<std::string>>()->multitoken()->composing(), "Hash of a stored Paste")
+        ("verbose", "show additional information")
+        ("log-messages", "log messages to files")
         ("debug", "Send routing information to localhost");
 
     po::variables_map vm;
@@ -45,6 +51,64 @@ int main(int argc, char** argv)
             return 0;
         }
 
+        /////////////////////////////LOGGING
+        if(vm.count("verbose")){
+            logging::add_console_log(std::clog,
+                                     keywords::filter = expr::attr< severity_level >("Severity") <= debug,
+                                     keywords::format = expr::stream
+                    << expr::format_date_time< boost::posix_time::ptime >("TimeStamp", "%m-%d, %H:%M:%S.%f")
+                    << " [" << expr::format_date_time< attrs::timer::value_type >("Uptime", "%O:%M:%S")
+                    << "] [" << std::this_thread::get_id()
+                    << "] [" << expr::format_named_scope("Scope", keywords::format = "%n (%f:%l)")
+                    << "] <" << expr::attr< severity_level >("Severity")
+                    << "> " << expr::message
+            );
+        } else {
+            logging::add_console_log(std::clog,
+                                     keywords::filter = expr::attr< severity_level >("Severity") <= info,
+                                     keywords::format = expr::stream
+                    << expr::message
+            );
+        }
+
+        if (vm.count("log-messages")){
+            // One can also use lambda expressions to setup filters and formatters
+            logging::add_file_log
+            (
+                "outgoing_message.log",
+                keywords::filter = expr::attr<severity_level>("Severity") == message_out,
+                keywords::format = expr::stream
+                    << expr::format_date_time< boost::posix_time::ptime >("TimeStamp", "%Y-%m-%d, %H:%M:%S.%f")
+                    << " [" << expr::format_date_time< attrs::timer::value_type >("Uptime", "%O:%M:%S")
+                    << "] [" << expr::format_named_scope("Scope", keywords::format = "%n (%f:%l)")
+                    << "] <" << expr::attr< severity_level >("Severity")
+                    << ">\n"
+                    << expr::message
+            );
+            logging::add_file_log
+            (
+                "ingoing_message.log",
+                keywords::filter = expr::attr<severity_level>("Severity") == message_in,
+                keywords::format = expr::stream
+                    << expr::format_date_time< boost::posix_time::ptime >("TimeStamp", "%Y-%m-%d, %H:%M:%S.%f")
+                    << " [" << expr::format_date_time< attrs::timer::value_type >("Uptime", "%O:%M:%S")
+                    << "] [" << expr::format_named_scope("Scope", keywords::format = "%n (%f:%l)")
+                    << "] <" << expr::attr< severity_level >("Severity")
+                    << ">\n"
+                    << expr::message
+            );
+        }
+
+        // Also let's add some commonly used attributes, like timestamp and record counter.
+        logging::add_common_attributes();
+        logging::core::get()->add_thread_attribute("Scope", attrs::named_scope());
+        BOOST_LOG_FUNCTION();
+        /* util::log(info, "info message"); */
+        /* util::log(error, "error message"); */
+        /* util::log(message_out, "Outgoing message"); */
+        /* util::log(message_in, "Ingoing message"); */
+        /////////////////////////////LOGGING
+
         if (vm.count("port")) {
             msg_handler = std::make_shared<MessageHandler>(vm["port"].as<unsigned>());
             msg_dispatcher = std::make_unique<peerpaste::MessageDispatcher>(msg_handler, io_context);
@@ -54,7 +118,7 @@ int main(int argc, char** argv)
                                               msg_dispatcher->get_receive_queue());
         }
         else {
-            std::cout << "You have to specify a port using the --port option\n";
+            util::log(info, "You have to specify a port using the --port option");
             return 0;
         }
 

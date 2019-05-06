@@ -52,8 +52,8 @@ public:
         t1.detach();
         std::thread t2([&]() { run_send_internal(); });
         t2.detach();
-        std::thread t3([&]() { send_routing_information_internal(); });
-        t3.detach();
+        /* std::thread t3([&]() { send_routing_information_internal(); }); */
+        /* t3.detach(); */
     }
 
     void run_internal()

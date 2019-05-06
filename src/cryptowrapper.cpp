@@ -1,5 +1,6 @@
 #include "peerpaste/cryptowrapper.hpp"
 
+
 namespace util {
 
     /**
@@ -87,17 +88,11 @@ namespace util {
         return std::hash<std::string>{}(data) % limit;
     }
 
-    /**
-     * Generates an SHA256 hash from the given string using crypto++
-     */
-    /* void generate_sha256(const std::string& data, std::string& hashed) */
-    /* { */
-    /*     CryptoPP::SHA256 hash; */
-
-    /*     CryptoPP::StringSource s(data, true, */
-    /*                               new CryptoPP::HashFilter(hash, */
-    /*                               new CryptoPP::HexEncoder(new CryptoPP::StringSink(hashed)))); */
-
-    /* } */
+    void log(severity_level lvl, const std::string& message)
+    {
+        src::severity_logger< severity_level > slg;
+        slg.add_attribute("Uptime", attrs::timer());
+        BOOST_LOG_SEV(slg, lvl) << message;
+    }
 
 }
