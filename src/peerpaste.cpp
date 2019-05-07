@@ -136,7 +136,6 @@ int main(int argc, char** argv)
 
         if (vm.count("put")) {
             auto vec = vm["put"].as<std::vector<std::string>>();
-            std::cout << vec.size() << std::endl;
             auto ip = vec.at(0);
             auto port = vec.at(1);
             std::ifstream t(vec.at(2));

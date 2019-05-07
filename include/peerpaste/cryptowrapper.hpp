@@ -25,6 +25,7 @@ namespace keywords = boost::log::keywords;
 
 enum severity_level
 {
+    notify,
     info,
     warning,
     error,
@@ -41,6 +42,7 @@ inline std::basic_ostream< CharT, TraitsT >& operator<< (
 {
     static const char* const str[] =
     {
+        "notify",
         "info",
         "warning",
         "error",

@@ -1,8 +1,9 @@
 #ifndef AGGREGAT_HPP
 #define AGGREGAT_HPP
 
-#include "message.hpp"
-#include "request_object.hpp"
+#include "peerpaste/message.hpp"
+#include "peerpaste/request_object.hpp"
+#include "peerpaste/cryptowrapper.hpp"
 
 #include <vector>
 #include <set>

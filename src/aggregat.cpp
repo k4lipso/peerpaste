@@ -34,8 +34,7 @@ bool Aggregat::add_message(MessagePtr message)
     }
 
     if(message->is_request()){
-        std::cout << "add_message failed, message is no response"
-                  << std::endl;
+        util::log(warning, "add_message failed, message is no response");
         return false;
     }
 
@@ -87,13 +86,14 @@ const RequestObjectPtr Aggregat::get_result_message() const
     if(original_message->get_request_type() == "put_dummy"){
         auto hash_encrypted = messages_.front()->get_data();
         auto hash_unencrypted = original_message->get_data();
-        std::cout << hash_unencrypted << hash_encrypted << std::endl;
+        hash_unencrypted += hash_encrypted;
+        util::log(notify, hash_unencrypted);
         return nullptr;
     }
     if(original_message->get_request_type() == "get_dummy"){
         auto message_encrypted = messages_.front()->get_data();
         auto data_key = original_message->get_data();
-        std::cout << util::decrypt(data_key, message_encrypted) << std::endl;
+        util::log(notify, util::decrypt(data_key, message_encrypted));
         return nullptr;
     }
     /* if(original_message->get_request_type() == "get"){ */

@@ -151,7 +151,7 @@ public:
     {
         std::scoped_lock lk(mutex_);
         if(successor_list_.size() <= 1){
-            std::cout << "Cant pop fron, succ list to small" << std::endl;
+            util::log(warning, "Cant pop fron, succ list to small");
             return;
         }
         successor_list_.erase(successor_list_.begin());
