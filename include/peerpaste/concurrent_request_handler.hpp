@@ -12,8 +12,9 @@ class ConcurrentRequestHandler
 public:
     ConcurrentRequestHandler() {}
 
-    T& operator[](std::string id)
+    T& operator[](const std::string& id)
     {
+        std::scoped_lock lk(mutex_);
     	return requests_[id];
     }
 
@@ -43,20 +44,24 @@ public:
 
     void handle_timeouts()
     {
-        std::scoped_lock lk(mutex_);
-        //for every obj in open_request
+        util::log(debug, "RequestHandler::handle_timeouts()");
+        std::unique_lock lk(mutex_);
         for(auto iter = requests_.begin();
-                 iter != requests_.end(); iter++){
+                 iter != requests_.end();){
             auto req_obj = iter->second;
             //if its still valid continue
-            if(req_obj->is_valid()) continue;
-            std::cout << req_obj->get_request_type() << std::endl;
+            if(req_obj->is_valid()) {
+                ++iter;
+                continue;
+            }
+            //erase object from open_request
+            iter = requests_.erase(iter);
             //call handler_function with original obj
             //that way it is still a request and will be catched by the handler
             //when checking if it is a response
+            lk.unlock();
             req_obj->call(req_obj);
-            //erase object from open_request
-            requests_.erase(iter);
+            break;
         }
     }
 
