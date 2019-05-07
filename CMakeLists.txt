@@ -84,26 +84,8 @@ target_link_libraries(peerpaste
         ${Boost_LIBRARIES}
         libpeerpaste
         # if(DEBUG)
-        #     -fsanitize=address
+            # -fsanitize=address
         # endif()
-)
-
-add_executable(foo src/aes.cpp)
-
-target_include_directories(foo
-    PUBLIC
-        ${CRYPTOPP_INCLUDE_DIR}
-        "/usr/include/cryptopp"
-        # use botan config cflags to find that:
-        "/usr/include/botan-2"
-)
-
-target_link_libraries(foo
-    PUBLIC
-        ${Boost_LIBRARIES}
-        # use botan config libs to find that:
-        "-lbotan-2 -lbz2 -ldl -llzma -lrt -lz"
-        ${CRYPTOPP_LIBRARIES}
 )
 
 if(BUILD_TESTS)

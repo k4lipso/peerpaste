@@ -33,7 +33,6 @@ public:
         auto self_id = util::generate_sha256(self_ip, self_port);
         routing_table_.set_self(Peer(self_id, self_ip, self_port));
 
-        std::cout << "OWN ID: " << self_id << std::endl;
         storage_ = std::make_unique<Storage>(self_id);
     }
 
@@ -50,7 +49,6 @@ public:
         auto self_id = util::generate_sha256(self_ip, self_port);
         routing_table_.set_self(Peer(self_id, self_ip, self_port));
 
-        std::cout << "OWN ID: " << self_id << std::endl;
         storage_ = std::make_unique<Storage>(self_id);
     }
 
@@ -61,13 +59,13 @@ public:
         if(routing_table_.try_get_self(self)){
             routing_table_.set_successor(self);
         } else {
-            std::cout << "MessageHandler could not init. Self was not set\n";
+            util::log(error, "MessageHandler could not init. Self was not set");
         }
     }
 
     void run()
     {
-        /* handle_message(); */
+        util::log(debug, "MessageHandler::run()");
 
         if(not stabilize_flag_){
             stabilize();
@@ -143,9 +141,7 @@ public:
             handle_get_internal(std::move(transport_object));
             return;
         }
-
-
-        std::cout << "UNKNOWN REQUEST TYPE: " << request_type << '\n';
+        util::log(warning, "Unknown Request Type: " + request_type);
     }
 
     void handle_get_request(RequestObjectUPtr transport_object)
@@ -158,7 +154,7 @@ public:
         //get self to check if find_successor returned self
         Peer self;
         if(not routing_table_.try_get_self(self)){
-            std::cout << "cant handle_put request, self not defined" << std::endl;
+            util::log(warning, "cant handle_put request, self not defined");
             return;
         }
         auto succ = find_successor(data);
@@ -225,7 +221,7 @@ public:
         //get self to check if find_successor returned self
         Peer self;
         if(not routing_table_.try_get_self(self)){
-            std::cout << "cant handle_put request, self not defined" << std::endl;
+            util::log(warning, "cant handle_put request, self not defined");
             return;
         }
         //try to find successor
@@ -327,13 +323,12 @@ public:
     {
         Peer self;
         if(not routing_table_.try_get_self(self)){
-            std::cout << "Cant find successor, self was not set" << std::endl;
+            util::log(warning, "Cant find successor, self was not set");
             return nullptr;
         }
 
         //if peers are empty there is no successor
         if(routing_table_.size() == 0){
-            std::cout << "ALLALALALALA" << std::endl;
             auto predecessor = closest_preceding_node(id);
             if(predecessor->get_id() == self.get_id()){
                 return std::make_shared<Peer>(self);
@@ -344,7 +339,7 @@ public:
         auto self_id = self.get_id();
         Peer successor;
         if(not routing_table_.try_get_successor(successor)){
-            std::cout << "Cant find successor, successor was not set" << std::endl;
+            util::log(warning, "Cant find successor, successor was not set");
             return nullptr;
         }
         auto succ_id = successor.get_id();
@@ -365,7 +360,7 @@ public:
     {
         Peer self;
         if(not routing_table_.try_get_self(self)){
-            std::cout << "Cant find closest_preceding_node, self was not set" << std::endl;
+            util::log(warning, "Cant find closest_preceding_node, self was not set");
             return nullptr;
         }
         auto peers = routing_table_.get_peers();
@@ -408,7 +403,7 @@ public:
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 0){
             //TODO: handle_invalid_message!
-            /* std::cout << "Invalid message handle_get_predecessor_request" << '\n'; */
+            util::log(warning, "Invalid message handle_get_predecessor_req");
         }
 
         auto response = message->generate_response();
@@ -451,7 +446,7 @@ public:
                 push_to_write_queue(possible_request);
             }
         } else {
-            std::cout << "[MessageHandler] (handle_response) INVALID MSG " << '\n';
+            util::log(warning, "Invalid Message");
             transport_object->get_message()->print();
             //TODO: handle invalid message
         }
@@ -530,6 +525,7 @@ public:
 
     void notify()
     {
+        util::log(debug, "notify()");
         //TODO: add better abstracted checking if succ/pre/whatever is initialized
         Peer self;
         if(not routing_table_.try_get_self(self)) return;
@@ -565,7 +561,7 @@ public:
         auto message = transport_object->get_message();
         if(message->get_peers().size() != 1){
             //TODO: handle invalid msg
-            std::cout << "handle notify invalid message" << '\n';
+            util::log(warning, "handle notify invalid message");
             return;
         }
 
@@ -581,10 +577,10 @@ public:
         //TODO: if we have a predecessor node we should check if its alive!
         //check the rectify operation in how_to_make_chord_correct.pdf
         if(not routing_table_.try_get_predecessor(predecessor)){
-            std::cout << "cant handle notify: no predecessor set" << std::endl;
+            util::log(warning, "cant handle notify: no predecessor set");
         }
         if(not routing_table_.try_get_self(self)){
-            std::cout << "cant handle notify: self not set" << std::endl;
+            util::log(warning, "cant handle notify: self not set");
         }
 
         auto predecessor_id = predecessor.get_id();
@@ -604,52 +600,7 @@ public:
         push_to_write_queue(response_object);
     }
 
-    /*
-     * THere are many edge cases not handled yet. for example:
-     * if freshly joined and the own hash is the new successor of the file hash
-     * you want to get, then it is not found
-     *
-     */
-    /* void get(const std::string& data) */
-    /* { */
-        /* routing_table_.wait_til_valid(); */
-
-        /* auto get_request_message = std::make_shared<Message>(); */
-        /* Header get_request_message_header(true, 0, 0, "get", "", "", ""); */
-        /* get_request_message->set_header(get_request_message_header); */
-        /* get_request_message->set_data(data); */
-        /* get_request_message->generate_transaction_id(); */
-
-        /* auto get_request = std::make_shared<RequestObject>(); */
-        /* auto get_request_handler = std::bind(&MessageHandler::handle_get_response, */
-        /*                                                       this, */
-        /*                                                       std::placeholders::_1); */
-        /* get_request->set_handler(get_request_handler); */
-        /* get_request->set_message(get_request_message); */
-
-        /* auto succ = find_successor(data); */
-
-        /* //if no successor is found */
-        /* if(succ == nullptr){ */
-        /*     //We have to use agggregat */
-        /*     auto succ_prede = closest_preceding_node(data); */
-        /*     auto new_request = std::make_shared<Message>(); */
-        /*     Header header(true, 0, 0, "find_successor", "", "", ""); */
-        /*     new_request->set_header(header); */
-        /*     new_request->set_peers({ Peer(data, "", "") }); */
-        /*     auto transaction_id = new_request->generate_transaction_id(); */
-
-        /*     auto request = std::make_shared<RequestObject>(); */
-        /*     request->set_message(new_request); */
-        /*     request->set_connection(succ_prede); */
-        /*     aggregator_.add_aggregat(get_request, { transaction_id }); */
-        /*     push_to_write_queue(request); */
-        /*     return; */
-        /* } */
-        /* get_request->set_connection(succ); */
-        /* push_to_write_queue(get_request); */
-    /* } */
-
+    [[deprecated]]
     void handle_get_response(RequestObjectUPtr transport_object)
     {
         std::cout << "GET RESPONSE HANDLER" << std::endl;
@@ -695,7 +646,6 @@ public:
     {
         //generate data id
         auto data_id = util::generate_sha256(data, "");
-        std::cout << data_id << std::endl;
 
         //TODO: generate put request here, holding the data string
         //then check if we know the successor allready.
@@ -728,6 +678,7 @@ public:
         push_to_write_queue(put_request);
     }
 
+    [[deprecated]]
     void handle_put_response(RequestObjectUPtr transport_object)
     {
         /* std::cout << "###############################" << std::endl; */
@@ -741,7 +692,7 @@ public:
     {
         Peer self;
         if(not routing_table_.try_get_self(self)){
-            std::cout << "Cant join, self not set" << std::endl;
+            util::log(warning, "Cant join, self not set");
         }
 
         //Generate Query
@@ -836,7 +787,7 @@ public:
 
         Peer self;
         if(not routing_table_.try_get_self(self)){
-            std::cout << "couldnt get self in handle_get_self_and_successor_list_request\n";
+            util::log(warning, "Could not get self in handle_get_self_and_successor_list_request");
         }
         succ_list.insert(succ_list.begin(), self);
         response_message->set_peers(succ_list);
@@ -870,7 +821,7 @@ public:
             auto peer = message->get_peers().front();
             routing_table_.set_self(peer);
         } else {
-            /* std::cout << "WRONG MESSAGE SIZE() handle_query_response" << '\n'; */
+            util::log(warning, "Wrong Message_Size");
             //TODO: handle invalid message
         }
     }
@@ -878,10 +829,15 @@ public:
     void handle_stabilize(RequestObjectUPtr transport_object)
     {
         auto message = transport_object->get_message();
+        //check if message is still request, which would mean it timed out
+        if(message->is_request()){
+            util::log(debug, "handle_stabilize aborted, transport obj is request");
+        }
+
 
         Peer self;
         if(not routing_table_.try_get_self(self)){
-            std::cout << "Cant handle stabilize: self not set" << std::endl;
+            util::log(warning, "Cant handle stabilize: self not set");
             return;
         }
 
@@ -904,7 +860,7 @@ public:
         //get own successor
         Peer successor;
         if(not routing_table_.try_get_successor(successor)){
-            std::cout << "Cant handle stabilize: successor not set" << std::endl;
+            util::log(warning, "Cant handle stabilize: successor not set");
             return;
         }
 

@@ -59,7 +59,7 @@ namespace util {
                                        data_str.length(),
                                        nonce.data(),
                                        key.data()) != 0) {
-            std::cout << "Message forged, or wrong Key" << std::endl;
+            util::log(notify, "Message forged, or wrong Key. It cant be decrypted");
         }
 
         return std::string(&decrypted[0], &decrypted[data_str.length() - crypto_secretbox_MACBYTES]);

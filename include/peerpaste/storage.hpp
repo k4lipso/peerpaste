@@ -7,7 +7,7 @@ public:
     Storage (const std::string& id) : id_(id), storage_path_("/tmp/" + id_ + '/')
     {
         if(not boost::filesystem::create_directories(storage_path_)){
-            std::cout << "Error, cant create directory" << std::endl;
+            util::log(error, "Cant create directory");
         }
     }
     ~Storage () {}
@@ -21,6 +21,7 @@ public:
 
     std::string get(const std::string& id){
         std::ifstream ifs(storage_path_ + id);
+        assert(ifs.good());
         std::string content( (std::istreambuf_iterator<char>(ifs) ),
                              (std::istreambuf_iterator<char>()    ) );
         return content;
