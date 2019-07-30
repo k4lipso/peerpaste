@@ -21,22 +21,11 @@ using boost::asio::ip::tcp;
 class Server
 {
 public:
-    Server(int thread_count, int port,
-           std::shared_ptr<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>> queue__)
+    Server(int thread_count, int port, boost::asio::io_context& io_context)
         : port_(port),
-          thread_count_(thread_count), acceptor_(io_context_),
-          queue_(queue__),
-          timer_(io_context_, boost::asio::chrono::seconds(1)),
-          read_strand_(io_context_),
-          write_strand_(io_context_)
-    {}
-
-    Server(int thread_count, int port)
-        : port_(port),
-          thread_count_(thread_count), acceptor_(io_context_),
-          timer_(io_context_, boost::asio::chrono::seconds(1)),
-          read_strand_(io_context_),
-          write_strand_(io_context_)
+          thread_count_(thread_count),
+          io_context_(io_context),
+          acceptor_(io_context_)
     {}
 
     void run()
@@ -53,13 +42,6 @@ public:
     boost::asio::io_context& get_context()
     {
         return io_context_;
-    }
-
-    void join()
-    {
-        for(auto it = thread_pool_.begin(); it < thread_pool_.end(); it++){
-            it->join();
-        }
     }
 
 private:
@@ -95,11 +77,6 @@ private:
                                     handle_new_connection(handler, ec);
                                 }
                               );
-
-        for(int i=0; i < thread_count_; ++i)
-        {
-            thread_pool_.emplace_back( [=]{ io_context_.run(); } );
-        }
     }
 
     void handle_new_connection(SessionPtr handler,
@@ -122,13 +99,10 @@ private:
                               );
     }
 
-    boost::asio::io_context io_context_;
-    boost::asio::io_service::strand read_strand_;
-    boost::asio::io_service::strand write_strand_;
+    boost::asio::io_context& io_context_;
     int thread_count_;
     std::vector<std::thread> thread_pool_;
     boost::asio::ip::tcp::acceptor acceptor_;
-    boost::asio::steady_timer timer_;
 
     std::shared_ptr<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>> queue_;
     const int port_;

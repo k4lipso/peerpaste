@@ -107,9 +107,10 @@ int main(int argc, char** argv)
         /////////////////////////////LOGGING
 
         if (vm.count("port")) {
-            server = std::make_unique<Server>(4, vm["port"].as<unsigned>());
             msg_handler = std::make_shared<MessageHandler>(vm["port"].as<unsigned>());
-            msg_dispatcher = std::make_unique<peerpaste::MessageDispatcher>(msg_handler, server->get_context());
+            msg_dispatcher = std::make_unique<peerpaste::MessageDispatcher>(msg_handler);
+            server = std::make_unique<Server>(4, vm["port"].as<unsigned>(),
+                                              msg_dispatcher->get_context());
             server->set_queue(msg_dispatcher->get_receive_queue());
             msg_handler->init(msg_dispatcher->get_send_queue());
         }
@@ -120,9 +121,8 @@ int main(int argc, char** argv)
 
         //TODO: message_dispatcher should call io_context.run() instead of server
         //for get/put request no server is needed at all, so msg_dispatcher should be independend
-        //maybe server should be integrated into msg_dispatcher?
         //TODO: call server->run() only when no put/get
-        server->run();
+        /* server->run(); */
 
         if (vm.count("join")) {
             //TODO: add a lot of boundary checking
@@ -132,7 +132,14 @@ int main(int argc, char** argv)
             msg_handler->join(host_ip, host_port);
         }
 
+        //TODO: integrate Server int MessageDispatcher and start it by fct like
+        //      msg_dispatcher->listen(uint16_t port)
+        server->run();
         msg_dispatcher->run();
+
+        if(vm.count("debug")) {
+            msg_dispatcher->send_routing_information();
+        }
 
         if (vm.count("put")) {
             auto vec = vm["put"].as<std::vector<std::string>>();
@@ -158,7 +165,7 @@ int main(int argc, char** argv)
             //should be part of the ring
             std::thread t3([&]() { msg_handler->run(); });
             t3.detach();
-            server->join();
+            msg_dispatcher->join();
         }
 
     }
