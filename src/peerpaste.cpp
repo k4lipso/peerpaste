@@ -7,7 +7,6 @@
 #include <utility>
 #include <fstream>
 
-#include <boost/asio.hpp>
 #include <boost/log/core.hpp>
 #include <boost/log/trivial.hpp>
 #include <boost/log/expressions.hpp>
@@ -35,8 +34,6 @@ int main(int argc, char** argv)
         ("debug", "Send routing information to localhost");
 
     po::variables_map vm;
-    boost::asio::io_context io_context;
-    auto foo = boost::asio::make_work_guard(io_context);
     std::unique_ptr<Server> server = nullptr;
     std::unique_ptr<peerpaste::MessageDispatcher> msg_dispatcher = nullptr;
     std::shared_ptr<MessageHandler> msg_handler = nullptr;
@@ -57,9 +54,9 @@ int main(int argc, char** argv)
                                      keywords::filter = expr::attr< severity_level >("Severity") <= debug,
                                      keywords::format = expr::stream
                     << expr::format_date_time< boost::posix_time::ptime >("TimeStamp", "%m-%d, %H:%M:%S.%f")
-                    << " [" << expr::format_date_time< attrs::timer::value_type >("Uptime", "%O:%M:%S")
-                    << "] [" << std::this_thread::get_id()
-                    << "] [" << expr::format_named_scope("Scope", keywords::format = "%n (%f:%l)")
+                    /* << " [" << expr::format_date_time< attrs::timer::value_type >("Uptime", "%O:%M:%S") */
+                    << "[" << std::this_thread::get_id()
+                    /* << "] [" << expr::format_named_scope("Scope", keywords::format = "%n (%f:%l)") */
                     << "] <" << expr::attr< severity_level >("Severity")
                     << "> " << expr::message
             );
@@ -110,18 +107,21 @@ int main(int argc, char** argv)
         /////////////////////////////LOGGING
 
         if (vm.count("port")) {
+            server = std::make_unique<Server>(4, vm["port"].as<unsigned>());
             msg_handler = std::make_shared<MessageHandler>(vm["port"].as<unsigned>());
-            msg_dispatcher = std::make_unique<peerpaste::MessageDispatcher>(msg_handler, io_context);
+            msg_dispatcher = std::make_unique<peerpaste::MessageDispatcher>(msg_handler, server->get_context());
+            server->set_queue(msg_dispatcher->get_receive_queue());
             msg_handler->init(msg_dispatcher->get_send_queue());
-            server = std::make_unique<Server>(4,
-                                              vm["port"].as<unsigned>(),
-                                              msg_dispatcher->get_receive_queue());
         }
         else {
             util::log(info, "You have to specify a port using the --port option");
             return 0;
         }
 
+        //TODO: message_dispatcher should call io_context.run() instead of server
+        //for get/put request no server is needed at all, so msg_dispatcher should be independend
+        //maybe server should be integrated into msg_dispatcher?
+        //TODO: call server->run() only when no put/get
         server->run();
 
         if (vm.count("join")) {
@@ -141,33 +141,29 @@ int main(int argc, char** argv)
             std::ifstream t(vec.at(2));
             std::string str((std::istreambuf_iterator<char>(t)),
                              std::istreambuf_iterator<char>());
-            msg_handler->put(ip, port, str);
+            auto future_ = msg_handler->put(ip, port, str);
+            future_.wait();
+            std::cout << future_.get() << std::endl;
         } else if(vm.count("get")) {
             auto vec = vm["get"].as<std::vector<std::string>>();
 
             auto ip = vec.at(0);
             auto port = vec.at(1);
             auto data = vec.at(2);
-            msg_handler->get(ip, port, data);
+            auto future_ = msg_handler->get(ip, port, data);
+            future_.wait();
+            std::cout << future_.get() << std::endl;
         } else {
             //only call msg_handler.run() when this node
             //should be part of the ring
             std::thread t3([&]() { msg_handler->run(); });
             t3.detach();
+            server->join();
         }
 
     }
     catch (const po::error& ex) {
         return -1;
-    }
-
-    try
-    {
-        io_context.run();
-    }
-    catch (std::exception& e)
-    {
-        std::cerr << "Exception: " << e.what() << "\n";
     }
 
     std::cout << "FINISH" << std::endl;

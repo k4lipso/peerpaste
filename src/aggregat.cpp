@@ -87,13 +87,13 @@ const RequestObjectPtr Aggregat::get_result_message() const
         auto hash_encrypted = messages_.front()->get_data();
         auto hash_unencrypted = original_message->get_data();
         hash_unencrypted += hash_encrypted;
-        util::log(notify, hash_unencrypted);
+        request_->set_promise_value(hash_unencrypted);
         return nullptr;
     }
     if(original_message->get_request_type() == "get_dummy"){
         auto message_encrypted = messages_.front()->get_data();
         auto data_key = original_message->get_data();
-        util::log(notify, util::decrypt(data_key, message_encrypted));
+        request_->set_promise_value(util::decrypt(data_key, message_encrypted));
         return nullptr;
     }
     /* if(original_message->get_request_type() == "get"){ */
@@ -103,6 +103,6 @@ const RequestObjectPtr Aggregat::get_result_message() const
     /*     return request_; */
     /* } */
 
-    std::cout << "No pattern matched in get_result_message()" << '\n';
+    util::log(debug, "No pattern matched in get_result_message()");
     return nullptr;
 }

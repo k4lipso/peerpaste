@@ -9,6 +9,7 @@
 #include "peerpaste/concurrent_request_handler.hpp"
 #include <functional>
 #include <mutex>
+#include <future>
 
 class MessageHandler
 {
@@ -608,7 +609,7 @@ public:
         std::cout << transport_object->get_message()->get_data() << std::endl;
     }
 
-    void get(const std::string& ip,
+    std::future<std::string> get(const std::string& ip,
              const std::string& port,
              const std::string& data)
     {
@@ -629,18 +630,24 @@ public:
         get_request->set_message(get_request_message);
         get_request->set_connection(std::make_shared<Peer>(Peer("", ip, port)));
 
+
         //create dummy request for storing data_id
         auto dummy_message = std::make_shared<Message>(
                                 Message::create_request("get_dummy"));
         dummy_message->set_data(data_key);
         auto dummy_request = std::make_shared<RequestObject>();
         dummy_request->set_message(dummy_message);
+        //create and set promise
+        auto promise_ = std::make_shared<std::promise<std::string>>();
+        auto future_ = promise_->get_future();
+        dummy_request->set_promise(promise_);
         aggregator_.add_aggregat(dummy_request, { transaction_id });
 
         push_to_write_queue(get_request);
+        return future_;
     }
 
-    void put(const std::string& ip,
+    std::future<std::string> put(const std::string& ip,
              const std::string& port,
              const std::string& data)
     {
@@ -673,9 +680,14 @@ public:
         dummy_message->set_data(data_id);
         auto dummy_request = std::make_shared<RequestObject>();
         dummy_request->set_message(dummy_message);
+        //create and set promise
+        auto promise_ = std::make_shared<std::promise<std::string>>();
+        auto future_ = promise_->get_future();
+        dummy_request->set_promise(promise_);
         aggregator_.add_aggregat(dummy_request, { transaction_id });
 
         push_to_write_queue(put_request);
+        return future_;
     }
 
     [[deprecated]]

@@ -8,6 +8,7 @@
 
 #include <variant>
 #include <optional>
+#include <future>
 
 class RequestObject;
 
@@ -16,6 +17,7 @@ using PeerPtr = std::shared_ptr<Peer>;
 using SessionPtr = std::shared_ptr<Session>;
 using RequestObjectUPtr = std::unique_ptr<RequestObject>;
 using HandlerFunction = std::function<void(RequestObjectUPtr)>;
+using DataPromise = std::shared_ptr<std::promise<std::string>>;
 
 class RequestObject
 {
@@ -26,27 +28,27 @@ public:
     }
     ~RequestObject () {}
 
-    static RequestObject create_request_object(Message msg,
-                                               std::variant<Peer, SessionPtr> connection)
-    {
-        RequestObject request;
-        request.set_message(std::make_shared<Message>(msg));
-        set_connection(request, connection);
+    /* static RequestObject create_request_object(Message msg, */
+    /*                                            std::variant<Peer, SessionPtr> connection) */
+    /* { */
+    /*     RequestObject request; */
+    /*     request.set_message(std::make_shared<Message>(msg)); */
+    /*     set_connection(request, connection); */
 
-        return request;
-    }
+    /*     return request; */
+    /* } */
 
-    static RequestObject create_request_object(Message msg,
-                                               std::variant<Peer, SessionPtr> connection,
-                                               HandlerFunction fct)
-    {
-        RequestObject request;
-        request.set_message(std::make_shared<Message>(msg));
-        request.set_handler(fct);
-        set_connection(request, connection);
+    /* static RequestObject create_request_object(Message msg, */
+    /*                                            std::variant<Peer, SessionPtr> connection, */
+    /*                                            HandlerFunction fct) */
+    /* { */
+    /*     RequestObject request; */
+    /*     request.set_message(std::make_shared<Message>(msg)); */
+    /*     request.set_handler(fct); */
+    /*     set_connection(request, connection); */
 
-        return request;
-    }
+    /*     return request; */
+    /* } */
 
     /*
      * Calls the optional handlerfunction with the
@@ -85,6 +87,26 @@ public:
     const HandlerFunction get_handler() const
     {
         return handler_.value();
+    }
+
+    void set_promise(const DataPromise& data_promise)
+    {
+        data_promise_ = data_promise;
+    }
+
+    const bool has_promise() const
+    {
+        return data_promise_.has_value();
+    }
+
+    bool set_promise_value(const std::string& value)
+    {
+        if(not has_promise()){
+            util::log(debug, "request_object::set_promise_value: has no promise");
+            return false;
+        }
+        data_promise_.value()->set_value(value);
+        return true;
     }
 
     void set_message(MessagePtr message)
@@ -176,6 +198,7 @@ private:
 
     MessagePtr message_;
     std::optional<HandlerFunction> handler_;
+    std::optional<DataPromise> data_promise_;
     std::variant<PeerPtr, SessionPtr> connection_;
     std::chrono::steady_clock::time_point start_;
 };

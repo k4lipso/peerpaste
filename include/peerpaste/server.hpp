@@ -1,8 +1,6 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#define VERSION "0.0.1"
-
 #include "peerpaste/boost_session.hpp"
 #include "peerpaste/concurrent_queue.hpp"
 #include "peerpaste/cryptowrapper.hpp"
@@ -33,10 +31,35 @@ public:
           write_strand_(io_context_)
     {}
 
+    Server(int thread_count, int port)
+        : port_(port),
+          thread_count_(thread_count), acceptor_(io_context_),
+          timer_(io_context_, boost::asio::chrono::seconds(1)),
+          read_strand_(io_context_),
+          write_strand_(io_context_)
+    {}
+
     void run()
     {
         start_listening(port_);
         accept_connections();
+    }
+
+    void set_queue(std::shared_ptr<peerpaste::ConcurrentQueue<peerpaste::MsgBufPair>> queue__)
+    {
+        queue_ = queue__;
+    }
+
+    boost::asio::io_context& get_context()
+    {
+        return io_context_;
+    }
+
+    void join()
+    {
+        for(auto it = thread_pool_.begin(); it < thread_pool_.end(); it++){
+            it->join();
+        }
     }
 
 private:
