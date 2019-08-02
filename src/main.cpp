@@ -15,6 +15,7 @@
 
 #include "peerpaste/cryptowrapper.hpp"
 #include "peerpaste/server.hpp"
+#include "peerpaste/peerpaste.hpp"
 
 namespace po = boost::program_options;
 
@@ -30,14 +31,11 @@ int main(int argc, char** argv)
         ("put", po::value<std::vector<std::string>>()->multitoken()->composing(), "Path to text file")
         ("get", po::value<std::vector<std::string>>()->multitoken()->composing(), "Hash of a stored Paste")
         ("verbose", "show additional information")
+        ("create", "create new ring")
         ("log-messages", "log messages to files")
         ("debug", "Send routing information to localhost");
 
     po::variables_map vm;
-    std::unique_ptr<Server> server = nullptr;
-    std::unique_ptr<peerpaste::MessageDispatcher> msg_dispatcher = nullptr;
-    std::shared_ptr<MessageHandler> msg_handler = nullptr;
-
     try
     {
         po::store(po::command_line_parser(argc, argv).options(description).run(), vm);
@@ -106,13 +104,10 @@ int main(int argc, char** argv)
         /* util::log(message_in, "Ingoing message"); */
         /////////////////////////////LOGGING
 
+        peerpaste::PeerPaste peerpaste;
+
         if (vm.count("port")) {
-            msg_handler = std::make_shared<MessageHandler>(vm["port"].as<unsigned>());
-            msg_dispatcher = std::make_unique<peerpaste::MessageDispatcher>(msg_handler);
-            server = std::make_unique<Server>(4, vm["port"].as<unsigned>(),
-                                              msg_dispatcher->get_context());
-            server->set_queue(msg_dispatcher->get_receive_queue());
-            msg_handler->init(msg_dispatcher->get_send_queue());
+            peerpaste.init(vm["port"].as<unsigned>(), 4);
         }
         else {
             util::log(info, "You have to specify a port using the --port option");
@@ -129,43 +124,43 @@ int main(int argc, char** argv)
             auto vec = vm["join"].as<std::vector<std::string>>();
             auto host_ip = vec.at(0);
             auto host_port = vec.at(1);
-            msg_handler->join(host_ip, host_port);
+            peerpaste.join(host_ip, host_port);
+        } else if(vm.count("create")){
+            peerpaste.create_ring();
         }
 
         //TODO: integrate Server int MessageDispatcher and start it by fct like
         //      msg_dispatcher->listen(uint16_t port)
-        server->run();
-        msg_dispatcher->run();
+        /* server->run(); */
+        /* msg_dispatcher->run(); */
 
         if(vm.count("debug")) {
-            msg_dispatcher->send_routing_information();
+            peerpaste.debug();
         }
+        peerpaste.run();
 
-        if (vm.count("put")) {
+        if(vm.count("put")) {
             auto vec = vm["put"].as<std::vector<std::string>>();
             auto ip = vec.at(0);
             auto port = vec.at(1);
-            std::ifstream t(vec.at(2));
-            std::string str((std::istreambuf_iterator<char>(t)),
-                             std::istreambuf_iterator<char>());
-            auto future_ = msg_handler->put(ip, port, str);
+            std::string filename = vec.at(2);
+            auto future_ = peerpaste.async_put(ip, port, filename);
             future_.wait();
             std::cout << future_.get() << std::endl;
+            peerpaste.stop();
         } else if(vm.count("get")) {
             auto vec = vm["get"].as<std::vector<std::string>>();
-
             auto ip = vec.at(0);
             auto port = vec.at(1);
             auto data = vec.at(2);
-            auto future_ = msg_handler->get(ip, port, data);
+            auto future_ = peerpaste.async_get(ip, port, data);
             future_.wait();
             std::cout << future_.get() << std::endl;
+            peerpaste.stop();
         } else {
             //only call msg_handler.run() when this node
             //should be part of the ring
-            std::thread t3([&]() { msg_handler->run(); });
-            t3.detach();
-            msg_dispatcher->join();
+            peerpaste.wait_till_finish();
         }
 
     }

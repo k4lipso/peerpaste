@@ -51,17 +51,27 @@ public:
      */
     void run()
     {
-        /* thread_pool_.emplace_back( [=]{ run_internal(); } ); */
-        /* thread_pool_.emplace_back( [=]{ run_send_internal(); } ); */
-        std::thread t1([&]() { run_internal(); });
-        t1.detach();
-        std::thread t2([&]() { run_send_internal(); });
-        t2.detach();
+        thread_pool_.emplace_back( [=]{ run_internal(); } );
+        thread_pool_.emplace_back( [=]{ run_send_internal(); } );
+        /* std::thread t1([&]() { run_internal(); }); */
+        /* t1.detach(); */
+        /* std::thread t2([&]() { run_send_internal(); }); */
+        /* t2.detach(); */
 
         //TODO: add thread count instead of 4
         for(int i=0; i < 4; ++i)
         {
             asio_pool_.emplace_back( [=]{ io_context_.run(); } );
+        }
+    }
+
+    void stop()
+    {
+        run_ = false;
+        io_context_.stop();
+        for(auto& thread_pool : thread_pool_){
+            util::log(debug, "joining thread");
+            thread_pool.join();
         }
     }
 
@@ -137,6 +147,7 @@ public:
                 auto peer = send_object->get_peer();
                 auto write_handler = std::make_shared<BoostSession>(io_context_, queue_);
                 write_handler->write_to(encoded_buf, peer->get_ip(), peer->get_port());
+                send_object->set_connection(write_handler);
                 if(message_is_request){
                     write_handler->read();
                 }
@@ -176,11 +187,6 @@ public:
                 { msg_handler_->handle_response(std::move(data_object)); });
             t.detach();
         }
-    }
-
-    void stop()
-    {
-        run_ = false;
     }
 
     void send_routing_information_internal()

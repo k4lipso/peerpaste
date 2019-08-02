@@ -35,6 +35,7 @@ MESSAGE("PROTOBUF LIBRARIES ${PROTOBUF_LIBRARIES}")
 # Add sanitizer
 
 add_library(libpeerpaste
+    "include/peerpaste/peerpaste.hpp"
     "include/peerpaste/peer.hpp"
     "include/peerpaste/header.hpp"
     "include/peerpaste/message.hpp"
@@ -73,7 +74,7 @@ target_link_libraries(libpeerpaste
         -lsodium
     )
 
-add_executable(peerpaste src/peerpaste.cpp)
+add_executable(peerpaste src/main.cpp)
 
 target_include_directories(peerpaste
     PUBLIC

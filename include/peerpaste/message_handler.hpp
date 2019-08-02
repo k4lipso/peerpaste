@@ -64,7 +64,19 @@ public:
         }
     }
 
-    void run()
+    void run(){
+        run_thread_.emplace_back( [=]{ run_internal(); } );
+    }
+
+    void stop()
+    {
+        running_ = false;
+        for(auto& t : run_thread_){
+            t.join();
+        }
+    }
+
+    void run_internal()
     {
         util::log(debug, "MessageHandler::run()");
 
@@ -77,7 +89,10 @@ public:
 
         open_requests_.handle_timeouts();
         std::this_thread::sleep_for(std::chrono::milliseconds(400));
-        run();
+
+        if(running_){
+            run();
+        }
     }
 
     ~MessageHandler () {}
@@ -925,5 +940,7 @@ private:
 
     bool stabilize_flag_;
     bool check_predecessor_flag_;
+    bool running_ = true;
+    std::vector<std::thread> run_thread_;
 };
 #endif /* MESSAGE_HANDLER_HPP */
