@@ -5,8 +5,10 @@
 #include <queue>
 #include <memory>
 #include <condition_variable>
+#include <chrono>
 
 namespace peerpaste {
+using namespace std::chrono_literals;
 
 /*
  * ConcurrentQueue
@@ -38,6 +40,18 @@ public:
         auto result = std::move(queue_.front());
         queue_.pop();
         return result;
+    }
+
+    std::unique_ptr<T> wait_for_and_pop(int dur = 1)
+    {
+        std::chrono::duration<int> dur_ = std::chrono::seconds(dur);
+        std::unique_lock lk(mutex_);
+        if(condition_.wait_for(lk, dur_, [this]{ return not queue_.empty(); })){
+            auto result = std::move(queue_.front());
+            queue_.pop();
+            return result;
+        }
+        return nullptr;
     }
 
     bool empty() const

@@ -39,11 +39,11 @@ public:
         queue_ = queue__;
     }
 
-    boost::asio::io_context& get_context()
+    void stop()
     {
-        return io_context_;
+        acceptor_.close();
+        util::log(debug, "[Server] closed acceptor");
     }
-
 private:
 
     /**
@@ -84,6 +84,9 @@ private:
     {
         if(ec) {
             util::log(error, "handle_accept with error");
+            return;
+        }
+        if (!acceptor_.is_open()){
             return;
         }
 

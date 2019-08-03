@@ -147,7 +147,6 @@ int main(int argc, char** argv)
             auto future_ = peerpaste.async_put(ip, port, filename);
             future_.wait();
             std::cout << future_.get() << std::endl;
-            peerpaste.stop();
         } else if(vm.count("get")) {
             auto vec = vm["get"].as<std::vector<std::string>>();
             auto ip = vec.at(0);
@@ -156,19 +155,17 @@ int main(int argc, char** argv)
             auto future_ = peerpaste.async_get(ip, port, data);
             future_.wait();
             std::cout << future_.get() << std::endl;
-            peerpaste.stop();
         } else {
             //only call msg_handler.run() when this node
             //should be part of the ring
             peerpaste.wait_till_finish();
         }
-
+        peerpaste.stop();
     }
     catch (const po::error& ex) {
         return -1;
     }
 
-    std::cout << "FINISH" << std::endl;
     return 0;
 }
 

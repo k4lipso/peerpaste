@@ -37,6 +37,7 @@ namespace peerpaste {
 
             void stop()
             {
+                server_->stop();
                 handler_->stop();
                 dispatcher_->stop();
             }

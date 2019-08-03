@@ -53,10 +53,6 @@ public:
     {
         thread_pool_.emplace_back( [=]{ run_internal(); } );
         thread_pool_.emplace_back( [=]{ run_send_internal(); } );
-        /* std::thread t1([&]() { run_internal(); }); */
-        /* t1.detach(); */
-        /* std::thread t2([&]() { run_send_internal(); }); */
-        /* t2.detach(); */
 
         //TODO: add thread count instead of 4
         for(int i=0; i < 4; ++i)
@@ -70,8 +66,16 @@ public:
         run_ = false;
         io_context_.stop();
         for(auto& thread_pool : thread_pool_){
-            util::log(debug, "joining thread");
+            util::log(debug, "joining thread of thread_pool_");
             thread_pool.join();
+        }
+        while(not io_context_.stopped()){
+            util::log(debug, "wait for io_context to stop");
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
+        for(auto& asio_pool : asio_pool_){
+            util::log(debug, "joining thread of asio_pool_");
+            asio_pool.join();
         }
     }
 
@@ -95,7 +99,8 @@ public:
         ProtobufMessageConverter converter;
         while(run_){
             //Get unique_ptr to MsgPair from queue
-            auto msg_pair = queue_->wait_and_pop();
+            auto msg_pair = queue_->wait_for_and_pop();
+            if(msg_pair == nullptr) continue;
             //Convert msg_buffer into Message object
             //TODO: handle failure on MessageFromSerialized!!!
             auto converted_message = converter.MessageFromSerialized(
@@ -116,7 +121,8 @@ public:
         ProtobufMessageConverter converter;
         while(run_){
             //Get unique_ptr to RequestObject from queue
-            auto send_object = send_queue_->wait_and_pop();
+            auto send_object = send_queue_->wait_for_and_pop();
+            if(send_object == nullptr) continue;
             //get the message to send
             auto message = send_object->get_message();
             auto message_is_request = message->is_request();
