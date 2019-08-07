@@ -114,11 +114,6 @@ int main(int argc, char** argv)
             return 0;
         }
 
-        //TODO: message_dispatcher should call io_context.run() instead of server
-        //for get/put request no server is needed at all, so msg_dispatcher should be independend
-        //TODO: call server->run() only when no put/get
-        /* server->run(); */
-
         if (vm.count("join")) {
             //TODO: add a lot of boundary checking
             auto vec = vm["join"].as<std::vector<std::string>>();
@@ -160,7 +155,6 @@ int main(int argc, char** argv)
             //should be part of the ring
             peerpaste.wait_till_finish();
         }
-        peerpaste.stop();
     }
     catch (const po::error& ex) {
         return -1;

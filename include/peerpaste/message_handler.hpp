@@ -21,10 +21,10 @@ public:
 
     MessageHandler (short port,
                     std::shared_ptr<peerpaste::ConcurrentQueue<RequestObject>> queue_) :
-                        send_queue_(queue_),
                         routing_table_(),
-                        aggregator_(),
+                        send_queue_(queue_),
                         storage_(nullptr),
+                        aggregator_(),
                         stabilize_flag_(false),
                         check_predecessor_flag_(false)
     {
@@ -39,8 +39,8 @@ public:
 
     MessageHandler (short port) :
                         routing_table_(),
-                        aggregator_(),
                         storage_(nullptr),
+                        aggregator_(),
                         stabilize_flag_(false),
                         check_predecessor_flag_(false)
     {
@@ -636,10 +636,6 @@ public:
         auto transaction_id = get_request_message->generate_transaction_id();
 
         auto get_request = std::make_shared<RequestObject>();
-
-        auto get_request_handler = std::bind(&MessageHandler::handle_get_response,
-                                                            this,
-                                                            std::placeholders::_1);
 
         /* get_request->set_handler(get_request_handler); */
         get_request->set_message(get_request_message);

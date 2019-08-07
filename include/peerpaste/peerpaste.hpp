@@ -13,6 +13,11 @@ namespace peerpaste {
     class PeerPaste
     {
         public:
+
+            ~PeerPaste() {
+                stop();
+            }
+
             void init(unsigned port, size_t thread_count)
             {
                 handler_ = std::make_shared<MessageHandler>(port);

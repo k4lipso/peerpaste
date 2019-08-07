@@ -33,7 +33,7 @@ public:
         return msg;
     }
 
-    const void print() const
+    void print() const
     {
         /* return; */
         if(get_request_type() == "get_predecessor" ||
@@ -56,7 +56,7 @@ public:
         std::cout << "########## MESSAGE END ##########" << '\n';
     }
 
-    const void set_header(const Header& header)
+    void set_header(const Header& header)
     {
         header_ = header;
     }
@@ -71,12 +71,12 @@ public:
         return peers_;
     }
 
-    const void set_peers(const std::vector<Peer>& peers)
+    void set_peers(const std::vector<Peer>& peers)
     {
         peers_ = peers;
     }
 
-    const void add_peer(const Peer& peer)
+    void add_peer(const Peer& peer)
     {
         peers_.push_back(peer);
     }
@@ -105,7 +105,7 @@ public:
         return std::make_shared<Message>(response);
     }
 
-    const bool is_request() const
+    bool is_request() const
     {
         return header_.is_request();
     }
