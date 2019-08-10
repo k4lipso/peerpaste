@@ -11,7 +11,6 @@ option(BUILD_TESTS "test will be build" OFF)
 option(DEBUG "sanitizers activated" OFF)
 
 find_package (Threads REQUIRED)
-
 find_package(Protobuf REQUIRED)
 # add_subdirectory(proto)
 
@@ -89,9 +88,21 @@ target_link_libraries(peerpaste
         # endif()
 )
 
+add_subdirectory(external)
+add_executable(http_client src/http_client.cpp)
+target_include_directories(http_client
+    PUBLIC
+    $<TARGET_PROPERTY:WebServer::WebServer,INTERFACE_INCLUDE_DIRECTORIES>
+)
+target_link_libraries(http_client
+    PUBLIC
+        libpeerpaste
+)
+
 if(BUILD_TESTS)
     add_subdirectory(test)
 endif()
+
 if(DEBUG)
     add_definitions(-Wall -fsanitize=address -g3 -fno-omit-frame-pointer)
 endif()
