@@ -628,24 +628,25 @@ public:
              const std::string& port,
              const std::string& data)
     {
-        auto data_key = data.substr(0, 64);
-        auto data_hash = data.substr(64, 64);
         auto get_request_message = std::make_shared<Message>(
                                             Message::create_request("get"));
-        get_request_message->set_data(data_hash);
+        get_request_message->set_data(data);
         auto transaction_id = get_request_message->generate_transaction_id();
 
         auto get_request = std::make_shared<RequestObject>();
 
-        /* get_request->set_handler(get_request_handler); */
         get_request->set_message(get_request_message);
         get_request->set_connection(std::make_shared<Peer>(Peer("", ip, port)));
 
 
-        //create dummy request for storing data_id
+        //create dummy request for storing promise
+        //TODO: this is only needed to be able to set the promise value on return.
+        //maybe add a possibility to create response handler functions that also have access
+        //to the original request? right now a normal response handler has only access to the
+        //response object, not the original request that was sendet (and that is holding a promise value)
         auto dummy_message = std::make_shared<Message>(
                                 Message::create_request("get_dummy"));
-        dummy_message->set_data(data_key);
+        dummy_message->set_data("");
         auto dummy_request = std::make_shared<RequestObject>();
         dummy_request->set_message(dummy_message);
         //create and set promise
@@ -677,7 +678,7 @@ public:
         //and the protobuf message converter too
         auto put_request_message = std::make_shared<Message>(
                                             Message::create_request("put"));
-        put_request_message->set_data(util::encrypt(data_id, data));
+        put_request_message->set_data(data);
         auto transaction_id = put_request_message->generate_transaction_id();
 
         auto put_request = std::make_shared<RequestObject>();
@@ -685,7 +686,7 @@ public:
         put_request->set_message(put_request_message);
         put_request->set_connection(std::make_shared<Peer>(Peer("", ip, port)));
 
-        //create dummy request for storing data_id
+        //TODO: same todo as in get() function
         auto dummy_message = std::make_shared<Message>(
                                 Message::create_request("put_dummy"));
         dummy_message->set_data(data_id);

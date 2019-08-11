@@ -84,16 +84,13 @@ const RequestObjectPtr Aggregat::get_result_message() const
         return request_;
     }
     if(original_message->get_request_type() == "put_dummy"){
-        auto hash_encrypted = messages_.front()->get_data();
-        auto hash_unencrypted = original_message->get_data();
-        hash_unencrypted += hash_encrypted;
-        request_->set_promise_value(hash_unencrypted);
+        auto data_hash = messages_.front()->get_data();
+        request_->set_promise_value(data_hash);
         return nullptr;
     }
     if(original_message->get_request_type() == "get_dummy"){
-        auto message_encrypted = messages_.front()->get_data();
-        auto data_key = original_message->get_data();
-        request_->set_promise_value(util::decrypt(data_key, message_encrypted));
+         auto data = messages_.front()->get_data();
+         request_->set_promise_value(data);
         return nullptr;
     }
     /* if(original_message->get_request_type() == "get"){ */
