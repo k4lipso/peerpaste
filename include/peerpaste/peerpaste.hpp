@@ -64,12 +64,9 @@ namespace peerpaste {
 
             std::future<std::string> async_put(const std::string& ip,
                                                const std::string& port,
-                                               const std::string& filename)
+                                               const std::string& data)
             {
-                std::ifstream f(filename);
-                std::string str((std::istreambuf_iterator<char>(f)),
-                                 std::istreambuf_iterator<char>());
-                return handler_->put(ip, port, str);
+                return handler_->put(ip, port, data);
             }
 
             std::future<std::string> async_get(const std::string& ip,
