@@ -89,12 +89,12 @@ target_link_libraries(peerpaste
 )
 
 add_subdirectory(external)
-add_executable(http_client src/http_client.cpp)
-target_include_directories(http_client
+add_executable(rest_server src/rest_server.cpp)
+target_include_directories(rest_server
     PUBLIC
     $<TARGET_PROPERTY:WebServer::WebServer,INTERFACE_INCLUDE_DIRECTORIES>
 )
-target_link_libraries(http_client
+target_link_libraries(rest_server
     PUBLIC
         libpeerpaste
 )
