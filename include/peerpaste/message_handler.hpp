@@ -244,37 +244,50 @@ public:
         auto succ = find_successor(data_id);
         //if no successor is found
         if(succ == nullptr){
-            //we have to forward put request to another peer
-            //We have to use agggregat
-            auto new_put_request = std::make_unique<RequestObject>(*transport_object.get());
-            new_put_request->get_message()->set_data(data);
-            auto transaction_id = new_put_request->get_message()->generate_transaction_id();
-            auto succ_prede = closest_preceding_node(data_id);
-            new_put_request->set_connection(succ_prede);
+            //we have to find the successor
+            //and then send a "store" request to the successor.
+            //to accomplish this we have we have to build two nested aggregats
+            //one that is sending the store request after the successor is found
+            //and one that is sending the actual put response
+            //when the store request was successfull
+            auto find_succ_msg =
+                std::make_shared<Message>(Message::create_request(
+                                              "find_successor", { Peer(data_id, "", "")}));
+            auto transaction_id_find_succ = find_succ_msg->generate_transaction_id();
+            auto find_succ_req = std::make_shared<RequestObject>();
+            find_succ_req->set_message(find_succ_msg);
+            find_succ_req->set_connection(closest_preceding_node(data_id));
 
-            aggregator_.add_aggregat(std::move(response), { transaction_id });
-            push_to_write_queue(std::move(new_put_request));
+            auto store_msg = std::make_shared<Message>(
+                Message::create_request("store"));
+            store_msg->set_data(data);
+            auto transaction_id_store = store_msg->generate_transaction_id();
+            auto store_request = std::make_unique<RequestObject>();
+            store_request->set_message(store_msg);
+
+            aggregator_.add_aggregat(std::move(store_request), { transaction_id_find_succ });
+            aggregator_.add_aggregat(std::move(response), { transaction_id_store });
+            push_to_write_queue(find_succ_req);
             return;
         } else if(succ->get_id() == self.get_id()) {
             //we are the right peer to store the data!
             storage_->put(data, data_id);
             response_msg->set_data(data_id);
-            /* response_msg->generate_transaction_id(); */
             push_to_write_queue(response);
             return;
         }
         //we know the successor so we forward the data
-        auto store_message = std::make_shared<Message>(
+        auto store_msg = std::make_shared<Message>(
                 Message::create_request("store"));
-        store_message->set_data(data);
-        auto transaction_id = store_message->generate_transaction_id();
-        auto new_put_request = std::make_unique<RequestObject>();
-        new_put_request->set_message(store_message);
-        new_put_request->set_connection(succ);
+        store_msg->set_data(data);
+        auto transaction_id = store_msg->generate_transaction_id();
+        auto store_request = std::make_unique<RequestObject>();
+        store_request->set_message(store_msg);
+        store_request->set_connection(succ);
 
         aggregator_.add_aggregat(std::move(response), { transaction_id });
 
-        push_to_write_queue(std::move(new_put_request));
+        push_to_write_queue(std::move(store_request));
     }
 
     void handle_store(RequestObjectUPtr transport_object)

@@ -89,16 +89,15 @@ const RequestObjectPtr Aggregat::get_result_message() const
         return nullptr;
     }
     if(original_message->get_request_type() == "get_dummy"){
-         auto data = messages_.front()->get_data();
-         request_->set_promise_value(data);
+        auto data = messages_.front()->get_data();
+        request_->set_promise_value(data);
         return nullptr;
     }
-    /* if(original_message->get_request_type() == "get"){ */
-    /*     auto succ = messages_.front()->get_peers().at(0); */
-    /*     request_->set_connection(std::make_shared<Peer>(succ)); */
-    /*     std::cout << "return get" << std::endl; */
-    /*     return request_; */
-    /* } */
+    if(original_message->get_request_type() == "store"){
+        auto successor = messages_.front()->get_peers().front();
+        request_->set_connection(std::make_shared<Peer>(successor));
+        return request_;
+    }
 
     util::log(debug, "No pattern matched in get_result_message()");
     return nullptr;
