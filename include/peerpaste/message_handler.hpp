@@ -65,7 +65,8 @@ public:
     }
 
     void run(){
-        run_thread_.emplace_back( [=]{ run_internal(); } );
+        run_thread_.emplace_back( [=]{ run_chord_internal(); } );
+        run_thread_.emplace_back( [=]{ run_paste_internal(); } );
     }
 
     void stop()
@@ -76,9 +77,9 @@ public:
         }
     }
 
-    void run_internal()
+    void run_chord_internal()
     {
-        util::log(debug, "MessageHandler::run()");
+        // routing_table_.print();
 
         if(not stabilize_flag_){
             stabilize();
@@ -91,7 +92,17 @@ public:
         std::this_thread::sleep_for(std::chrono::milliseconds(400));
 
         if(running_){
-            run();
+            run_chord_internal();
+        }
+    }
+
+    void run_paste_internal()
+    {
+        stabilize_storage();
+        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+
+        if (running_) {
+          run();
         }
     }
 
@@ -156,6 +167,10 @@ public:
         if(request_type == "get_internal"){
             handle_get_internal(std::move(transport_object));
             return;
+        }
+        if (request_type == "backup") {
+          handle_backup(std::move(transport_object));
+          return;
         }
         util::log(warning, "Unknown Request Type: " + request_type);
     }
@@ -292,6 +307,7 @@ public:
 
     void handle_store(RequestObjectUPtr transport_object)
     {
+        util::log(debug, "handle store");
         auto message = transport_object->get_message();
         auto data = message->get_data();
         auto data_id = util::generate_sha256(data, "");
@@ -476,7 +492,6 @@ public:
             }
         } else {
             util::log(warning, "Invalid Message");
-            transport_object->get_message()->print();
             //TODO: handle invalid message
         }
     }
@@ -490,7 +505,8 @@ public:
         }
 
         auto get_predecessor_msg = std::make_shared<Message>(
-                            Message::create_request("get_predecessor_and_succ_list"));
+                            Message::create_request(
+                                "get_predecessor_and_succ_list"));
         auto transaction_id = get_predecessor_msg->get_transaction_id();
 
         auto handler = std::bind(&MessageHandler::handle_stabilize,
@@ -508,27 +524,117 @@ public:
         stabilize_flag_ = true;
     }
 
-    void check_predecessor()
+    void stabilize_storage()
     {
-        Peer target;
-        if(not routing_table_.try_get_predecessor(target)){
+        util::log(debug, "stabilize storage");
+        auto files = storage_->get_map();
+        for(const auto& file : files){
+            auto succ = find_successor(file.first);
+            Peer self;
+            if(not routing_table_.try_get_self(self)){
+                util::log(debug, "self was not set");
+                continue;
+            }
+            Peer predecessor;
+            if (not routing_table_.try_get_predecessor(predecessor)) {
+              util::log(debug, "predecessor was not set");
+              continue;
+            }
+
+            if (util::between(predecessor.get_id(), file.first, self.get_id())) {
+                Peer successor;
+                if (not routing_table_.try_get_successor(successor)) {
+                  util::log(debug, "successor was not set");
+                  continue;
+                }
+
+                auto backup_msg = std::make_shared<Message>(
+                    Message::create_request("backup"));
+                backup_msg->set_data(file.first);
+                auto transaction_id = backup_msg->get_transaction_id();
+                auto handler = std::bind(&MessageHandler::handle_backup_response,
+                                         this,
+                                         std::placeholders::_1);
+                auto backup_request = std::make_shared<RequestObject>();
+                backup_request->set_handler(handler);
+                backup_request->set_message(backup_msg);
+                backup_request->set_connection(std::make_shared<Peer>(successor));
+                util::log(debug, "sending backup request");
+                push_to_write_queue(backup_request);
+            } else {
+                if(not storage_->is_valid(file.first)){
+                    storage_->remove(file.first);
+                }
+            }
+        }
+    }
+
+    void handle_backup(RequestObjectUPtr transport_object)
+    {
+        util::log(debug, "handle_backup");
+        auto data = transport_object->get_message()->get_data();
+        std::string response_str = "NO";
+        if (not storage_->exists(data)) {
+          storage_->refresh_validity(data);
+          response_str = data;
+        }
+        auto response_msg = transport_object->get_message()->generate_response();
+        Peer self;
+        if(not routing_table_.try_get_self(self)){
+            util::log(debug, "self was not set");
             return;
         }
+        response_msg->add_peer(self);
+        auto response =
+            std::make_shared<RequestObject>(*transport_object.get());
+        response->set_message(response_msg);
+        response_msg->set_data(response_str);
+        push_to_write_queue(response);
+    }
 
-        auto notify_message = std::make_shared<Message>(
-                            Message::create_request("check_predecessor"));
-        auto transaction_id = notify_message->get_transaction_id();
+    void handle_backup_response(RequestObjectUPtr transport_object)
+    {
+        //placeholder
+        util::log(debug, "handle backup response");
+        auto data = transport_object->get_message()->get_data();
+        if(data == "NO"){ return; }
+        if(not storage_->exists(data)){
+            util::log(debug, "Data does not exists");
+            return;
+        }
+        auto store_msg =
+            std::make_shared<Message>(Message::create_request("store"));
+        store_msg->set_data(storage_->get(data));
+        auto transaction_id = store_msg->get_transaction_id();
 
-        auto handler = std::bind(&MessageHandler::handle_check_predecessor_response,
-                                 this,
-                                 std::placeholders::_1);
+        auto store_request = std::make_shared<RequestObject>();
+        store_request->set_message(store_msg);
+        store_request->set_connection(std::make_shared<Peer>(
+            transport_object->get_message()->get_peers().front()));
+        push_to_write_queue(store_request);
+    }
 
-        auto request = std::make_shared<RequestObject>();
-        request->set_message(notify_message);
-        request->set_handler(handler);
-        request->set_connection(std::make_shared<Peer>(target));
-        push_to_write_queue(request);
-        check_predecessor_flag_ = true;
+    void check_predecessor()
+    {
+      Peer target;
+      if (not routing_table_.try_get_predecessor(target)) {
+        return;
+      }
+
+      auto notify_message = std::make_shared<Message>(
+          Message::create_request("check_predecessor"));
+      auto transaction_id = notify_message->get_transaction_id();
+
+      auto handler =
+          std::bind(&MessageHandler::handle_check_predecessor_response, this,
+                    std::placeholders::_1);
+
+      auto request = std::make_shared<RequestObject>();
+      request->set_message(notify_message);
+      request->set_handler(handler);
+      request->set_connection(std::make_shared<Peer>(target));
+      push_to_write_queue(request);
+      check_predecessor_flag_ = true;
     }
 
     void handle_check_predecessor_response(RequestObjectUPtr transport_object)
@@ -554,7 +660,6 @@ public:
 
     void notify()
     {
-        util::log(debug, "notify()");
         //TODO: add better abstracted checking if succ/pre/whatever is initialized
         Peer self;
         if(not routing_table_.try_get_self(self)) return;

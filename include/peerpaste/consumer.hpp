@@ -128,7 +128,6 @@ public:
             auto message_is_request = message->is_request();
 
             //convert message to buf
-            converter;
             auto message_buf = converter.SerializedFromMessage(message);
             std::vector<boost::uint8_t> encoded_buf;
             //header size used in session is 4

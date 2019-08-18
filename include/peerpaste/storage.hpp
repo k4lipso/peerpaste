@@ -1,5 +1,7 @@
 #include <boost/filesystem.hpp>
+#include <cstdio>
 #include <iostream>
+#include <chrono>
 
 class Storage
 {
@@ -17,6 +19,16 @@ public:
         std::ofstream out(storage_path_ + id);
         out << data;
         out.close();
+        files_[id] = std::chrono::steady_clock::now();
+    }
+
+    void remove(const std::string& id)
+    {
+        if(exists(storage_path_ + id)){
+            std::remove(std::string(storage_path_ + id).c_str());
+            files_.erase(files_.find(id));
+        }
+        util::log(debug, "[storage] could not remove file");
     }
 
     std::string get(const std::string& id){
@@ -32,7 +44,32 @@ public:
         return f.good();
     }
 
+    auto get_map() const{
+        return files_;
+    }
+
+    void refresh_validity(const std::string& id)
+    {
+        files_[id] = std::chrono::steady_clock::now();
+    }
+
+    bool is_valid(const std::string& id)
+    {
+        std::chrono::steady_clock::time_point end =
+            std::chrono::steady_clock::now();
+        auto dur = std::chrono::duration_cast<std::chrono::seconds>(end - files_[id])
+                       .count();
+        //older than 60seconds is invalid
+        if (dur > 60) {
+          return false;
+        }
+        return true;
+    }
+
 private:
     const std::string id_;
     const std::string storage_path_;
+    //a map of files that keeps track of the validity.
+    //when the validity is out of scope the file will be removed
+    std::map<std::string, std::chrono::steady_clock::time_point> files_;
 };

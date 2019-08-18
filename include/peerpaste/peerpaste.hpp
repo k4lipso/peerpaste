@@ -54,6 +54,11 @@ namespace peerpaste {
             }
 
             void create_ring(){
+                //TODO: on ring creation special attributes for the ring should be set.
+                //they should be then sent in every message and allways checked so that
+                //every peer is aware of them and has the same values set.
+                //those values should be: maximum file size, minimum version,
+                //                        redundancy, (authentification for private rings)
                 create_ring_ = true;
             }
 
