@@ -2,6 +2,8 @@
 #include <cstdio>
 #include <iostream>
 #include <chrono>
+#include <map>
+#include "peerpaste/cryptowrapper.hpp"
 
 class Storage
 {

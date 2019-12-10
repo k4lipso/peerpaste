@@ -1,9 +1,9 @@
 #pragma once
 
-#include <sha.h>
-#include <filters.h>
-#include <hex.h>
-#include <sodium.h>
+#include "cryptopp/sha.h"
+#include "cryptopp/filters.h"
+#include "cryptopp/hex.h"
+#include "sodium.h"
 #include <cctype>
 #include <iostream>
 

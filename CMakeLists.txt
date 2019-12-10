@@ -21,9 +21,10 @@ message("${CRYPTOPP_INCLUDE_DIRS}")
 message("${CRYPTOPP_ROOT_DIR}")
 message("${CRYPTOPP_FOUND}")
 
-SET(Boost_USE_STATIC_LIBS ON)
+SET(Boost_USE_STATIC_LIBS OFF)
 SET(Boost_USE_MULTITHREAD ON)
-FIND_PACKAGE(Boost REQUIRED COMPONENTS program_options log system thread regex)
+FIND_PACKAGE(Boost REQUIRED COMPONENTS log_setup log program_options system thread regex)
+#FIND_PACKAGE(Boost REQUIRED)
 MESSAGE("Boost information")
 MESSAGE("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 MESSAGE("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
@@ -61,17 +62,21 @@ target_include_directories(libpeerpaste
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
         ${CRYPTOPP_INCLUDE_DIR}
-        "/usr/include/cryptopp"
     )
 
 target_link_libraries(libpeerpaste
     PUBLIC
         ${CMAKE_THREAD_LIBS_INIT}
+        ${Boost_LOG_LIBRARY}
         ${Boost_LIBRARIES}
-        ${Boost_LIBRARY_DIRS}
         ${PROTOBUF_LIBRARIES}
         ${CRYPTOPP_LIBRARIES}
         -lsodium
+    )
+
+  target_compile_options(libpeerpaste
+    PUBLIC
+    -DBOOST_LOG_DYN_LINK -ggdb
     )
 
 add_executable(peerpaste src/main.cpp)
@@ -82,12 +87,19 @@ target_include_directories(peerpaste
 
 target_link_libraries(peerpaste
     PUBLIC
+        ${Boost_LOG_LIBRARY}
         ${Boost_LIBRARIES}
+        ${Boost_LIBRARY_DIRS}
         libpeerpaste
         # if(DEBUG)
             # -fsanitize=address
         # endif()
 )
+
+target_compile_options(peerpaste
+  PUBLIC
+  -DBOOST_LOG_DYN_LINK
+  )
 
 if(BUILD_TESTS)
     add_subdirectory(test)

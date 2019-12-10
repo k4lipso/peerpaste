@@ -4,6 +4,7 @@
 #include <mutex>
 #include <vector>
 #include <memory>
+#include <iostream>
 #include <condition_variable>
 
 namespace peerpaste {
