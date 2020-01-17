@@ -1,5 +1,4 @@
-#ifndef CONCURRENT_QUEUE
-#define CONCURRENT_QUEUE
+#pragma once
 
 #include <mutex>
 #include <queue>
@@ -24,6 +23,20 @@ class ConcurrentQueue
 public:
     ConcurrentQueue()
     {}
+
+    bool try_pop(T& value)
+    {
+      std::unique_lock lk(mutex_);
+      if(queue_.empty())
+      {
+        return false;
+      }
+
+      value = *queue_.front().get();
+      queue_.pop();
+
+      return true;
+    }
 
     void wait_and_pop(T& value)
     {
@@ -70,4 +83,3 @@ public:
 };
 
 } // closing peerpaste namespace
-#endif /* ifndef CONCURRENT_QUEUE */

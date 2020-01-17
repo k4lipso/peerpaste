@@ -47,6 +47,7 @@ add_library(libpeerpaste
     "src/aggregator.cpp"
     "src/aggregat.cpp"
     "src/cryptowrapper.cpp"
+    "src/thread_pool.cpp"
     "include/peerpaste/storage.hpp"
     "include/peerpaste/proto/messages.pb.cc"
     "include/peerpaste/concurrent_queue.hpp"
