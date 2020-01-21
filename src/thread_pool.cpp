@@ -1,4 +1,6 @@
-#include "peerpaste/threadpool.hpp"
+#include <algorithm>
+
+#include "peerpaste/thread_pool.hpp"
 
 ThreadPool::ThreadPool(unsigned thread_count) : done_(false)
 {
@@ -13,6 +15,11 @@ ThreadPool::ThreadPool(unsigned thread_count) : done_(false)
 ThreadPool::~ThreadPool()
 {
 	done_ = true;
+
+	for(auto& thread : threads_)
+	{
+		thread.join();
+	}
 }
 
 void ThreadPool::worker_thread()

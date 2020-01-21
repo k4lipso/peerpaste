@@ -73,6 +73,14 @@ public:
         return queue_.empty();
     }
 
+    void push_new(T&& new_value)
+    {
+        /* auto new_value_ptr = std::make_unique<T>(std::move(new_value)); */
+        std::scoped_lock lk(mutex_);
+        queue_.emplace(std::make_unique<std::remove_cv_t<T>>(std::forward<T>(new_value)));
+        condition_.notify_one();
+    }
+
     void push(T new_value)
     {
         /* auto new_value_ptr = std::make_unique<T>(std::move(new_value)); */
