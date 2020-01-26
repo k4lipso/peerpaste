@@ -1,8 +1,8 @@
-#ifndef REQUEST_OBJECT_HPP
-#define REQUEST_OBJECT_HPP
+#pragma once
 
 #include "message.hpp"
 #include "peer.hpp"
+#include "peerpaste/messaging_base.hpp"
 //TODO: change to abstract session
 #include "boost_session.hpp"
 
@@ -22,10 +22,10 @@ using DataPromise = std::shared_ptr<std::promise<std::string>>;
 class RequestObject
 {
 public:
-
-    RequestObject() {
+    RequestObject(MessageType type = MessageType::UNKNOWN) : type_(type) {
         start_ = std::chrono::steady_clock::now();
     }
+
     ~RequestObject () {}
 
     /* static RequestObject create_request_object(Message msg, */
@@ -186,6 +186,8 @@ public:
         return true;
     }
 
+    const MessageType type_;
+
 private:
     static void set_connection(RequestObject& req, std::variant<Peer, SessionPtr> connection)
     {
@@ -202,5 +204,3 @@ private:
     std::variant<PeerPtr, SessionPtr> connection_;
     std::chrono::steady_clock::time_point start_;
 };
-
-#endif /* ifndef REQUEST_OBJECT_HPP */

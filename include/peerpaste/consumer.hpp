@@ -8,6 +8,8 @@
 #include "peerpaste/message_handler.hpp"
 #include "peerpaste/session.hpp"
 #include "peerpaste/boost_session.hpp"
+#include "peerpaste/observer_base.hpp"
+#include "peerpaste/thread_pool.hpp"
 
 #include <utility>
 #include <memory>
@@ -28,16 +30,16 @@ public:
     //TODO: should init both queues and provide getter() functions to get shared_ptrs of them
     MessageDispatcher (std::shared_ptr<MessageHandler> msg_handler)
         : msg_handler_(msg_handler),
-          queue_(std::make_shared<ConcurrentQueue<MsgBufPair>>()),
-          send_queue_(std::make_shared<ConcurrentQueue<RequestObject>>())
+          input_queue_(std::make_shared<ConcurrentQueue<MsgBufPair>>()),
+          output_queue_(std::make_shared<ConcurrentQueue<RequestObject>>())
     {}
 
     std::shared_ptr<ConcurrentQueue<MsgBufPair>> get_receive_queue(){
-        return queue_;
+        return input_queue_;
     }
 
     std::shared_ptr<ConcurrentQueue<RequestObject>> get_send_queue(){
-        return send_queue_;
+        return output_queue_;
     }
 
     boost::asio::io_context& get_context()
@@ -51,8 +53,8 @@ public:
      */
     void run()
     {
-        thread_pool_.emplace_back( [=]{ run_internal(); } );
-        thread_pool_.emplace_back( [=]{ run_send_internal(); } );
+        thread_pool_deprecated_.emplace_back( [=]{ run_internal(); } );
+        thread_pool_deprecated_.emplace_back( [=]{ run_send_internal(); } );
 
         //TODO: add thread count instead of 4
         for(int i=0; i < 4; ++i)
@@ -65,8 +67,8 @@ public:
     {
         run_ = false;
         io_context_.stop();
-        for(auto& thread_pool : thread_pool_){
-            util::log(debug, "joining thread of thread_pool_");
+        for(auto& thread_pool : thread_pool_deprecated_){
+            util::log(debug, "joining thread of thread_pool_deprecated_");
             thread_pool.join();
         }
         while(not io_context_.stopped()){
@@ -81,7 +83,7 @@ public:
 
     void join()
     {
-        for(auto it = thread_pool_.begin(); it < thread_pool_.end(); it++){
+        for(auto it = thread_pool_deprecated_.begin(); it < thread_pool_deprecated_.end(); it++){
             it->join();
         }
         for(auto it2 = asio_pool_.begin(); it2 < asio_pool_.end(); it2++){
@@ -91,7 +93,7 @@ public:
 
     void send_routing_information()
     {
-        thread_pool_.emplace_back( [=]{ send_routing_information_internal(); } );
+        thread_pool_deprecated_.emplace_back( [=]{ send_routing_information_internal(); } );
     }
 
     void run_internal()
@@ -99,7 +101,7 @@ public:
         ProtobufMessageConverter converter;
         while(run_){
             //Get unique_ptr to MsgPair from queue
-            auto msg_pair = queue_->wait_for_and_pop();
+            auto msg_pair = input_queue_->wait_for_and_pop();
             if(msg_pair == nullptr) continue;
             //Convert msg_buffer into Message object
             //TODO: handle failure on MessageFromSerialized!!!
@@ -121,7 +123,7 @@ public:
         ProtobufMessageConverter converter;
         while(run_){
             //Get unique_ptr to RequestObject from queue
-            auto send_object = send_queue_->wait_for_and_pop();
+            auto send_object = output_queue_->wait_for_and_pop();
             if(send_object == nullptr) continue;
             //get the message to send
             auto message = send_object->get_message();
@@ -150,7 +152,7 @@ public:
                 //should be more abstract so that the message_handler does not need
                 //to know what kind of object sends the data somewhere
                 auto peer = send_object->get_peer();
-                auto write_handler = std::make_shared<BoostSession>(io_context_, queue_);
+                auto write_handler = std::make_shared<BoostSession>(io_context_, input_queue_);
                 write_handler->write_to(encoded_buf, peer->get_ip(), peer->get_port());
                 send_object->set_connection(write_handler);
                 if(message_is_request){
@@ -245,11 +247,12 @@ public:
 
 private:
     boost::asio::io_context io_context_;
-    std::shared_ptr<ConcurrentQueue<MsgBufPair>> queue_;
-    std::shared_ptr<ConcurrentQueue<RequestObject>>  send_queue_;
+    std::shared_ptr<ConcurrentQueue<MsgBufPair>> input_queue_;
+    std::shared_ptr<ConcurrentQueue<RequestObject>>  output_queue_;
     std::shared_ptr<MessageHandler> msg_handler_;
 
-    std::vector<std::thread> thread_pool_;
+    std::vector<std::thread> thread_pool_deprecated_;
+    ThreadPool thread_pool_;
     std::vector<std::thread> asio_pool_;
 
     bool run_ = true;

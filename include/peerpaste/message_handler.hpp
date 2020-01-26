@@ -8,7 +8,6 @@
 #include "peerpaste/concurrent_routing_table.hpp"
 #include "peerpaste/concurrent_request_handler.hpp"
 #include <functional>
-#include <mutex>
 #include <future>
 
 class MessageHandler
@@ -108,7 +107,6 @@ public:
 
     ~MessageHandler () {}
 
-    //TODO: pass rvalue reference to only allow std::move()
     void push_to_write_queue(RequestObjectSPtr shared_transport_object)
     {
         auto is_request = shared_transport_object->get_message()->is_request();

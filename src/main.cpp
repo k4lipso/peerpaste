@@ -20,55 +20,9 @@
 #include "peerpaste/server.hpp"
 #include "peerpaste/peerpaste.hpp"
 #include "peerpaste/thread_pool.hpp"
+#include "peerpaste/messaging_base.hpp"
 
 namespace po = boost::program_options;
-
-class ObserverBase {
-public:
-  virtual ~ObserverBase() {}
-  virtual void HandleNotification(const std::string& msg) = 0;
-};
-
-class Observable {
-public:
-  void Attach(ObserverBase *observer) { observers_.push_back(observer); }
-
-  void Notify(const std::string& notification)
-  {
-      std::for_each(std::begin(observers_), std::end(observers_),
-                    [&notification](ObserverBase *o) { o->HandleNotification(notification); });
-  }
-
-protected:
-  std::vector<ObserverBase *> observers_;
-};
-
-class DummyMessage;
-class MessagingBase : public Observable, public ObserverBase
-{
-public:
-  using Observable::Observable;
-  MessagingBase(MessagingBase&& other)
-    : Observable(std::move(other))
-    , promise_(std::move(other.promise_))
-    , dependencies_(std::move(other.dependencies_))
-    ,	is_done_(other.is_done_.load())
-  {
-  }
-
-  virtual ~MessagingBase() {}
-  virtual void operator()() = 0;
-
-  bool is_done() const noexcept { return is_done_; }
-
-  std::future<std::string> get_future() { return promise_.get_future(); }
-
-protected:
-  //Only root object needs promise. leafobjects do not.
-  std::promise<std::string> promise_;
-  std::vector<std::unique_ptr<MessagingBase>> dependencies_;
-  std::atomic<bool> is_done_ = false;
-};
 
 class DummyMessage : public MessagingBase
 {
@@ -81,7 +35,7 @@ public:
     }
   }
 
-	DummyMessage(DummyMessage&& other)
+	explicit DummyMessage(DummyMessage&& other)
 		: MessagingBase(std::move(other))
 		,	worker_(other.worker_)
 	{}
@@ -105,7 +59,7 @@ public:
     for(auto& dep : dependencies_)
     {
       dep->Attach(this);
-      worker_->submit(std::move(*dep.get()));
+      worker_->submit([&dep]() { (*dep)(); });
     }
   }
 
@@ -142,16 +96,17 @@ int main()
   std::vector<std::future<std::string>> FutureVec;
 
   Observer obs;
-  //auto msg = std::make_shared<DummyMessage>(5);
-  DummyMessage msg{&thread_pool, 100};
-  msg.Attach(&obs);
+  auto msg = std::make_shared<DummyMessage>(&thread_pool, 5);
+  msg->Attach(&obs);
 
-  FutureVec.emplace_back(msg.get_future());
+  FutureVec.emplace_back(msg->get_future());
   thread_pool.submit(msg);
 
   auto it = FutureVec.begin();
 
   std::this_thread::sleep_for(std::chrono::seconds{1});
+
+  std::cout << FutureVec.size() << std::endl;
 
   while(!FutureVec.empty())
   {

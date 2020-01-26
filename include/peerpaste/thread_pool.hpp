@@ -4,6 +4,7 @@
 #include <vector>
 #include <atomic>
 #include <functional>
+#include <type_traits>
 
 #include "peerpaste/concurrent_queue.hpp"
 
@@ -20,13 +21,13 @@ public:
 																	 function));
 	}
 
-	//template<typename FunctionType>
-	//void submit(FunctionType&& function)
-	//{
-	//	using BareFunctionType = std::remove_cv_t<std::remove_reference_t<FunctionType>>;
-	//	work_queue_.push_new(std::bind(&BareFunctionType::operator(),
-	//																 std::make_shared<BareFunctionType>(std::forward<BareFunctionType>(function))));
-	//}
+	template<typename FunctionType>
+	void submit(FunctionType&& function)
+	{
+		using BareFunctionType = std::remove_cv_t<std::remove_reference_t<FunctionType>>;
+		work_queue_.push_new(std::bind(&BareFunctionType::operator(),
+																	 std::make_shared<BareFunctionType>(std::forward<FunctionType>(function))));
+	}
 
 private:
   void worker_thread();
