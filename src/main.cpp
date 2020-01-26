@@ -23,42 +23,9 @@
 
 namespace po = boost::program_options;
 
-class MsgTask
-{
-public:
-  MsgTask() = default;
-  MsgTask(const MsgTask&) = delete;
-
-  ~MsgTask() { std::cout << "dtor" << std::endl; }
-
-  MsgTask(MsgTask&& OldTask)
-  {
-    promise_ = OldTask.get_promise();
-    std::cout << "move" << std::endl;
-  }
-
-  void operator()()
-  {
-    const auto ID = std::to_string(std::hash<std::thread::id>{}(std::this_thread::get_id()));
-
-    std::cout << "ThreadID: " << ID << " -- Executing" << std::endl;
-    std::this_thread::sleep_for(std::chrono::seconds(1));
-
-
-    promise_.set_value(ID + ": Finished");
-  }
-
-  std::promise<std::string>&& get_promise() { return std::move(promise_); }
-
-  std::future<std::string> get_future() { return promise_.get_future(); }
-
-private:
-  std::promise<std::string> promise_;
-};
-
 class ObserverBase {
 public:
-  virtual ~ObserverBase() { std::cout << "OBSBASE DTOR" << std::endl; }
+  virtual ~ObserverBase() {}
   virtual void HandleNotification(const std::string& msg) = 0;
 };
 
@@ -76,45 +43,52 @@ protected:
   std::vector<ObserverBase *> observers_;
 };
 
+class DummyMessage;
 class MessagingBase : public Observable, public ObserverBase
 {
 public:
-    MessagingBase() = default;
-    MessagingBase(const MessagingBase&) = delete;
+  using Observable::Observable;
+  MessagingBase(MessagingBase&& other)
+    : Observable(std::move(other))
+    , promise_(std::move(other.promise_))
+    , dependencies_(std::move(other.dependencies_))
+    ,	is_done_(other.is_done_.load())
+  {
+  }
 
-    MessagingBase(MessagingBase&& OldMsg)
-      :	dependencies_(std::move(OldMsg.dependencies_))
-    {
-      promise_ = std::move(OldMsg.promise_);
-      is_done_ = OldMsg.is_done_.load();
-    }
+  virtual ~MessagingBase() {}
+  virtual void operator()() = 0;
 
-    virtual ~MessagingBase() { std::cout << "MSGBASE DTOR" << std::endl; }
-    virtual void operator()() = 0;
+  bool is_done() const noexcept { return is_done_; }
 
-    bool is_done() const noexcept { return is_done_; }
+  std::future<std::string> get_future() { return promise_.get_future(); }
 
-    std::future<std::string> get_future() { return promise_.get_future(); }
-
-    //Only root object needs promise. leafobjects do not.
-    std::promise<std::string> promise_;
-    std::vector<std::unique_ptr<MessagingBase>> dependencies_;
-    std::atomic<bool> is_done_ = false;
+protected:
+  //Only root object needs promise. leafobjects do not.
+  std::promise<std::string> promise_;
+  std::vector<std::unique_ptr<MessagingBase>> dependencies_;
+  std::atomic<bool> is_done_ = false;
 };
 
 class DummyMessage : public MessagingBase
 {
 public:
-  DummyMessage(DummyMessage&& dummy) = default;
-   ~DummyMessage() { std::cout << "DUMMY DTOR" << std::endl; }
-
-  DummyMessage(unsigned num = 0)
+  DummyMessage(ThreadPool* const worker, unsigned dependency_count = 0) : worker_(worker)
   {
-    for(unsigned i = 0; i < num; ++i)
+    for(unsigned i = 0; i < dependency_count; ++i)
     {
-      dependencies_.push_back(std::make_unique<DummyMessage>());
+      dependencies_.emplace_back(std::make_unique<DummyMessage>(worker_));
     }
   }
+
+	DummyMessage(DummyMessage&& other)
+		: MessagingBase(std::move(other))
+		,	worker_(other.worker_)
+	{}
+
+	~DummyMessage()
+	{}
+
 
   virtual void operator()() override
   {
@@ -124,13 +98,14 @@ public:
     {
       is_done_ = true;
       Notify("Done...");
+      promise_.set_value("no deps. closing");
       return;
     }
 
     for(auto& dep : dependencies_)
     {
       dep->Attach(this);
-      (*dep)();
+      worker_->submit(std::move(*dep.get()));
     }
   }
 
@@ -146,6 +121,8 @@ public:
     }
   }
 
+private:
+  ThreadPool* const worker_;
 };
 
 class Observer : public ObserverBase
@@ -160,19 +137,21 @@ public:
 //int main(int argc, char** argv)
 int main()
 {
-  ThreadPool thread_pool{};
+  ThreadPool thread_pool{1};
 
   std::vector<std::future<std::string>> FutureVec;
 
   Observer obs;
-  auto msg = std::make_shared<DummyMessage>(5);
-  //DummyMessage msg{};
-  msg->Attach(&obs);
+  //auto msg = std::make_shared<DummyMessage>(5);
+  DummyMessage msg{&thread_pool, 100};
+  msg.Attach(&obs);
 
-  FutureVec.emplace_back(msg->get_future());
+  FutureVec.emplace_back(msg.get_future());
   thread_pool.submit(msg);
 
   auto it = FutureVec.begin();
+
+  std::this_thread::sleep_for(std::chrono::seconds{1});
 
   while(!FutureVec.empty())
   {
@@ -180,6 +159,11 @@ int main()
     {
       std::cout << it->get() << std::endl;
       FutureVec.erase(it);
+      if(it == FutureVec.end())
+      {
+        break;
+      }
+
       continue;
     }
 
