@@ -5,9 +5,9 @@
 ThreadPool::ThreadPool(unsigned thread_count) : done_(false)
 {
 	thread_count = thread_count ? thread_count : std::thread::hardware_concurrency();
+	threads_.reserve(thread_count);
 	for(unsigned i = 0; i < thread_count; ++i)
 	{
-		threads_.reserve(thread_count);
 		threads_.push_back(std::thread(&ThreadPool::worker_thread, this));
 	}
 }
@@ -34,6 +34,7 @@ void ThreadPool::worker_thread()
 		else
 		{
 			std::this_thread::yield();
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
 		}
 	}
 }

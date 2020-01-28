@@ -1,5 +1,7 @@
-#ifndef MESSAGE_HANDLER_HPP
-#define MESSAGE_HANDLER_HPP
+#pragma once
+
+#include <functional>
+#include <future>
 
 #include "peerpaste/message.hpp"
 #include "peerpaste/request_object.hpp"
@@ -7,10 +9,14 @@
 #include "peerpaste/storage.hpp"
 #include "peerpaste/concurrent_routing_table.hpp"
 #include "peerpaste/concurrent_request_handler.hpp"
-#include <functional>
-#include <future>
 
-class MessageHandler
+#include "peerpaste/thread_pool.hpp"
+#include "peerpaste/observer_base.hpp"
+#include "peerpaste/messages/notify.hpp"
+#include "peerpaste/messaging_base.hpp"
+
+
+class MessageHandler : public ObserverBase
 {
 public:
     typedef std::shared_ptr<Message> MessagePtr;
@@ -41,7 +47,8 @@ public:
                         storage_(nullptr),
                         aggregator_(),
                         stabilize_flag_(false),
-                        check_predecessor_flag_(false)
+                        check_predecessor_flag_(false),
+                        thread_pool_(0)
     {
         //TODO: setup self more accurate
         auto self_ip = "127.0.0.1";
@@ -63,6 +70,11 @@ public:
         }
     }
 
+    virtual void HandleNotification(const RequestObject& request_object) override
+    {
+      push_to_write_queue(std::make_shared<RequestObject>(request_object));
+
+    }
     void run(){
         run_thread_.emplace_back( [=]{ run_chord_internal(); } );
         run_thread_.emplace_back( [=]{ run_paste_internal(); } );
@@ -92,6 +104,7 @@ public:
 
         if(running_){
             run_chord_internal();
+
         }
     }
 
@@ -135,7 +148,10 @@ public:
             return;
         }
         if(request_type == "notify"){
-            handle_notify(std::move(transport_object));
+            auto notification = std::make_shared<peerpaste::message::Notification>(&routing_table_, *transport_object);
+            notification->Attach(this);
+            thread_pool_.submit(notification);
+            active_messages_.push_back(std::move(notification));
             return;
         }
         if(request_type == "check_predecessor"){
@@ -658,29 +674,11 @@ public:
 
     void notify()
     {
-        //TODO: add better abstracted checking if succ/pre/whatever is initialized
-        Peer self;
-        if(not routing_table_.try_get_self(self)) return;
-        if(self.get_id() == "") return;
+      auto NotifyMessage = std::make_shared<peerpaste::message::Notification>(&routing_table_);
 
-        Peer target;
-        if(not routing_table_.try_get_successor(target)){
-            return;
-        }
-
-        auto notify_message = std::make_shared<Message>(
-                            Message::create_request("notify", { self }));
-        auto transaction_id = notify_message->get_transaction_id();
-
-        auto handler = std::bind(&MessageHandler::handle_notify_response,
-                                 this,
-                                 std::placeholders::_1);
-
-        auto request = std::make_shared<RequestObject>();
-        request->set_message(notify_message);
-        request->set_handler(handler);
-        request->set_connection(std::make_shared<Peer>(target));
-        push_to_write_queue(request);
+      NotifyMessage->Attach(this);
+      thread_pool_.submit(NotifyMessage);
+      active_messages_.push_back(std::move(NotifyMessage));
     }
 
     void handle_notify_response(RequestObjectUPtr transport_object)
@@ -1055,5 +1053,7 @@ private:
     bool check_predecessor_flag_;
     bool running_ = true;
     std::vector<std::thread> run_thread_;
+
+    ThreadPool thread_pool_;
+    std::vector<std::shared_ptr<MessagingBase>> active_messages_;
 };
-#endif /* MESSAGE_HANDLER_HPP */

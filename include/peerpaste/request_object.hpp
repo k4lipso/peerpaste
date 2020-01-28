@@ -2,7 +2,7 @@
 
 #include "message.hpp"
 #include "peer.hpp"
-#include "peerpaste/messaging_base.hpp"
+//#include "peerpaste/messaging_base.hpp"
 //TODO: change to abstract session
 #include "boost_session.hpp"
 
@@ -19,10 +19,19 @@ using RequestObjectUPtr = std::unique_ptr<RequestObject>;
 using HandlerFunction = std::function<void(RequestObjectUPtr)>;
 using DataPromise = std::shared_ptr<std::promise<std::string>>;
 
+enum class MessageType
+{
+  UNKNOWN = 0,
+  NOTIFICATION,
+};
+
+
 class RequestObject
 {
 public:
-    RequestObject(MessageType type = MessageType::UNKNOWN) : type_(type) {
+    RequestObject(MessageType type = MessageType::UNKNOWN)
+      : type_(type)
+    {
         start_ = std::chrono::steady_clock::now();
     }
 
@@ -79,7 +88,7 @@ public:
         handler_ = handler;
     }
 
-    const bool has_handler() const
+    bool has_handler() const
     {
         return handler_.has_value();
     }
@@ -94,7 +103,7 @@ public:
         data_promise_ = data_promise;
     }
 
-    const bool has_promise() const
+    bool has_promise() const
     {
         return data_promise_.has_value();
     }
@@ -129,7 +138,7 @@ public:
         connection_ = session;
     }
 
-    const bool is_session() const
+    bool is_session() const
     {
         return std::holds_alternative<SessionPtr>(connection_);
     }
@@ -186,7 +195,7 @@ public:
         return true;
     }
 
-    const MessageType type_;
+    MessageType type_;
 
 private:
     static void set_connection(RequestObject& req, std::variant<Peer, SessionPtr> connection)

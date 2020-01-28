@@ -9,7 +9,6 @@
 #include "peerpaste/session.hpp"
 #include "peerpaste/boost_session.hpp"
 #include "peerpaste/observer_base.hpp"
-#include "peerpaste/thread_pool.hpp"
 
 #include <utility>
 #include <memory>
@@ -53,7 +52,7 @@ public:
      */
     void run()
     {
-        thread_pool_deprecated_.emplace_back( [=]{ run_internal(); } );
+        thread_pool_deprecated_.emplace_back( [this]{ run_internal(); } );
         thread_pool_deprecated_.emplace_back( [=]{ run_send_internal(); } );
 
         //TODO: add thread count instead of 4
@@ -252,7 +251,6 @@ private:
     std::shared_ptr<MessageHandler> msg_handler_;
 
     std::vector<std::thread> thread_pool_deprecated_;
-    ThreadPool thread_pool_;
     std::vector<std::thread> asio_pool_;
 
     bool run_ = true;
