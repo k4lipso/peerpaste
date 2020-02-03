@@ -53,12 +53,12 @@ public:
     void run()
     {
         thread_pool_deprecated_.emplace_back( [this]{ run_internal(); } );
-        thread_pool_deprecated_.emplace_back( [=]{ run_send_internal(); } );
+        thread_pool_deprecated_.emplace_back( [this]{ run_send_internal(); } );
 
         //TODO: add thread count instead of 4
         for(int i=0; i < 4; ++i)
         {
-            asio_pool_.emplace_back( [=]{ io_context_.run(); } );
+            asio_pool_.emplace_back( [this]{ io_context_.run(); } );
         }
     }
 
@@ -92,7 +92,7 @@ public:
 
     void send_routing_information()
     {
-        thread_pool_deprecated_.emplace_back( [=]{ send_routing_information_internal(); } );
+        thread_pool_deprecated_.emplace_back( [this]{ send_routing_information_internal(); } );
     }
 
     void run_internal()

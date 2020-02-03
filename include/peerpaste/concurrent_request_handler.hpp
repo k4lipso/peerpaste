@@ -1,11 +1,55 @@
-#ifndef CONCURRENT_REQUEST_HANDLER
-#define CONCURRENT_REQUEST_HANDLER
+#pragma once
 
 #include <map>
+#include <set>
 #include <mutex>
+#include <optional>
 
-namespace peerpaste {
+#include "peerpaste/cryptowrapper.hpp"
 
+namespace peerpaste
+{
+
+
+template<typename T, typename KeyType = T>
+class ConcurrentRequestHandler
+{
+public:
+  bool contains(const KeyType& key) const
+  {
+    std::scoped_lock lk{mutex_};
+    return set_.contains(key);
+  }
+
+  std::optional<T> get_and_erase(const KeyType& key)
+  {
+    std::scoped_lock lk{mutex_};
+
+    auto search = set_.find(key);
+    if(search != set_.end())
+    {
+      std::optional<T> return_value{*search};
+      set_.erase(search);
+      return return_value;
+    }
+    else
+    {
+      return {};
+    }
+  }
+
+  void insert(const T& value)
+  {
+    std::scoped_lock lk{mutex_};
+    set_.insert(value);
+  }
+
+private:
+  mutable std::mutex mutex_;
+  std::set<T> set_;
+};
+
+namespace deprecated {
 template<typename T>
 class ConcurrentRequestHandler
 {
@@ -70,6 +114,5 @@ private:
     mutable std::mutex mutex_;
 };
 
+} // closing namespace deprecated
 } //closing namespace peerpaste
-
-#endif /* ifndef CONCURRENT_REQUEST_HANDLER */

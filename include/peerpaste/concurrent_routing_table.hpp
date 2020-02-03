@@ -41,8 +41,7 @@ public:
     bool has_self() const
     {
         std::scoped_lock lk(mutex_);
-        if(self_ == nullptr) return false;
-        return true;
+        return self_ != nullptr;
     }
 
     void set_self(T self)

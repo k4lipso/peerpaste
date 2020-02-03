@@ -99,7 +99,7 @@ public:
             check_predecessor();
         }
 
-        open_requests_.handle_timeouts();
+        open_requests_deprecated_.handle_timeouts();
         std::this_thread::sleep_for(std::chrono::milliseconds(400));
 
         if(running_){
@@ -126,7 +126,7 @@ public:
         if(is_request){
             auto transaction_id = shared_transport_object->get_message()->get_transaction_id();
             //TODO: store ptrs in open_requests
-            open_requests_.set(transaction_id, shared_transport_object);
+            open_requests_deprecated_.set(transaction_id, shared_transport_object);
         }
         send_queue_->push(*shared_transport_object.get());
     }
@@ -490,7 +490,7 @@ public:
         //that ID
         auto correlational_id = transport_object->get_correlational_id();
         RequestObjectSPtr request_object;
-        if(open_requests_.try_find_and_erase(correlational_id, request_object)){
+        if(open_requests_deprecated_.try_find_and_erase(correlational_id, request_object)){
             auto message = transport_object->get_message();
 
             //Check if the request has a handler function
@@ -1042,7 +1042,7 @@ public:
 private:
 
     peerpaste::ConcurrentRoutingTable<Peer> routing_table_;
-    peerpaste::ConcurrentRequestHandler<RequestObjectSPtr> open_requests_;
+    peerpaste::deprecated::ConcurrentRequestHandler<RequestObjectSPtr> open_requests_deprecated_;
     std::shared_ptr<peerpaste::ConcurrentQueue<RequestObject>>  send_queue_;
     std::unique_ptr<Storage> storage_;
     Aggregator aggregator_;
