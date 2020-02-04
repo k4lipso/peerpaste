@@ -25,6 +25,11 @@ enum class MessageType
   NOTIFICATION,
 };
 
+struct HandlerObject
+{
+  std::string correlation_id_;
+  std::function<void(RequestObject)> handler_;
+};
 
 class RequestObject
 {
@@ -98,23 +103,26 @@ public:
         return handler_.value();
     }
 
+    [[deprecated]]
     void set_promise(const DataPromise& data_promise)
     {
-        data_promise_ = data_promise;
+        data_promise_deprecated_ = data_promise;
     }
 
+    [[deprecated]]
     bool has_promise() const
     {
-        return data_promise_.has_value();
+        return data_promise_deprecated_.has_value();
     }
 
+    [[deprecated]]
     bool set_promise_value(const std::string& value)
     {
         if(not has_promise()){
             util::log(debug, "request_object::set_promise_value: has no promise");
             return false;
         }
-        data_promise_.value()->set_value(value);
+        data_promise_deprecated_.value()->set_value(value);
         return true;
     }
 
@@ -209,7 +217,7 @@ private:
 
     MessagePtr message_;
     std::optional<HandlerFunction> handler_;
-    std::optional<DataPromise> data_promise_;
+    std::optional<DataPromise> data_promise_deprecated_; //deprecated
     std::variant<PeerPtr, SessionPtr> connection_;
     std::chrono::steady_clock::time_point start_;
 };
