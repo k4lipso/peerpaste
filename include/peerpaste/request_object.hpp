@@ -11,6 +11,7 @@
 #include <future>
 
 class RequestObject;
+class MessagingBase;
 
 using MessagePtr = std::shared_ptr<Message>;
 using PeerPtr = std::shared_ptr<Peer>;
@@ -24,35 +25,62 @@ enum class MessageType
 {
   UNKNOWN = 0,
   NOTIFICATION,
+  QUERY,
 };
 
 template<typename Handler>
 struct HandlerObject
 {
 //  HandlerObject() {}
-  HandlerObject(std::string correlation_id, const Handler& handler)
+  HandlerObject(std::string correlation_id, const Handler& handler, std::weak_ptr<MessagingBase> parent)
     : correlation_id_(std::move(correlation_id))
     , handler_(handler)
+    , parent_(parent)
   {}
 
   HandlerObject(const HandlerObject& other)
     : correlation_id_(other.correlation_id_)
     ,	handler_(other.handler_)
+    , parent_(other.parent_)
   {}
 
-//  HandlerObject(HandlerObject&& other)
-//    : correlation_id_(std::move(other.correlation_id_))
-//    ,	handler_(other.handler_)
-//  {}
+  bool operator==(const std::string& other_id) const
+  {
+    return  correlation_id_ == other_id;
+  }
 
   bool operator<(const HandlerObject<Handler>& other) const
   {
-    return correlation_id_ < other.correlation_id_;
+    return  correlation_id_ < other.correlation_id_;
+  }
+
+  bool is_valid() const
+  {
+    return !parent_.expired();
+  }
+
+  auto lock() const
+  {
+    return parent_.lock();
   }
 
   std::string correlation_id_;
   Handler handler_;
+  std::weak_ptr<MessagingBase> parent_;
 };
+
+template<typename Handler>
+bool operator<(const HandlerObject<Handler>& first, const std::string& second)
+{
+  return first.correlation_id_ < second;
+}
+
+template<typename Handler>
+bool operator<(const std::string& first, const HandlerObject<Handler>& second)
+{
+  return first < second.correlation_id_;
+}
+
 
 class RequestObject
 {
@@ -94,29 +122,13 @@ public:
 
   bool has_handler() const
   {
-      return handler_.has_value() || handler_object_.has_value();
+      return handler_.has_value();
   }
 
   const HandlerFunctionDeprecated get_handler() const
   {
       return handler_.value();
   }
-
-  void set_handler_object(HandlerObject<HandlerFunction> handler_object)
-  {
-    handler_object_ = handler_object;
-  }
-
-  bool has_handler_object() const
-  {
-    return handler_object_.has_value();
-  }
-
-  HandlerObject<HandlerFunction> get_handler_object() const
-  {
-    return handler_object_.value();
-  }
-
 
   void set_promise(const DataPromise& data_promise)
   {
@@ -230,7 +242,6 @@ private:
   MessagePtr message_;
   std::optional<HandlerFunctionDeprecated> handler_;
   std::optional<DataPromise> data_promise_deprecated_; //deprecated
-  std::optional<HandlerObject<HandlerFunction>> handler_object_;
   std::variant<PeerPtr, SessionPtr> connection_;
   std::chrono::steady_clock::time_point start_;
 };

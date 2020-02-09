@@ -8,32 +8,43 @@
 
 #include "peerpaste/observable.hpp"
 #include "peerpaste/observer_base.hpp"
+#include "peerpaste/request_object.hpp"
 
-class DummyMessage;
-class MessagingBase : public Observable, public ObserverBase
+using HandlerFunction = std::function<void(RequestObject)>;
+
+class MessagingBase : public Observable, public ObserverBase, public std::enable_shared_from_this<MessagingBase>
 {
 public:
   using Observable::Observable;
 
   MessagingBase(MessageType type);
+  MessagingBase(MessageType type, RequestObject request);
   explicit MessagingBase(MessagingBase&& other);
   virtual ~MessagingBase();
 
-  virtual void operator()() = 0;
-
-  bool operator<(const MessagingBase& other) const;
+  virtual void operator()();
 
   bool is_done() const noexcept;
-  bool is_waiting() const;
-  bool awaits(const std::string& id) const;
-  std::string awaits() const;
+  bool is_request() const noexcept;
+
   std::future<std::string> get_future();
+  std::chrono::time_point<std::chrono::system_clock> get_timeout() const;
 
 protected:
+  virtual void create_handler_object(const std::string& correlation_id, HandlerFunction handler_function);
+
+  virtual void create_request() = 0;
+  virtual void handle_request() = 0;
+  virtual void handle_response(RequestObject request_object) = 0;
+
   //Only root object needs promise. leafobjects do not.
-  std::promise<std::string> promise_;
-  std::optional<std::string> correlational_id_;
-  std::vector<std::unique_ptr<MessagingBase>> dependencies_;
-  std::atomic<bool> is_done_ = false;
   MessageType type_;
+  std::promise<std::string> promise_;
+  std::unique_ptr<HandlerObject<HandlerFunction>> handler_object_ = nullptr;
+  std::optional<RequestObject> request_;
+  std::vector<std::unique_ptr<MessagingBase>> dependencies_;
+  std::chrono::time_point<std::chrono::system_clock> time_point_;
+  std::atomic<bool> is_done_ = false;
+  std::atomic<bool> is_request_handler_ = false;
+  static constexpr std::chrono::milliseconds DURATION{10000};
 };

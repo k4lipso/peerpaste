@@ -73,11 +73,23 @@ public:
     virtual void HandleNotification(const RequestObject& request_object) override
     {
       push_to_write_queue(std::make_shared<RequestObject>(request_object));
-
     }
+
+    virtual void HandleNotification(const RequestObject& request_object, HandlerObject<HandlerFunction> handler) override
+    {
+      active_handlers_.insert(handler);
+      push_to_write_queue(std::make_shared<RequestObject>(request_object));
+    }
+
+    virtual void HandleNotification() override
+    {
+      active_messages_.clean();
+      active_handlers_.erase_if([](auto Handler) { return !Handler.is_valid(); });
+    }
+
     void run(){
         run_thread_.emplace_back( [=]{ run_chord_internal(); } );
-        run_thread_.emplace_back( [=]{ run_paste_internal(); } );
+        //run_thread_.emplace_back( [=]{ run_paste_internal(); } );
     }
 
     void stop()
@@ -100,7 +112,7 @@ public:
         }
 
         open_requests_deprecated_.handle_timeouts();
-        std::this_thread::sleep_for(std::chrono::milliseconds(400));
+        std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
         if(running_){
             run_chord_internal();
@@ -114,7 +126,7 @@ public:
         std::this_thread::sleep_for(std::chrono::milliseconds(5000));
 
         if (running_) {
-          run();
+          run_paste_internal();
         }
     }
 
@@ -489,6 +501,22 @@ public:
         //Get the CorrelationID to check if there is an OpenRequest matching
         //that ID
         auto correlational_id = transport_object->get_correlational_id();
+
+        const auto handler_object = active_handlers_.get_and_erase(correlational_id);
+        if(handler_object.has_value())
+        {
+          if(auto parent = handler_object.value().lock())
+          {
+            handler_object.value().handler_(*transport_object);
+          }
+          else
+          {
+            util::log(info, "weak_ptr expired");
+          }
+
+          return;
+        }
+
         RequestObjectSPtr request_object;
         if(open_requests_deprecated_.try_find_and_erase(correlational_id, request_object)){
             auto message = transport_object->get_message();
@@ -1039,6 +1067,7 @@ public:
         return std::make_tuple(pre, self, succ);
     }
 
+    ThreadPool thread_pool_;
 private:
 
     peerpaste::ConcurrentRoutingTable<Peer> routing_table_;
@@ -1054,6 +1083,6 @@ private:
     bool running_ = true;
     std::vector<std::thread> run_thread_;
 
-    ThreadPool thread_pool_;
-    std::vector<std::shared_ptr<MessagingBase>> active_messages_;
+    peerpaste::ConcurrentDeque<std::shared_ptr<MessagingBase>> active_messages_;
+    peerpaste::ConcurrentSet<HandlerObject<HandlerFunction>, std::less<>> active_handlers_;
 };

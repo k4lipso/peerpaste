@@ -183,16 +183,23 @@ public:
          * We have to capture the data_obj by move. otherwise the session shared_ptr
          * will call destructor when this function runs out of scope.
          */
-        if(is_request){
-            //TODO: is this creating copy of msg_handler_? if so i have to pass std::ref() instead
-            std::thread t([this, data_object = std::move(data_object)]() mutable
-                { msg_handler_->handle_request(std::move(data_object)); });
-            t.detach();
-        } else {
-            std::thread t([this, data_object = std::move(data_object)]() mutable
-                { msg_handler_->handle_response(std::move(data_object)); });
-            t.detach();
+        if(is_request)
+        {
+          msg_handler_->handle_request(std::move(data_object));
         }
+        else
+        {
+          msg_handler_->handle_response(std::move(data_object));
+        }
+        //if(is_request){
+        //    std::thread t([this, data_object = std::move(data_object)]() mutable
+        //        { msg_handler_->handle_request(std::move(data_object)); });
+        //    t.detach();
+        //} else {
+        //    std::thread t([this, data_object = std::move(data_object)]() mutable
+        //        { msg_handler_->handle_response(std::move(data_object)); });
+        //    t.detach();
+        //}
     }
 
     void send_routing_information_internal()

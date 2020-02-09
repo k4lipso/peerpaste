@@ -11,31 +11,31 @@ namespace peerpaste
 {
 
 
-template<typename T, typename KeyType = T>
-class ConcurrentRequestHandler
+template<typename T, typename Compare = std::less<T>>
+class ConcurrentSet
 {
 public:
+  template<typename KeyType>
   bool contains(const KeyType& key) const
   {
     std::scoped_lock lk{mutex_};
     return set_.contains(key);
   }
 
+  template<typename KeyType>
   std::optional<T> get_and_erase(const KeyType& key)
   {
     std::scoped_lock lk{mutex_};
 
-    auto search = set_.find(key);
-    if(search != set_.end())
-    {
-      std::optional<T> return_value{*search};
-      set_.erase(search);
-      return return_value;
-    }
-    else
+    const auto search = set_.find(key);
+    if(set_.find(key) == set_.end())
     {
       return {};
     }
+
+    std::optional<T> return_value{std::move(*search)};
+    set_.erase(search);
+    return return_value;
   }
 
   void insert(const T& value)
@@ -44,9 +44,34 @@ public:
     set_.insert(value);
   }
 
+  void emplace(T&& value)
+  {
+    std::scoped_lock lk{mutex_};
+    set_.emplace(std::forward<T>(value));
+  }
+
+  template<typename Pred>
+  void erase_if(Pred predicate)
+  {
+    std::scoped_lock lk{mutex_};
+    for(auto it = set_.begin(); it != set_.end();)
+    {
+      if(predicate(*it))
+      {
+        set_.erase(it);
+      }
+      else
+      {
+        ++it;
+      }
+    }
+
+    //std::erase_if(set_, predicate);
+  }
+
 private:
   mutable std::mutex mutex_;
-  std::set<T> set_;
+  std::set<T, Compare> set_;
 };
 
 namespace deprecated {

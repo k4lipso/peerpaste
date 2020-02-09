@@ -2,6 +2,7 @@
 
 #include <mutex>
 #include <queue>
+#include <deque>
 #include <memory>
 #include <condition_variable>
 #include <chrono>
@@ -90,4 +91,43 @@ public:
     }
 };
 
+template<typename T>
+class ConcurrentDeque
+{
+  mutable std::mutex mutex_;
+  std::condition_variable condition_;
+  std::deque<T> deque_;
+public:
+  ConcurrentDeque()
+  {}
+
+  bool empty() const
+  {
+    std::scoped_lock lk(mutex_);
+    return deque_.empty();
+  }
+
+  void push_back(T new_value)
+  {
+    std::scoped_lock lk(mutex_);
+    deque_.push_back(std::move(new_value));
+    condition_.notify_one();
+  }
+
+  void clean()
+  {
+    std::scoped_lock lk(mutex_);
+    for(auto it = deque_.begin(); it < deque_.end();)
+    {
+      if(!(*it)->is_done())
+      {
+        ++it;
+        continue;
+      }
+
+      *it = std::move(deque_.back());
+      deque_.pop_back();
+    }
+  }
+};
 } // closing peerpaste namespace

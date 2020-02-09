@@ -1,3 +1,5 @@
+#pragma once
+
 #include <optional>
 
 #include "peerpaste/message.hpp"
@@ -25,15 +27,14 @@ public:
 
   ~Notification() override;
 
-  virtual void operator()() override;
   virtual void HandleNotification(const RequestObject& request_object) override;
 
 private:
-  void create_request();
-  void handle_request();
+  virtual void create_request() override;
+  virtual void handle_request() override;
+  virtual void handle_response(RequestObject request_object) override;
 
   ConcurrentRoutingTable<Peer>* routing_table_;
-  std::optional<RequestObject> request_;
   bool is_request_handler_;
 
 };
