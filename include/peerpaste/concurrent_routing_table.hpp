@@ -1,6 +1,8 @@
 #ifndef CONCURRENT_ROUTING_TABLE
 #define CONCURRENT_ROUTING_TABLE
 
+#include "peerpaste/cryptowrapper.hpp"
+
 #include <mutex>
 #include <vector>
 #include <memory>

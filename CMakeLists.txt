@@ -53,6 +53,7 @@ add_library(libpeerpaste
     "src/observable.cpp"
     "src/observer_base.cpp"
     "src/notify.cpp"
+    "src/message_factory.cpp"
     "src/concurrent_request_handler.cpp"
     "src/concurrent_set.cpp"
     "include/peerpaste/storage.hpp"

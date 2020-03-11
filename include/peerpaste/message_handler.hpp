@@ -9,6 +9,7 @@
 #include "peerpaste/storage.hpp"
 #include "peerpaste/concurrent_routing_table.hpp"
 #include "peerpaste/concurrent_request_handler.hpp"
+#include "peerpaste/message_factory.hpp"
 
 #include "peerpaste/thread_pool.hpp"
 #include "peerpaste/observer_base.hpp"
@@ -24,31 +25,14 @@ public:
     typedef std::shared_ptr<RequestObject> RequestObjectSPtr;
     typedef std::shared_ptr<Peer> PeerPtr;
 
-    MessageHandler (short port,
-                    std::shared_ptr<peerpaste::ConcurrentQueue<RequestObject>> queue_) :
-                        routing_table_(),
-                        send_queue_(queue_),
-                        storage_(nullptr),
-                        aggregator_(),
-                        stabilize_flag_(false),
-                        check_predecessor_flag_(false)
-    {
-        //TODO: setup self more accurate
-        auto self_ip = "127.0.0.1";
-        auto self_port = std::to_string(port);
-        auto self_id = util::generate_sha256(self_ip, self_port);
-        routing_table_.set_self(Peer(self_id, self_ip, self_port));
-
-        storage_ = std::make_unique<Storage>(self_id);
-    }
-
-    MessageHandler (short port) :
-                        routing_table_(),
-                        storage_(nullptr),
-                        aggregator_(),
-                        stabilize_flag_(false),
-                        check_predecessor_flag_(false),
-                        thread_pool_(0)
+    MessageHandler(short port)
+      : routing_table_()
+      , storage_(nullptr)
+      , aggregator_()
+      , stabilize_flag_(false)
+      , check_predecessor_flag_(false)
+      , thread_pool_(0)
+      , message_factory_{ &routing_table_ }
     {
         //TODO: setup self more accurate
         auto self_ip = "127.0.0.1";
@@ -143,63 +127,68 @@ public:
         send_queue_->push(*shared_transport_object.get());
     }
 
-    void handle_request(RequestObjectUPtr transport_object)
-    {
-        auto request_type = transport_object->get_request_type();
+  void handle_request(RequestObjectUPtr transport_object)
+  {
+    std::shared_ptr<MessagingBase> message_object = message_factory_.create_from_request(*transport_object);
 
-        if(request_type == "query"){
-            handle_query_request(std::move(transport_object));
-            return;
-        }
-        if(request_type == "find_successor"){
-            handle_find_successor_request(std::move(transport_object));
-            return;
-        }
-        if(request_type == "get_predecessor_and_succ_list"){
-            get_predecessor_and_succ_list_request(std::move(transport_object));
-            return;
-        }
-        if(request_type == "notify"){
-            auto notification = std::make_shared<peerpaste::message::Notification>(&routing_table_, *transport_object);
-            notification->Attach(this);
-            thread_pool_.submit(notification);
-            active_messages_.push_back(std::move(notification));
-            return;
-        }
-        if(request_type == "check_predecessor"){
-            handle_check_predecessor(std::move(transport_object));
-            return;
-        }
-        if(request_type == "get_successor_list"){
-            handle_get_successor_list_request(std::move(transport_object));
-            return;
-        }
-        if(request_type == "get_self_and_successor_list"){
-            handle_get_self_and_successor_list_request(std::move(transport_object));
-            return;
-        }
-        if(request_type == "put"){
-            handle_put_request(std::move(transport_object));
-            return;
-        }
-        if(request_type == "store"){
-            handle_store(std::move(transport_object));
-            return;
-        }
-        if(request_type == "get"){
-            handle_get_request(std::move(transport_object));
-            return;
-        }
-        if(request_type == "get_internal"){
-            handle_get_internal(std::move(transport_object));
-            return;
-        }
-        if (request_type == "backup") {
-          handle_backup(std::move(transport_object));
-          return;
-        }
-        util::log(warning, "Unknown Request Type: " + request_type);
+    if(message_object)
+    {
+      message_object->Attach(this);
+      thread_pool_.submit(message_object);
+      active_messages_.push_back(std::move(message_object));
+      return;
     }
+
+    //DEPRECATED
+
+    auto request_type = transport_object->get_request_type();
+
+    if(request_type == "query"){
+      handle_query_request(std::move(transport_object));
+      return;
+    }
+    if(request_type == "find_successor"){
+      handle_find_successor_request(std::move(transport_object));
+      return;
+    }
+    if(request_type == "get_predecessor_and_succ_list"){
+      get_predecessor_and_succ_list_request(std::move(transport_object));
+      return;
+    }
+    if(request_type == "check_predecessor"){
+      handle_check_predecessor(std::move(transport_object));
+      return;
+    }
+    if(request_type == "get_successor_list"){
+      handle_get_successor_list_request(std::move(transport_object));
+      return;
+    }
+    if(request_type == "get_self_and_successor_list"){
+      handle_get_self_and_successor_list_request(std::move(transport_object));
+      return;
+    }
+    if(request_type == "put"){
+      handle_put_request(std::move(transport_object));
+      return;
+    }
+    if(request_type == "store"){
+      handle_store(std::move(transport_object));
+      return;
+    }
+    if(request_type == "get"){
+      handle_get_request(std::move(transport_object));
+      return;
+    }
+    if(request_type == "get_internal"){
+      handle_get_internal(std::move(transport_object));
+      return;
+    }
+    if (request_type == "backup") {
+      handle_backup(std::move(transport_object));
+      return;
+    }
+    util::log(warning, "Unknown Request Type: " + request_type);
+  }
 
     void handle_get_request(RequestObjectUPtr transport_object)
     {
@@ -1083,6 +1072,7 @@ private:
     bool running_ = true;
     std::vector<std::thread> run_thread_;
 
+    peerpaste::message::MessageFactory message_factory_;
     peerpaste::ConcurrentDeque<std::shared_ptr<MessagingBase>> active_messages_;
     peerpaste::ConcurrentSet<HandlerObject<HandlerFunction>, std::less<>> active_handlers_;
 };
