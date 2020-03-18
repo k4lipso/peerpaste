@@ -112,13 +112,16 @@ public:
 
     std::string generate_transaction_id()
     {
-	auto end = std::chrono::system_clock::now();
-    	std::time_t end_time = std::chrono::system_clock::to_time_t(end);
-	auto foo = std::to_string(end_time);
+      static unsigned i = 0;
 
-        auto transaction_id = util::generate_sha256(stringify() + foo);
-        header_.set_transaction_id(transaction_id);
-        return transaction_id;
+      const auto now = std::chrono::system_clock::now();
+      const auto now_time_t = std::chrono::system_clock::to_time_t(now);
+      const auto salt = std::to_string(now_time_t) + std::to_string(++i);
+
+      const auto transaction_id = util::generate_sha256(stringify() + salt);
+
+      header_.set_transaction_id(transaction_id);
+      return transaction_id;
     }
 
     const std::string get_transaction_id() const
