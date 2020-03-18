@@ -13,8 +13,10 @@
 
 #include "peerpaste/thread_pool.hpp"
 #include "peerpaste/observer_base.hpp"
-#include "peerpaste/messages/notify.hpp"
 #include "peerpaste/messaging_base.hpp"
+
+#include "peerpaste/messages/notify.hpp"
+#include "peerpaste/messages/check_predecessor.hpp"
 
 
 class MessageHandler : public ObserverBase
@@ -56,13 +58,13 @@ public:
 
     virtual void HandleNotification(const RequestObject& request_object) override
     {
-      push_to_write_queue(std::make_shared<RequestObject>(request_object));
+      send_queue_->push(request_object);
     }
 
     virtual void HandleNotification(const RequestObject& request_object, HandlerObject<HandlerFunction> handler) override
     {
       active_handlers_.insert(handler);
-      push_to_write_queue(std::make_shared<RequestObject>(request_object));
+      send_queue_->push(request_object);
     }
 
     virtual void HandleNotification() override
@@ -153,10 +155,6 @@ public:
     }
     if(request_type == "get_predecessor_and_succ_list"){
       get_predecessor_and_succ_list_request(std::move(transport_object));
-      return;
-    }
-    if(request_type == "check_predecessor"){
-      handle_check_predecessor(std::move(transport_object));
       return;
     }
     if(request_type == "get_successor_list"){
@@ -647,46 +645,11 @@ public:
 
     void check_predecessor()
     {
-      Peer target;
-      if (not routing_table_.try_get_predecessor(target)) {
-        return;
-      }
+      auto CheckPreMessage = std::make_shared<peerpaste::message::CheckPredecessor>(&routing_table_, &check_predecessor_flag_);
 
-      auto notify_message = std::make_shared<Message>(
-          Message::create_request("check_predecessor"));
-      auto transaction_id = notify_message->get_transaction_id();
-
-      auto handler =
-          std::bind(&MessageHandler::handle_check_predecessor_response, this,
-                    std::placeholders::_1);
-
-      auto request = std::make_shared<RequestObject>();
-      request->set_message(notify_message);
-      request->set_handler(handler);
-      request->set_connection(std::make_shared<Peer>(target));
-      push_to_write_queue(request);
-      check_predecessor_flag_ = true;
-    }
-
-    void handle_check_predecessor_response(RequestObjectUPtr transport_object)
-    {
-        check_predecessor_flag_ = false;
-        if(!transport_object->get_message()->is_request()){
-            return;
-        }
-        routing_table_.reset_predecessor();
-    }
-
-    void handle_check_predecessor(RequestObjectUPtr transport_object)
-    {
-        //Generate and push response
-        auto message = transport_object->get_message();
-        auto response = message->generate_response();
-        response->generate_transaction_id();
-
-        auto response_object = std::make_shared<RequestObject>(*transport_object);
-        response_object->set_message(response);
-        push_to_write_queue(response_object);
+      CheckPreMessage->Attach(this);
+      thread_pool_.submit(CheckPreMessage);
+      active_messages_.push_back(std::move(CheckPreMessage));
     }
 
     void notify()
@@ -696,55 +659,6 @@ public:
       NotifyMessage->Attach(this);
       thread_pool_.submit(NotifyMessage);
       active_messages_.push_back(std::move(NotifyMessage));
-    }
-
-    void handle_notify_response(RequestObjectUPtr transport_object)
-    {
-        return;
-    }
-
-    void handle_notify(RequestObjectUPtr transport_object)
-    {
-        auto message = transport_object->get_message();
-        if(message->get_peers().size() != 1){
-            //TODO: handle invalid msg
-            util::log(warning, "handle notify invalid message");
-            return;
-        }
-
-        auto notify_peer = message->get_peers().front();
-        if(not routing_table_.has_predecessor()){
-            routing_table_.set_predecessor(notify_peer);
-            return;
-        }
-
-        Peer predecessor;
-        Peer self;
-
-        //TODO: if we have a predecessor node we should check if its alive!
-        //check the rectify operation in how_to_make_chord_correct.pdf
-        if(not routing_table_.try_get_predecessor(predecessor)){
-            util::log(warning, "cant handle notify: no predecessor set");
-        }
-        if(not routing_table_.try_get_self(self)){
-            util::log(warning, "cant handle notify: self not set");
-        }
-
-        auto predecessor_id = predecessor.get_id();
-        auto self_id = self.get_id();
-        auto notify_peer_id = notify_peer.get_id();
-
-        if(util::between(predecessor_id, notify_peer_id, self_id)){
-            routing_table_.set_predecessor(notify_peer);
-        }
-
-        //Generate and push response
-        auto response = message->generate_response();
-        response->generate_transaction_id();
-
-        auto response_object = std::make_shared<RequestObject>(*transport_object);
-        response_object->set_message(response);
-        push_to_write_queue(response_object);
     }
 
     [[deprecated]]
@@ -1068,7 +982,7 @@ private:
     mutable std::mutex mutex_;
 
     bool stabilize_flag_;
-    bool check_predecessor_flag_;
+    std::atomic<bool> check_predecessor_flag_;
     bool running_ = true;
     std::vector<std::thread> run_thread_;
 

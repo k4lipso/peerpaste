@@ -2,6 +2,7 @@
 #include "peerpaste/cryptowrapper.hpp"
 
 #include "peerpaste/messages/notify.hpp"
+#include "peerpaste/messages/check_predecessor.hpp"
 
 #include <memory>
 
@@ -26,6 +27,10 @@ std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const Request
 	{
 		return std::make_unique<Notification>(routing_table_, request);
 	}
+	if(type == "check_predecessor")
+	{
+		return std::make_unique<CheckPredecessor>(routing_table_, request);
+	}
 
 	if(type == "query")
 	{
@@ -34,9 +39,6 @@ std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const Request
 	{
 	}
 	if(type == "get_predecessor_and_succ_list")
-	{
-	}
-	if(type == "check_predecessor")
 	{
 	}
 	if(type == "get_successor_list")

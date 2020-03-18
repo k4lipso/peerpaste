@@ -25,6 +25,7 @@ enum class MessageType
 {
   UNKNOWN = 0,
   NOTIFICATION,
+  CHECK_PREDECESSOR,
   QUERY,
 };
 
