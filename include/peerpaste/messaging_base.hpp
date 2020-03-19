@@ -15,8 +15,6 @@ using HandlerFunction = std::function<void(RequestObject)>;
 class MessagingBase : public Observable, public ObserverBase, public std::enable_shared_from_this<MessagingBase>
 {
 public:
-  using Observable::Observable;
-
   MessagingBase(MessageType type);
   MessagingBase(MessageType type, RequestObject request);
   explicit MessagingBase(MessagingBase&& other);
@@ -26,6 +24,8 @@ public:
 
   bool is_done() const noexcept;
   bool is_request() const noexcept;
+  bool IsType(const MessageType& type) const noexcept;
+  MessageType GetType() const noexcept;
 
   std::future<std::string> get_future();
   std::chrono::time_point<std::chrono::system_clock> get_timeout() const;

@@ -14,13 +14,12 @@
 #include "peerpaste/peer.hpp"
 
 
-namespace peerpaste { namespace message
+namespace peerpaste::message
 {
 
 class Notification : public MessagingBase
 {
 public:
-  using MessagingBase::MessagingBase;
   Notification(ConcurrentRoutingTable<Peer>* routing_table);
   Notification(ConcurrentRoutingTable<Peer>* routing_table, RequestObject request);
   explicit Notification(Notification&& other);
@@ -35,9 +34,6 @@ private:
   virtual void handle_response(RequestObject request_object) override;
 
   ConcurrentRoutingTable<Peer>* routing_table_;
-  bool is_request_handler_;
-
 };
 
-} //closing namespce message
-} //closing namespace peerpaste
+} //closing namespace peerpaste::message

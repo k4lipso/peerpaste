@@ -7,21 +7,18 @@ namespace peerpaste { namespace message
 Notification::Notification(ConcurrentRoutingTable<Peer>* routing_table)
 	: MessagingBase(MessageType::NOTIFICATION)
 	,	routing_table_(routing_table)
-	, is_request_handler_(false)
 {
 }
 
 Notification::Notification(ConcurrentRoutingTable<Peer>* routing_table, RequestObject request)
 	: MessagingBase(MessageType::NOTIFICATION, request)
 	, routing_table_(routing_table)
-	, is_request_handler_(true)
 {
 }
 
 Notification::Notification(Notification&& other)
 	: MessagingBase(std::move(other))
 	, routing_table_(other.routing_table_)
-	, is_request_handler_(other.is_request_handler_)
 {}
 
 Notification::~Notification()

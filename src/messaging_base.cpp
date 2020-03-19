@@ -16,6 +16,7 @@ MessagingBase::MessagingBase(MessagingBase&& other)
   , request_(std::move(other.request_))
   , dependencies_(std::move(other.dependencies_))
   , time_point_(std::move(other.time_point_))
+  , is_request_handler_(other.is_request_handler_.load())
   ,	is_done_(other.is_done_.load())
 {
 }
@@ -53,6 +54,16 @@ bool MessagingBase::is_done() const noexcept
 bool MessagingBase::is_request() const noexcept
 {
   return is_request_handler_;
+}
+
+bool MessagingBase::IsType(const MessageType& type) const noexcept
+{
+  return type_ == type;
+}
+
+MessageType MessagingBase::GetType() const noexcept
+{
+  return type_;
 }
 
 std::future<std::string> MessagingBase::get_future()
