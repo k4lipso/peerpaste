@@ -17,7 +17,7 @@
 namespace peerpaste::message
 {
 
-class Notification : public MessagingBase
+class Notification : public MessagingBase, public Awaitable<MESSAGE_STATE>
 {
 public:
   Notification(ConcurrentRoutingTable<Peer>* routing_table);
@@ -26,12 +26,13 @@ public:
 
   ~Notification() override;
 
-  virtual void HandleNotification(const RequestObject& request_object) override;
+  void HandleNotification(const RequestObject& request_object) override;
 
 private:
-  virtual void create_request() override;
-  virtual void handle_request() override;
-  virtual void handle_response(RequestObject request_object) override;
+  void create_request() override;
+  void handle_request() override;
+  void handle_response(RequestObject request_object) override;
+  void handle_failed() override;
 
   ConcurrentRoutingTable<Peer>* routing_table_;
 };

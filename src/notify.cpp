@@ -18,22 +18,33 @@ Notification::Notification(ConcurrentRoutingTable<Peer>* routing_table, RequestO
 
 Notification::Notification(Notification&& other)
 	: MessagingBase(std::move(other))
+	, Awaitable(std::move(other))
 	, routing_table_(other.routing_table_)
 {}
 
 Notification::~Notification()
 {
+	set_promise(state_);
 }
 
 void Notification::create_request()
 {
   Peer self;
 
-  if(not routing_table_->try_get_self(self)) return;
-  if(self.get_id() == "") return;
+  if(not routing_table_->try_get_self(self))
+  {
+    state_ = MESSAGE_STATE::FAILED;
+    return;
+  }
+  if(self.get_id() == "")
+  {
+    state_ = MESSAGE_STATE::FAILED;
+    return;
+  }
 
   Peer target;
   if(not routing_table_->try_get_successor(target)){
+      state_ = MESSAGE_STATE::FAILED;
       return;
   }
 
@@ -51,16 +62,12 @@ void Notification::create_request()
   Notify(request, *handler_object_);
 }
 
-void Notification::handle_response(RequestObject request_object)
-{
-  is_done_ = true;
-  Notify();
-}
 
 void Notification::handle_request()
 {
   if(!request_.has_value())
   {
+    state_ = MESSAGE_STATE::FAILED;
     return;
   }
 
@@ -70,12 +77,14 @@ void Notification::handle_request()
   if(message->get_peers().size() != 1){
       //TODO: handle invalid msg
       util::log(warning, "handle notify invalid message");
+      state_ = MESSAGE_STATE::FAILED;
       return;
   }
 
   auto notify_peer = message->get_peers().front();
   if(not routing_table_->has_predecessor()){
       routing_table_->set_predecessor(notify_peer);
+      state_ = MESSAGE_STATE::FAILED;
       return;
   }
 
@@ -106,10 +115,21 @@ void Notification::handle_request()
   RequestObject response_object{*transport_object};
   response_object.set_message(response);
   Notify(response_object);
-  is_done_ = true;
-  Notify();
+  state_ = MESSAGE_STATE::DONE;
+  RequestDestruction();
 }
 
+
+void Notification::handle_response(RequestObject request_object)
+{
+  state_ = MESSAGE_STATE::DONE;
+  RequestDestruction();
+}
+
+void Notification::handle_failed()
+{
+  state_ = MESSAGE_STATE::FAILED;
+}
 
 void Notification::HandleNotification(const RequestObject& request_object)
 {

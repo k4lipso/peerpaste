@@ -12,12 +12,40 @@
 
 using HandlerFunction = std::function<void(RequestObject)>;
 
+enum class MESSAGE_STATE : uint8_t
+{
+	FAILED = 0,
+	TIMEDOUT,
+	VALID,
+	DONE,
+};
+
+template<typename ReturnType>
+class Awaitable
+{
+public:
+  std::future<ReturnType> get_future()
+  {
+    return promise_.get_future();
+  }
+
+protected:
+  void set_promise(ReturnType value)
+  {
+    promise_.set_value(std::move(value));
+  }
+
+  std::promise<ReturnType> promise_;
+};
+
+//template<class FutureType = MESSAGE_STATE>
 class MessagingBase : public Observable, public ObserverBase, public std::enable_shared_from_this<MessagingBase>
 {
 public:
   MessagingBase(MessageType type);
   MessagingBase(MessageType type, RequestObject request);
-  explicit MessagingBase(MessagingBase&& other);
+  MessagingBase(MessagingBase&& other);
+
   virtual ~MessagingBase();
 
   virtual void operator()();
@@ -45,10 +73,8 @@ protected:
 
   //Only root object needs promise. leafobjects do not.
   MessageType type_;
-  std::promise<std::string> promise_;
   std::unique_ptr<HandlerObject<HandlerFunction>> handler_object_ = nullptr;
   std::optional<RequestObject> request_;
-  std::vector<std::unique_ptr<MessagingBase>> dependencies_;
   std::vector<std::pair<std::unique_ptr<MessagingBase>, bool>> dependencies_;
   std::chrono::time_point<std::chrono::system_clock> time_point_;
   std::atomic<bool> is_done_ = false;

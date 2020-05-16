@@ -11,7 +11,6 @@ MessagingBase::MessagingBase(MessageType type)
 MessagingBase::MessagingBase(MessagingBase&& other)
   : Observable(std::move(other))
   , type_(std::move(other.type_))
-  , promise_(std::move(other.promise_))
   , handler_object_(std::move(other.handler_object_))
   , request_(std::move(other.request_))
   , dependencies_(std::move(other.dependencies_))
@@ -72,9 +71,9 @@ MessageType MessagingBase::GetType() const noexcept
   return type_;
 }
 
-std::future<std::string> MessagingBase::get_future()
+MESSAGE_STATE MessagingBase::get_state() const noexcept
 {
-  return promise_.get_future();
+  return state_;
 }
 
 std::chrono::time_point<std::chrono::system_clock> MessagingBase::get_timeout() const

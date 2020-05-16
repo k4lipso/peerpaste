@@ -7,7 +7,7 @@
 namespace peerpaste::message
 {
 
-class CheckPredecessor : public MessagingBase
+class CheckPredecessor : public MessagingBase, public Awaitable<MESSAGE_STATE>
 {
 public:
   CheckPredecessor(ConcurrentRoutingTable<Peer>* routing_table, std::atomic<bool>* checkpre);
@@ -16,12 +16,14 @@ public:
 
   ~CheckPredecessor() override;
 
-  virtual void HandleNotification(const RequestObject& request_object) override;
+  void HandleNotification(const RequestObject& request_object) override;
 
 private:
-  virtual void create_request() override;
-  virtual void handle_request() override;
-  virtual void handle_response(RequestObject request_object) override;
+  void create_request() override;
+  void handle_request() override;
+  void handle_response(RequestObject request_object) override;
+
+  void handle_failed() override;
 
   ConcurrentRoutingTable<Peer>* routing_table_;
   std::atomic<bool>* check_predecessor_flag_;

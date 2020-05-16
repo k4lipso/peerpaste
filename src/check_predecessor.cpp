@@ -25,6 +25,7 @@ CheckPredecessor::CheckPredecessor(CheckPredecessor&& other)
 
 CheckPredecessor::~CheckPredecessor()
 {
+  set_promise(state_);
 }
 
 void CheckPredecessor::HandleNotification(const RequestObject& request_object)
@@ -36,8 +37,8 @@ void CheckPredecessor::create_request()
   Peer target;
   if (not routing_table_->try_get_predecessor(target))
   {
-    is_done_ = true;
-    Notify();
+    state_ = MESSAGE_STATE::FAILED;
+    RequestDestruction();
     return;
   }
 
@@ -62,6 +63,8 @@ void CheckPredecessor::handle_request()
 {
   if(!request_.has_value())
   {
+    state_ = MESSAGE_STATE::FAILED;
+    RequestDestruction();
     return;
   }
 
@@ -76,8 +79,8 @@ void CheckPredecessor::handle_request()
   response_object.set_message(response);
 
   Notify(response_object);
-  is_done_ = true;
-  Notify();
+  state_ = MESSAGE_STATE::DONE;
+  RequestDestruction();
 }
 
 void CheckPredecessor::handle_response(RequestObject request_object)
@@ -85,12 +88,19 @@ void CheckPredecessor::handle_response(RequestObject request_object)
   *check_predecessor_flag_ = false;
   if(!request_object.get_message()->is_request())
   {
-    is_done_ = true;
-    Notify();
+    state_ = MESSAGE_STATE::DONE;
+    RequestDestruction();
     return;
   }
 
+  state_ = MESSAGE_STATE::FAILED;
   routing_table_->reset_predecessor();
+}
+
+void CheckPredecessor::handle_failed()
+{
+	state_ = MESSAGE_STATE::FAILED;
+	routing_table_->reset_predecessor();
 }
 
 
