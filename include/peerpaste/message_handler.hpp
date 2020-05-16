@@ -70,11 +70,11 @@ public:
     virtual void HandleNotification() override
     {
       active_messages_.clean();
-      active_handlers_.erase_if([](auto Handler) { return !Handler.is_valid(); });
+      active_handlers_.erase_if([](auto& Handler) { return !Handler.is_valid(); });
     }
 
     void run(){
-        run_thread_.emplace_back( [=]{ run_chord_internal(); } );
+        run_thread_.emplace_back( [this]{ run_chord_internal(); } );
         //run_thread_.emplace_back( [=]{ run_paste_internal(); } );
     }
 

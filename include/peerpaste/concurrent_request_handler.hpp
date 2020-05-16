@@ -58,7 +58,7 @@ public:
     {
       if(predicate(*it))
       {
-        set_.erase(it);
+        it = set_.erase(it);
       }
       else
       {

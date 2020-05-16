@@ -25,10 +25,14 @@ public:
   bool is_done() const noexcept;
   bool is_request() const noexcept;
   bool IsType(const MessageType& type) const noexcept;
+  void RequestDestruction();
   MessageType GetType() const noexcept;
+  MESSAGE_STATE get_state() const noexcept;
 
-  std::future<std::string> get_future();
   std::chrono::time_point<std::chrono::system_clock> get_timeout() const;
+
+  MESSAGE_STATE check_state();
+  bool is_timed_out();
 
 protected:
   virtual void create_handler_object(const std::string& correlation_id, HandlerFunction handler_function);
@@ -37,14 +41,18 @@ protected:
   virtual void handle_request() = 0;
   virtual void handle_response(RequestObject request_object) = 0;
 
+  virtual void handle_failed() = 0;
+
   //Only root object needs promise. leafobjects do not.
   MessageType type_;
   std::promise<std::string> promise_;
   std::unique_ptr<HandlerObject<HandlerFunction>> handler_object_ = nullptr;
   std::optional<RequestObject> request_;
   std::vector<std::unique_ptr<MessagingBase>> dependencies_;
+  std::vector<std::pair<std::unique_ptr<MessagingBase>, bool>> dependencies_;
   std::chrono::time_point<std::chrono::system_clock> time_point_;
   std::atomic<bool> is_done_ = false;
+  std::atomic<MESSAGE_STATE> state_ = MESSAGE_STATE::VALID;
   std::atomic<bool> is_request_handler_ = false;
   static constexpr std::chrono::milliseconds DURATION{10000};
 };

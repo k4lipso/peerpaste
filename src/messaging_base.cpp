@@ -76,6 +76,57 @@ std::chrono::time_point<std::chrono::system_clock> MessagingBase::get_timeout() 
   return time_point_;
 }
 
+MESSAGE_STATE MessagingBase::check_state()
+{
+  if(is_done_)
+  {
+    return MESSAGE_STATE::DONE;
+  }
+
+	if(is_timed_out())
+	{
+		util::log(debug, "Message Timed Out");
+		util::log(debug, std::to_string(static_cast<int>(type_)));
+		handle_failed();
+		is_done_ = true;
+		return MESSAGE_STATE::TIMEDOUT;
+	}
+
+	return MESSAGE_STATE::VALID;
+}
+
+bool MessagingBase::is_timed_out()
+{
+	if(std::chrono::system_clock::now() > time_point_)
+	{
+		return true;
+	}
+
+	bool removed_essential_dependency = false;
+	const auto check_time_out = [&removed_essential_dependency](auto& dependency_pair)
+	{
+		if(!dependency_pair.first->is_timed_out())
+		{
+			return false;
+		}
+
+		if(dependency_pair.second)
+		{
+			removed_essential_dependency = true;
+		}
+
+		return true;
+	};
+
+	dependencies_.erase(std::remove_if(
+												dependencies_.begin(),
+												dependencies_.end(),
+												check_time_out),
+											dependencies_.end());
+
+	return removed_essential_dependency;
+}
+
 void MessagingBase::create_handler_object(const std::string& correlation_id, HandlerFunction handler_function)
 {
   handler_object_ = std::make_unique<HandlerObject<HandlerFunction>>(correlation_id, handler_function, shared_from_this());

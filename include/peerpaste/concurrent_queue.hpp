@@ -119,6 +119,7 @@ public:
     std::scoped_lock lk(mutex_);
     for(auto it = deque_.begin(); it < deque_.end();)
     {
+      (*it)->check_state();
       if(!(*it)->is_done())
       {
         ++it;
