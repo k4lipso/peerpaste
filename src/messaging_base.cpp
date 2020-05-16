@@ -61,6 +61,12 @@ bool MessagingBase::IsType(const MessageType& type) const noexcept
   return type_ == type;
 }
 
+void MessagingBase::RequestDestruction()
+{
+	is_done_ = true;
+	Notify();
+}
+
 MessageType MessagingBase::GetType() const noexcept
 {
   return type_;

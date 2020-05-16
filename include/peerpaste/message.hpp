@@ -112,11 +112,16 @@ public:
 
     std::string generate_transaction_id()
     {
-      static unsigned i = 0;
+      static std::atomic<unsigned int> Counter = 0;
+
+      if(Counter == std::numeric_limits<unsigned int>::max())
+      {
+        Counter = 0;
+      }
 
       const auto now = std::chrono::system_clock::now();
       const auto now_time_t = std::chrono::system_clock::to_time_t(now);
-      const auto salt = std::to_string(now_time_t) + std::to_string(++i);
+      const auto salt = std::to_string(now_time_t) + std::to_string(++Counter);
 
       const auto transaction_id = util::generate_sha256(stringify() + salt);
 

@@ -72,7 +72,7 @@ private:
 
 
         acceptor_.async_accept( handler->get_socket(),
-                                [=] (auto ec)
+                                [this, handler] (auto ec)
                                 {
                                     handle_new_connection(handler, ec);
                                 }
@@ -95,7 +95,7 @@ private:
         auto new_handler = std::make_shared<BoostSession>(io_context_, queue_);
 
         acceptor_.async_accept( new_handler->get_socket(),
-                                [=] (auto ec)
+                                [this, new_handler] (auto ec)
                                 {
                                     handle_new_connection( new_handler, ec);
                                 }

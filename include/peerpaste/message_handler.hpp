@@ -131,7 +131,8 @@ public:
 
   void handle_request(RequestObjectUPtr transport_object)
   {
-    std::shared_ptr<MessagingBase> message_object = message_factory_.create_from_request(*transport_object);
+    std::shared_ptr<MessagingBase> message_object
+      = message_factory_.create_from_request(*transport_object);
 
     if(message_object)
     {
@@ -140,8 +141,13 @@ public:
       active_messages_.push_back(std::move(message_object));
       return;
     }
+    else
+    {
+      //TODO: handle invalid message -> invalid queue
+    }
 
     //DEPRECATED
+    //TODO: change request_type to enum!!!
 
     auto request_type = transport_object->get_request_type();
 
@@ -485,44 +491,47 @@ public:
 
     void handle_response(RequestObjectUPtr transport_object)
     {
-        //Get the CorrelationID to check if there is an OpenRequest matching
-        //that ID
-        auto correlational_id = transport_object->get_correlational_id();
+      //Get the CorrelationID to check if there is an OpenRequest matching
+      //that ID
+      auto correlational_id = transport_object->get_correlational_id();
 
-        const auto handler_object = active_handlers_.get_and_erase(correlational_id);
-        if(handler_object.has_value())
+      const auto handler_object = active_handlers_.get_and_erase(correlational_id);
+      if(handler_object.has_value())
+      {
+
+        if(auto parent = handler_object.value().lock())
         {
-          if(auto parent = handler_object.value().lock())
-          {
-            handler_object.value().handler_(*transport_object);
-          }
-          else
-          {
-            util::log(info, "weak_ptr expired");
-          }
-
-          return;
+          handler_object.value().handler_(*transport_object);
+        }
+        else
+        {
+          util::log(info, "weak_ptr expired");
         }
 
-        RequestObjectSPtr request_object;
-        if(open_requests_deprecated_.try_find_and_erase(correlational_id, request_object)){
-            auto message = transport_object->get_message();
+        return;
+      }
 
-            //Check if the request has a handler function
-            if(request_object->has_handler()){
-                //call the handler function passing the response object
-                request_object->call(std::move(transport_object));
-            }
-            //Get the response message
-            //Check if there is an aggregat waiting for a message
-            auto possible_request = aggregator_.add_aggregat(message);
-            if(possible_request != nullptr){
-                push_to_write_queue(possible_request);
-            }
-        } else {
-            util::log(warning, "Invalid Message");
-            //TODO: handle invalid message
-        }
+      //DEPRECATED
+
+      RequestObjectSPtr request_object;
+      if(open_requests_deprecated_.try_find_and_erase(correlational_id, request_object)){
+          auto message = transport_object->get_message();
+
+          //Check if the request has a handler function
+          if(request_object->has_handler()){
+              //call the handler function passing the response object
+              request_object->call(std::move(transport_object));
+          }
+          //Get the response message
+          //Check if there is an aggregat waiting for a message
+          auto possible_request = aggregator_.add_aggregat(message);
+          if(possible_request != nullptr){
+              push_to_write_queue(possible_request);
+          }
+      } else {
+          util::log(warning, "Invalid Message");
+          //TODO: handle invalid message
+      }
     }
 
     //TODO: add stabilization according to "how to make chord correct", using the extended succ list
