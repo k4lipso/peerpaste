@@ -3,14 +3,15 @@
 namespace peerpaste::message
 {
 
-FindSuccessor::FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table)
-	: MessagingBase(MessageType::NOTIFICATION)
+FindSuccessor::FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table, const std::string& id)
+	: MessagingBase(MessageType::FIND_SUCCESSOR)
+	, id_(id)
 	,	routing_table_(routing_table)
 {
 }
 
 FindSuccessor::FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table, RequestObject request)
-	: MessagingBase(MessageType::NOTIFICATION, request)
+	: MessagingBase(MessageType::FIND_SUCCESSOR, request)
 	, routing_table_(routing_table)
 {
 }
@@ -23,17 +24,43 @@ FindSuccessor::FindSuccessor(FindSuccessor&& other)
 
 FindSuccessor::~FindSuccessor()
 {
-	set_promise(Peer{});
 }
 
 void FindSuccessor::create_request()
 {
+	const auto successor_ptr = find_successor(id_);
+
+	if(successor_ptr)
+	{
+		set_promise(*successor_ptr.get());
+		state_ = MESSAGE_STATE::DONE;
+		RequestDestruction();
+		return;
+	}
+
+  auto find_succ_request =
+      std::make_shared<Message>(Message::create_request(
+                                    "find_successor", { Peer(id_, "", "")}));
+  auto transaction_id = find_succ_request->generate_transaction_id();
+
+	auto handler = std::bind(&FindSuccessor::handle_response,
+																			this,
+																			std::placeholders::_1);
+
+	RequestObject successor_request;
+	successor_request.set_message(find_succ_request);
+	successor_request.set_connection(closest_preceding_node(id_));
+
+  create_handler_object(transaction_id, handler);
+  Notify(successor_request, *handler_object_);
 }
 
 void FindSuccessor::handle_request()
 {
   if(!request_.has_value())
   {
+    state_ = MESSAGE_STATE::FAILED;
+    RequestDestruction();
     return;
   }
 
@@ -71,6 +98,8 @@ void FindSuccessor::forward_request()
 {
   if(!request_.has_value())
   {
+    state_ = MESSAGE_STATE::FAILED;
+    RequestDestruction();
     return;
   }
 
@@ -107,6 +136,8 @@ void FindSuccessor::handle_forwarded_response(RequestObject request_object)
 {
   if(!request_.has_value())
   {
+    state_ = MESSAGE_STATE::FAILED;
+    RequestDestruction();
     return;
   }
 
@@ -129,10 +160,22 @@ void FindSuccessor::handle_forwarded_response(RequestObject request_object)
 
 void FindSuccessor::handle_response(RequestObject request_object)
 {
+  const auto message = request_object.get_message();
+  if(message->get_peers().size() != 1)
+  {
+      //TODO: handle invalid message
+    state_ = MESSAGE_STATE::FAILED;
+    util::log(debug, "invalid find_successor response");
+  }
+
+	state_ = MESSAGE_STATE::DONE;
+	set_promise(message->get_peers().front());
+	RequestDestruction();
 }
 
 void FindSuccessor::handle_failed()
 {
+	set_promise({});
 }
 
 std::unique_ptr<Peer> FindSuccessor::find_successor(const std::string& id) const

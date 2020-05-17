@@ -17,10 +17,10 @@
 namespace peerpaste::message
 {
 
-class FindSuccessor : public MessagingBase, public Awaitable<Peer>
+class FindSuccessor : public MessagingBase, public Awaitable<std::optional<Peer>>
 {
 public:
-  FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table);
+  FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table, const std::string& id);
   FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table, RequestObject request);
   explicit FindSuccessor(FindSuccessor&& other);
 
@@ -39,6 +39,7 @@ private:
 	std::unique_ptr<Peer> find_successor(const std::string& id) const;
 	std::unique_ptr<Peer> closest_preceding_node(const std::string& id) const;
 
+	std::string id_;
 	ConcurrentRoutingTable<Peer>* routing_table_;
 };
 

@@ -27,6 +27,7 @@ enum class MessageType
   NOTIFICATION,
   CHECK_PREDECESSOR,
   QUERY,
+  FIND_SUCCESSOR,
 };
 
 template<typename Handler>

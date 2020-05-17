@@ -1,7 +1,7 @@
 #include "peerpaste/messages/notify.hpp"
 
 
-namespace peerpaste { namespace message
+namespace peerpaste::message
 {
 
 Notification::Notification(ConcurrentRoutingTable<Peer>* routing_table)
@@ -135,5 +135,4 @@ void Notification::HandleNotification(const RequestObject& request_object)
 {
 }
 
-} //closing namespace message
-} //closing namespace peerpaste
+} //closing namespace peerpaste::message
