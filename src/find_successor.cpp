@@ -19,7 +19,8 @@ FindSuccessor::FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table, Reques
 FindSuccessor::FindSuccessor(FindSuccessor&& other)
 	: MessagingBase(std::move(other))
 	, Awaitable(std::move(other))
-	, routing_table_(other.routing_table_)
+	, id_(std::move(other.id_))
+	, routing_table_(std::move(other.routing_table_))
 {}
 
 FindSuccessor::~FindSuccessor()
