@@ -19,7 +19,7 @@ Notification::Notification(ConcurrentRoutingTable<Peer>* routing_table, RequestO
 Notification::Notification(Notification&& other)
 	: MessagingBase(std::move(other))
 	, Awaitable(std::move(other))
-	, routing_table_(other.routing_table_)
+	, routing_table_(std::move(other.routing_table_))
 {}
 
 Notification::~Notification()
