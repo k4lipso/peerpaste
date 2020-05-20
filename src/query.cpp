@@ -50,7 +50,7 @@ void Query::create_request()
                             this,
                             std::placeholders::_1);
 
-  RequestObject request;
+  RequestObject request{type_};
   request.set_message(query_request);
   request.set_connection(target);
 
@@ -93,6 +93,7 @@ void Query::handle_response(RequestObject request_object)
     auto peer = message->get_peers().front();
     routing_table_->set_self(peer);
     state_ = MESSAGE_STATE::DONE;
+    set_promise(peer);
     RequestDestruction();
   }
   else
@@ -100,6 +101,7 @@ void Query::handle_response(RequestObject request_object)
     util::log(warning, "Wrong Message_Size");
     //TODO: handle invalid message
     state_ = MESSAGE_STATE::FAILED;
+    set_promise({});
     RequestDestruction();
   }
 }

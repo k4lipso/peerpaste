@@ -32,11 +32,18 @@ Join::~Join()
 
 void Join::HandleNotification(const RequestObject& request_object)
 {
+	Notify(request_object);
+}
+
+void Join::HandleNotification(const RequestObject& request_object, HandlerObject<HandlerFunction> handler)
+{
+	Notify(request_object, handler);
+}
 }
 
 void Join::create_request()
 {
-	dependencies_.front()->create_request();
+	(*dependencies_.front().first)();
 }
 
 void Join::handle_request()

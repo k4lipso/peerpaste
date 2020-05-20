@@ -17,18 +17,16 @@
 namespace peerpaste::message
 {
 
-class Join : public MessagingBase, public Awaitable<MESSAGE_STATE>
+class GetSuccessorList : public MessagingBase, public Awaitable<std::optional<std::vector<Peer>>>
 {
 public:
-  Join(ConcurrentRoutingTable<Peer>* routing_table, const std::string& address, const std::string& port);
-  Join(ConcurrentRoutingTable<Peer>* routing_table, RequestObject request);
-  explicit Join(Join&& other);
+  GetSuccessorList(Peer connection);
+  GetSuccessorList(ConcurrentRoutingTable<Peer>*, RequestObject request);
+  explicit GetSuccessorList(GetSuccessorList&& other);
 
-  ~Join() override;
+  ~GetSuccessorList() override;
 
   void HandleNotification(const RequestObject& request_object) override;
-  void HandleNotification(const RequestObject& request_object, HandlerObject<HandlerFunction> handler) override;
-  void HandleNotification() override;
 
 private:
   void create_request() override;
@@ -36,7 +34,8 @@ private:
   void handle_response(RequestObject request_object) override;
   void handle_failed() override;
 
-  ConcurrentRoutingTable<Peer>* routing_table_;
+  std::optional<Peer> connection_;
+  std::optional<ConcurrentRoutingTable<Peer>*> routing_table_;
 };
 
 } //closing namespace peerpaste::message

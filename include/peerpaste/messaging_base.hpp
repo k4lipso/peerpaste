@@ -75,7 +75,7 @@ protected:
   MessageType type_;
   std::unique_ptr<HandlerObject<HandlerFunction>> handler_object_ = nullptr;
   std::optional<RequestObject> request_;
-  std::vector<std::pair<std::unique_ptr<MessagingBase>, bool>> dependencies_;
+  std::vector<std::pair<std::shared_ptr<MessagingBase>, bool>> dependencies_;
   std::chrono::time_point<std::chrono::system_clock> time_point_;
   std::atomic<bool> is_done_ = false;
   std::atomic<MESSAGE_STATE> state_ = MESSAGE_STATE::VALID;

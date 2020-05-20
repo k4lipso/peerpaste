@@ -27,6 +27,10 @@ FindSuccessor::~FindSuccessor()
 {
 }
 
+void FindSuccessor::HandleNotification(const RequestObject& request_object)
+{
+}
+
 void FindSuccessor::create_request()
 {
 	const auto successor_ptr = find_successor(id_);
@@ -48,7 +52,7 @@ void FindSuccessor::create_request()
 																			this,
 																			std::placeholders::_1);
 
-	RequestObject successor_request;
+	RequestObject successor_request{type_};
 	successor_request.set_message(find_succ_request);
 	successor_request.set_connection(closest_preceding_node(id_));
 
@@ -116,7 +120,7 @@ void FindSuccessor::forward_request()
   auto transaction_id = new_request->generate_transaction_id();
 
   //Request that requests successor from another peer
-  RequestObject request;
+  RequestObject request{type_};
   request.set_message(new_request);
   request.set_connection(successor_predecessor);
 

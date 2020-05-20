@@ -29,6 +29,7 @@ enum class MessageType
   QUERY,
   FIND_SUCCESSOR,
   JOIN,
+  GET_SUCCESSOR_LIST,
 };
 
 template<typename Handler>

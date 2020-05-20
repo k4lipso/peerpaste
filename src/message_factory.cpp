@@ -3,6 +3,9 @@
 
 #include "peerpaste/messages/notify.hpp"
 #include "peerpaste/messages/check_predecessor.hpp"
+#include "peerpaste/messages/query.hpp"
+#include "peerpaste/messages/find_successor.hpp"
+#include "peerpaste/messages/get_successor_list.hpp"
 
 #include <memory>
 
@@ -31,17 +34,20 @@ std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const Request
 	{
 		return std::make_unique<CheckPredecessor>(routing_table_, request);
 	}
-
 	if(type == "query")
 	{
+		return std::make_unique<Query>(routing_table_, request);
 	}
 	if(type == "find_successor")
 	{
-	}
-	if(type == "get_predecessor_and_succ_list")
-	{
+		return std::make_unique<FindSuccessor>(routing_table_, request);
 	}
 	if(type == "get_successor_list")
+	{
+		return std::make_unique<GetSuccessorList>(routing_table_, request);
+	}
+
+	if(type == "get_predecessor_and_succ_list")
 	{
 	}
 	if(type == "get_self_and_successor_list")
