@@ -98,6 +98,7 @@ public:
     {
         if(!is_request()){
             std::cout << "Cant generate_response, is allready one"
+                      << " Type: " << header_.get_request_type()
                       << '\n';
         }
         Message response;

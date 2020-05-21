@@ -21,6 +21,7 @@ class FindSuccessor : public MessagingBase, public Awaitable<std::optional<Peer>
 {
 public:
   FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table, const std::string& id);
+  FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table, const Peer& target, const std::string& id);
   FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table, RequestObject request);
   explicit FindSuccessor(FindSuccessor&& other);
 
@@ -40,6 +41,7 @@ private:
 	std::unique_ptr<Peer> closest_preceding_node(const std::string& id) const;
 
 	std::string id_;
+	std::optional<Peer> target_;
 	ConcurrentRoutingTable<Peer>* routing_table_;
 };
 

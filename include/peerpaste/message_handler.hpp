@@ -17,6 +17,7 @@
 
 #include "peerpaste/messages/notify.hpp"
 #include "peerpaste/messages/check_predecessor.hpp"
+#include "peerpaste/messages/join.hpp"
 
 
 class MessageHandler : public ObserverBase
@@ -768,44 +769,49 @@ public:
 
     void join(std::string address, std::string port)
     {
-        Peer self;
-        if(not routing_table_.try_get_self(self)){
-            util::log(warning, "Cant join, self not set");
-        }
+      auto NotifyMessage = std::make_shared<peerpaste::message::Join>(&routing_table_, address, port);
 
-        //Generate Query
-        auto query_request = std::make_shared<Message>(
-                            Message::create_request("query", { self }));
-        auto transaction_id = query_request->get_transaction_id();
+      NotifyMessage->Attach(this);
+      thread_pool_.submit(NotifyMessage);
+      active_messages_.push_back(std::move(NotifyMessage));
+        //Peer self;
+        //if(not routing_table_.try_get_self(self)){
+        //    util::log(warning, "Cant join, self not set");
+        //}
 
-        auto target = std::make_shared<Peer>("", address, port);
+        ////Generate Query
+        //auto query_request = std::make_shared<Message>(
+        //                    Message::create_request("query", { self }));
+        //auto transaction_id = query_request->get_transaction_id();
 
-        auto handler = std::bind(&MessageHandler::handle_query_response,
-                                                            this,
-                                                            std::placeholders::_1);
+        //auto target = std::make_shared<Peer>("", address, port);
 
-        auto request = std::make_shared<RequestObject>();
-        request->set_handler(handler);
-        request->set_message(query_request);
-        request->set_connection(target);
+        //auto handler = std::bind(&MessageHandler::handle_query_response,
+        //                                                    this,
+        //                                                    std::placeholders::_1);
 
-        //Generate Find Successor Request
-        auto find_successor_request = std::make_shared<Message>(
-                            Message::create_request("find_successor"));
+        //auto request = std::make_shared<RequestObject>();
+        //request->set_handler(handler);
+        //request->set_message(query_request);
+        //request->set_connection(target);
 
-        auto successor_handler = std::bind(&MessageHandler::handle_join_response,
-                                                            this,
-                                                            std::placeholders::_1);
+        ////Generate Find Successor Request
+        //auto find_successor_request = std::make_shared<Message>(
+        //                    Message::create_request("find_successor"));
 
-        auto successor_request = std::make_shared<RequestObject>();
-        successor_request->set_handler(successor_handler);
-        successor_request->set_message(find_successor_request);
-        successor_request->set_connection(target);
+        //auto successor_handler = std::bind(&MessageHandler::handle_join_response,
+        //                                                    this,
+        //                                                    std::placeholders::_1);
 
-        //Add succsessor request as aggregat, so that it gets send
-        //as soon as the query_response was handled
-        aggregator_.add_aggregat(successor_request, { transaction_id });
-        push_to_write_queue(request);
+        //auto successor_request = std::make_shared<RequestObject>();
+        //successor_request->set_handler(successor_handler);
+        //successor_request->set_message(find_successor_request);
+        //successor_request->set_connection(target);
+
+        ////Add succsessor request as aggregat, so that it gets send
+        ////as soon as the query_response was handled
+        //aggregator_.add_aggregat(successor_request, { transaction_id });
+        //push_to_write_queue(request);
     }
 
     void handle_join_response(RequestObjectUPtr transport_object)

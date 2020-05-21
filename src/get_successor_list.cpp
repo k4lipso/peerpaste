@@ -6,7 +6,7 @@ namespace peerpaste::message
 
 GetSuccessorList::GetSuccessorList(Peer connection)
 	: MessagingBase(MessageType::GET_SUCCESSOR_LIST)
-	,	connection_(std::move(connection_))
+	,	connection_(std::move(connection))
 {
 }
 
@@ -37,6 +37,7 @@ void GetSuccessorList::create_request()
     state_ = MESSAGE_STATE::FAILED;
     set_promise({});
     RequestDestruction();
+    return;
   }
 
   const auto get_successor_list_request = std::make_shared<Message>(
@@ -63,6 +64,7 @@ void GetSuccessorList::handle_request()
     state_ = MESSAGE_STATE::FAILED;
     set_promise({});
     RequestDestruction();
+    return;
   }
 
   auto message = request_.value().get_message();

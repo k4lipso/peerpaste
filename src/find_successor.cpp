@@ -10,6 +10,14 @@ FindSuccessor::FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table, const 
 {
 }
 
+FindSuccessor::FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table, const Peer& target, const std::string& id)
+	: MessagingBase(MessageType::FIND_SUCCESSOR)
+	, id_(id)
+	, target_(target)
+	,	routing_table_(routing_table)
+{
+}
+
 FindSuccessor::FindSuccessor(ConcurrentRoutingTable<Peer>* routing_table, RequestObject request)
 	: MessagingBase(MessageType::FIND_SUCCESSOR, request)
 	, routing_table_(routing_table)
@@ -20,6 +28,7 @@ FindSuccessor::FindSuccessor(FindSuccessor&& other)
 	: MessagingBase(std::move(other))
 	, Awaitable(std::move(other))
 	, id_(std::move(other.id_))
+	, target_(std::move(other.target_))
 	, routing_table_(std::move(other.routing_table_))
 {}
 
@@ -33,14 +42,17 @@ void FindSuccessor::HandleNotification(const RequestObject& request_object)
 
 void FindSuccessor::create_request()
 {
-	const auto successor_ptr = find_successor(id_);
-
-	if(successor_ptr)
+	if(!target_.has_value())
 	{
-		set_promise(*successor_ptr.get());
-		state_ = MESSAGE_STATE::DONE;
-		RequestDestruction();
-		return;
+		const auto successor_ptr = find_successor(id_);
+
+		if(successor_ptr)
+		{
+			set_promise(*successor_ptr.get());
+			state_ = MESSAGE_STATE::DONE;
+			RequestDestruction();
+			return;
+		}
 	}
 
   auto find_succ_request =
@@ -54,7 +66,15 @@ void FindSuccessor::create_request()
 
 	RequestObject successor_request{type_};
 	successor_request.set_message(find_succ_request);
-	successor_request.set_connection(closest_preceding_node(id_));
+
+	if(target_.has_value())
+	{
+		successor_request.set_connection(std::make_unique<Peer>(target_.value()));
+	}
+	else
+	{
+		successor_request.set_connection(closest_preceding_node(id_));
+	}
 
   create_handler_object(transaction_id, handler);
   Notify(successor_request, *handler_object_);
@@ -111,8 +131,6 @@ void FindSuccessor::forward_request()
   auto message = request_->get_message();
   auto id = message->get_peers().front().get_id();
 
-  //We have to use aggregator
-  //to request successor remotely befor responding
   std::shared_ptr<Peer> successor_predecessor = closest_preceding_node(id);
   auto new_request = std::make_shared<Message>(
     Message::create_request("find_successor",
@@ -124,12 +142,6 @@ void FindSuccessor::forward_request()
   request.set_message(new_request);
   request.set_connection(successor_predecessor);
 
-  //Response that will be sent back when request above
-  //got answered
-  RequestObject response(request_.value());
-  response.set_message(message->generate_response());
-
-  //aggregator_.add_aggregat(response, { transaction_id });
   auto handler = std::bind(&FindSuccessor::handle_forwarded_response, this, std::placeholders::_1);
 
   create_handler_object(transaction_id, handler);
@@ -150,7 +162,7 @@ void FindSuccessor::handle_forwarded_response(RequestObject request_object)
 
   auto successor = message->get_peers().front();
 
-  auto response_message = message->generate_response();
+  auto response_message = request_.value().get_message()->generate_response();
 
   response_message->set_peers( { successor } );
   response_message->generate_transaction_id();
