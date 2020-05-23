@@ -32,6 +32,7 @@ enum class MessageType
   GET_SUCCESSOR_LIST,
   GET_SELF_AND_SUCC_LIST,
   GET_PRED_AND_SUCC_LIST,
+  STABILIZE,
 };
 
 template<typename Handler>
