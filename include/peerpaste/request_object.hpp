@@ -30,6 +30,8 @@ enum class MessageType
   FIND_SUCCESSOR,
   JOIN,
   GET_SUCCESSOR_LIST,
+  GET_SELF_AND_SUCC_LIST,
+  GET_PRED_AND_SUCC_LIST,
 };
 
 template<typename Handler>

@@ -45,7 +45,7 @@ void Join::HandleNotification(const RequestObject& request_object, HandlerObject
 
 void Join::HandleNotification()
 {
-  const auto MessagePtr =  dependencies_.front().first;
+  const auto MessagePtr = dependencies_.front().first;
 
   if(MessagePtr == nullptr)
   {

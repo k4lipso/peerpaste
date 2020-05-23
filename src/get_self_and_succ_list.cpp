@@ -5,14 +5,14 @@ namespace peerpaste::message
 {
 
 GetSelfAndSuccList::GetSelfAndSuccList(Peer target)
-	: MessagingBase(MessageType::NOTIFICATION)
+	: MessagingBase(MessageType::GET_SELF_AND_SUCC_LIST)
 	,	routing_table_(nullptr)
 	, target_(std::move(target))
 {
 }
 
 GetSelfAndSuccList::GetSelfAndSuccList(ConcurrentRoutingTable<Peer>* routing_table, RequestObject request)
-	: MessagingBase(MessageType::NOTIFICATION, request)
+	: MessagingBase(MessageType::GET_SELF_AND_SUCC_LIST, request)
 	, routing_table_(routing_table)
 {
 }
