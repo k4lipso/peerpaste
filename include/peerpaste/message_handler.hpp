@@ -18,6 +18,9 @@
 #include "peerpaste/messages/notify.hpp"
 #include "peerpaste/messages/check_predecessor.hpp"
 #include "peerpaste/messages/join.hpp"
+#include "peerpaste/messages/stabilize.hpp"
+#include "peerpaste/messages/get_pred_and_succ_list.hpp"
+#include "peerpaste/messages/get_self_and_succ_list.hpp"
 
 
 class MessageHandler : public ObserverBase
@@ -152,22 +155,22 @@ public:
 
     auto request_type = transport_object->get_request_type();
 
-    if(request_type == "query"){
-      handle_query_request(std::move(transport_object));
-      return;
-    }
-    if(request_type == "find_successor"){
-      handle_find_successor_request(std::move(transport_object));
-      return;
-    }
+    //if(request_type == "query"){
+    //  handle_query_request(std::move(transport_object));
+    //  return;
+    //}
+    //if(request_type == "find_successor"){
+    //  handle_find_successor_request(std::move(transport_object));
+    //  return;
+    //}
     if(request_type == "get_predecessor_and_succ_list"){
       get_predecessor_and_succ_list_request(std::move(transport_object));
       return;
     }
-    if(request_type == "get_successor_list"){
-      handle_get_successor_list_request(std::move(transport_object));
-      return;
-    }
+    //if(request_type == "get_successor_list"){
+    //  handle_get_successor_list_request(std::move(transport_object));
+    //  return;
+    //}
     if(request_type == "get_self_and_successor_list"){
       handle_get_self_and_successor_list_request(std::move(transport_object));
       return;
@@ -538,29 +541,36 @@ public:
     //TODO: add stabilization according to "how to make chord correct", using the extended succ list
     void stabilize()
     {
-        Peer target;
-        if(not routing_table_.try_get_successor(target)){
-            return;
-        }
+      stabilize_flag_ = true;
+      auto StabilizeMessage =
+          std::make_shared<peerpaste::message::Stabilize>(&routing_table_, &stabilize_flag_);
 
-        auto get_predecessor_msg = std::make_shared<Message>(
-                            Message::create_request(
-                                "get_predecessor_and_succ_list"));
-        auto transaction_id = get_predecessor_msg->get_transaction_id();
+      StabilizeMessage->Attach(this);
+      thread_pool_.submit(StabilizeMessage);
+      active_messages_.push_back(std::move(StabilizeMessage));
+      //Peer target;
+      //if(not routing_table_.try_get_successor(target)){
+      //    return;
+      //}
 
-        auto handler = std::bind(&MessageHandler::handle_stabilize,
-                                 this,
-                                 std::placeholders::_1);
+      //auto get_predecessor_msg = std::make_shared<Message>(
+      //                    Message::create_request(
+      //                        "get_predecessor_and_succ_list"));
+      //auto transaction_id = get_predecessor_msg->get_transaction_id();
 
-        auto request = std::make_shared<RequestObject>();
-        request->set_handler(handler);
-        request->set_message(get_predecessor_msg);
-        request->set_connection(std::make_shared<Peer>(target));
-        assert(not request->is_session());
-        push_to_write_queue(request);
-        assert(not request->is_session());
+      //auto handler = std::bind(&MessageHandler::handle_stabilize,
+      //                         this,
+      //                         std::placeholders::_1);
 
-        stabilize_flag_ = true;
+      //auto request = std::make_shared<RequestObject>();
+      //request->set_handler(handler);
+      //request->set_message(get_predecessor_msg);
+      //request->set_connection(std::make_shared<Peer>(target));
+      //assert(not request->is_session());
+      //push_to_write_queue(request);
+      //assert(not request->is_session());
+
+      //stabilize_flag_ = true;
     }
 
     void stabilize_storage()
@@ -996,7 +1006,7 @@ private:
 
     mutable std::mutex mutex_;
 
-    bool stabilize_flag_;
+    std::atomic<bool> stabilize_flag_;
     std::atomic<bool> check_predecessor_flag_;
     bool running_ = true;
     std::vector<std::thread> run_thread_;

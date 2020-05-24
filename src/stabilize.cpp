@@ -50,6 +50,7 @@ void Stabilize::HandleNotification()
   if(MessagePtr == nullptr)
   {
     state_ = MESSAGE_STATE::FAILED;
+    *stabilize_flag_ = false;
     RequestDestruction();
     return;
   }
@@ -57,6 +58,7 @@ void Stabilize::HandleNotification()
   if(!MessagePtr->is_done() || MessagePtr->get_state() != MESSAGE_STATE::DONE)
   {
     state_ = MESSAGE_STATE::FAILED;
+    *stabilize_flag_ = false;
     RequestDestruction();
     return;
   }
@@ -87,12 +89,12 @@ void Stabilize::handle_get_pred_and_succ_list_notify(MessagingBase* MessagePtr)
   dependencies_.clear();
   time_point_ = std::chrono::system_clock::now() + DURATION;
 
-  if(PredAndSuccList.size() < 1)
+  if(PredAndSuccList.empty())
   {
     //TODO: handle invalid message
     //TODO: CHange to pop_front()
     routing_table_->pop_front();
-    //stabilize_flag_ = false;
+    *stabilize_flag_ = false;
     create_notification();
     return;
   }
@@ -102,6 +104,7 @@ void Stabilize::handle_get_pred_and_succ_list_notify(MessagingBase* MessagePtr)
   {
     util::log(warning, "Cant handle stabilize: self not set");
     state_ = MESSAGE_STATE::FAILED;
+    *stabilize_flag_ = false;
     RequestDestruction();
     return;
   }
@@ -119,6 +122,7 @@ void Stabilize::handle_get_pred_and_succ_list_notify(MessagingBase* MessagePtr)
   {
     util::log(warning, "Cant handle stabilize: successor not set");
     state_ = MESSAGE_STATE::FAILED;
+    *stabilize_flag_ = false;
     RequestDestruction();
     return;
   }
@@ -143,7 +147,7 @@ void Stabilize::handle_get_pred_and_succ_list_notify(MessagingBase* MessagePtr)
   else
   {
     create_notification();
-    //stabilize_flag_ = false;
+    *stabilize_flag_ = false;
   }
 }
 
@@ -161,12 +165,12 @@ void  Stabilize::handle_get_self_and_succ_list_notify(MessagingBase* MessagePtr)
   //}
 
   routing_table_->replace_successor_list(SelfAndSuccList);
+  *stabilize_flag_ = false;
   create_notification();
 }
 
 void Stabilize::handle_notification_notify(MessagingBase* MessagePtr)
 {
-  *stabilize_flag_ = false;
   state_ = MESSAGE_STATE::DONE;
   RequestDestruction();
 }
@@ -185,6 +189,7 @@ void Stabilize::create_request()
   Peer target;
   if(not routing_table_->try_get_successor(target)){
     state_ = MESSAGE_STATE::FAILED;
+    *stabilize_flag_ = false;
     RequestDestruction();
     return;
   }
@@ -206,7 +211,8 @@ void Stabilize::handle_response(RequestObject request_object)
 }
 void Stabilize::handle_failed()
 {
-
+  state_ = MESSAGE_STATE::FAILED;
+  *stabilize_flag_ = false;
 }
 
 

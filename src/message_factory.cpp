@@ -6,6 +6,8 @@
 #include "peerpaste/messages/query.hpp"
 #include "peerpaste/messages/find_successor.hpp"
 #include "peerpaste/messages/get_successor_list.hpp"
+#include "peerpaste/messages/get_self_and_succ_list.hpp"
+#include "peerpaste/messages/get_pred_and_succ_list.hpp"
 
 #include <memory>
 
@@ -46,13 +48,15 @@ std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const Request
 	{
 		return std::make_unique<GetSuccessorList>(routing_table_, request);
 	}
-
 	if(type == "get_predecessor_and_succ_list")
 	{
+		return std::make_unique<GetPredAndSuccList>(routing_table_, request);
 	}
 	if(type == "get_self_and_successor_list")
 	{
+		return std::make_unique<GetSelfAndSuccList>(routing_table_, request);
 	}
+
 	if(type == "put")
 	{
 	}

@@ -75,20 +75,23 @@ void GetPredAndSuccList::handle_request()
       util::log(warning, "Invalid message handle_get_predecessor_req");
   }
 
+  auto response = message->generate_response();
+
   Peer predecessor;
   if(!routing_table_->try_get_predecessor(predecessor))
   {
-    state_ = MESSAGE_STATE::FAILED;
-    set_promise({});
-    RequestDestruction();
-    return;
+    //state_ = MESSAGE_STATE::FAILED;
+    //set_promise({});
+    //RequestDestruction();
+    //return;
+  }
+  else
+  {
+    auto peers = routing_table_->get_peers();
+    peers.insert(peers.begin(), predecessor);
+    response->set_peers(peers);
   }
 
-  auto peers = routing_table_->get_peers();
-  peers.insert(peers.begin(), predecessor);
-
-  auto response = message->generate_response();
-  response->set_peers(peers);
   response->generate_transaction_id();
 
   auto response_object = RequestObject(request_.value());
@@ -109,6 +112,7 @@ void GetPredAndSuccList::handle_response(RequestObject request_object)
     return;
   }
 
+  state_ = MESSAGE_STATE::DONE;
   set_promise(request_object.get_message()->get_peers());
   RequestDestruction();
 }

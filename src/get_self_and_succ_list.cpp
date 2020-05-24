@@ -102,6 +102,7 @@ void GetSelfAndSuccList::handle_response(RequestObject request_object)
     return;
   }
 
+  state_ = MESSAGE_STATE::DONE;
   set_promise(request_object.get_message()->get_peers());
   RequestDestruction();
 }

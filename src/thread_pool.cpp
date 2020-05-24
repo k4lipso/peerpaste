@@ -34,7 +34,7 @@ void ThreadPool::worker_thread()
 		else
 		{
 			std::this_thread::yield();
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+			std::this_thread::sleep_for(std::chrono::milliseconds(5));
 		}
 	}
 }
