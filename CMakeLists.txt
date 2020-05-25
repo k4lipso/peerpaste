@@ -16,10 +16,6 @@ find_package(Protobuf REQUIRED)
 # add_subdirectory(proto)
 
 find_package(CryptoPP REQUIRED)
-message("${CRYPTOPP_INCLUDE_DIR}")
-message("${CRYPTOPP_INCLUDE_DIRS}")
-message("${CRYPTOPP_ROOT_DIR}")
-message("${CRYPTOPP_FOUND}")
 
 SET(Boost_USE_STATIC_LIBS OFF)
 SET(Boost_USE_MULTITHREAD ON)
@@ -29,7 +25,6 @@ MESSAGE("Boost information")
 MESSAGE("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
 MESSAGE("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
 MESSAGE("Boost Libraries: ${Boost_LIBRARIES}")
-MESSAGE("Boost Libraries: ${Boost_LOG_LIBRARY}")
 MESSAGE("PROTOBUF INCLUDE DIRS ${PROTOBUF_INCLUDE_DIRS}")
 MESSAGE("PROTOBUF LIBRARIES ${PROTOBUF_LIBRARIES}")
 
@@ -70,6 +65,7 @@ add_library(libpeerpaste
     "include/peerpaste/concurrent_routing_table.hpp"
     "include/peerpaste/consumer.hpp"
     "include/peerpaste/concurrent_request_handler.hpp"
+
     )
 
 set_target_properties(libpeerpaste PROPERTIES LINKER_LANGUAGE CXX)
@@ -78,6 +74,7 @@ target_include_directories(libpeerpaste
     PUBLIC
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
+        ${Boost_INCLUDE_DIRS}
         ${CRYPTOPP_INCLUDE_DIR}
     )
 
@@ -85,14 +82,14 @@ target_link_libraries(libpeerpaste
     PUBLIC
         ${CMAKE_THREAD_LIBS_INIT}
         #${Boost_LOG_LIBRARY}
-	#${Boost_LIBRARIES}
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log_setup.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_program_options.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_system.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_thread.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_regex.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_filesystem.so.1.71.0"
+        #${Boost_LIBRARIES}
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log_setup.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_program_options.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_system.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_thread.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_regex.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_filesystem.so.1.71.0"
         ${PROTOBUF_LIBRARIES}
         ${CRYPTOPP_LIBRARIES}
         -lsodium
@@ -112,15 +109,15 @@ target_include_directories(peerpaste
 target_link_libraries(peerpaste
     PUBLIC
         #${Boost_LOG_LIBRARY}
-	#${Boost_LIBRARIES}
-	#${Boost_LIBRARY_DIRS}
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log_setup.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_program_options.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_system.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_thread.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_regex.so.1.71.0"
-	"/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_filesystem.so.1.71.0"
+        #${Boost_LIBRARIES}
+        #${Boost_LIBRARY_DIRS}
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log_setup.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_program_options.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_system.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_thread.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_regex.so.1.71.0"
+        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_filesystem.so.1.71.0"
         libpeerpaste
         # if(DEBUG)
             # -fsanitize=address
