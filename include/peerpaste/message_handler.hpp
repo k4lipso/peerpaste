@@ -92,11 +92,10 @@ public:
 
     void run_chord_internal()
     {
-        // routing_table_.print();
-
         if(not stabilize_flag_){
             stabilize();
         }
+
         if(not check_predecessor_flag_){
             check_predecessor();
         }
@@ -106,7 +105,6 @@ public:
 
         if(running_){
             run_chord_internal();
-
         }
     }
 
@@ -120,8 +118,6 @@ public:
         }
     }
 
-    ~MessageHandler () {}
-
     void push_to_write_queue(RequestObjectSPtr shared_transport_object)
     {
         auto is_request = shared_transport_object->get_message()->is_request();
@@ -132,6 +128,39 @@ public:
         }
         send_queue_->push(*shared_transport_object.get());
     }
+
+	template<typename MessageType, typename... ArgsT>
+	void create_request(ArgsT&&... Args)
+	{
+		std::shared_ptr<MessageType> Message =
+				message_factory_.create_request<MessageType>(std::forward<ArgsT>(Args)...);
+
+		Message->Attach(this);
+		thread_pool_.submit(Message);
+		active_messages_.push_back(std::move(Message));
+	}
+
+  void join(std::string address, std::string port)
+  {
+    create_request<peerpaste::message::Join>(&routing_table_, std::move(address), std::move(port));
+  }
+
+  void check_predecessor()
+  {
+    create_request<peerpaste::message::CheckPredecessor>(&routing_table_, &check_predecessor_flag_);
+  }
+
+  void notify()
+  {
+    create_request<peerpaste::message::Notification>(&routing_table_);
+  }
+
+  //TODO: add stabilization according to "how to make chord correct", using the extended succ list
+  void stabilize()
+  {
+    stabilize_flag_ = true;
+    create_request<peerpaste::message::Stabilize>(&routing_table_, &stabilize_flag_);
+  }
 
   void handle_request(RequestObjectUPtr transport_object)
   {
@@ -155,26 +184,6 @@ public:
 
     auto request_type = transport_object->get_request_type();
 
-    //if(request_type == "query"){
-    //  handle_query_request(std::move(transport_object));
-    //  return;
-    //}
-    //if(request_type == "find_successor"){
-    //  handle_find_successor_request(std::move(transport_object));
-    //  return;
-    //}
-    if(request_type == "get_predecessor_and_succ_list"){
-      get_predecessor_and_succ_list_request(std::move(transport_object));
-      return;
-    }
-    //if(request_type == "get_successor_list"){
-    //  handle_get_successor_list_request(std::move(transport_object));
-    //  return;
-    //}
-    if(request_type == "get_self_and_successor_list"){
-      handle_get_self_and_successor_list_request(std::move(transport_object));
-      return;
-    }
     if(request_type == "put"){
       handle_put_request(std::move(transport_object));
       return;
@@ -442,57 +451,6 @@ public:
         return std::make_shared<Peer>(self);
     }
 
-    void handle_query_request(RequestObjectUPtr transport_object)
-    {
-        auto message = transport_object->get_message();
-        if(message->get_peers().size() != 1){
-            //TODO: handle invalid messages here
-        }
-
-        auto peer = message->get_peers().front();
-        auto client_ip = transport_object->get_client_ip();
-        auto client_port = peer.get_port();
-        auto client_id = util::generate_sha256(client_ip, client_port);
-        peer.set_ip(client_ip);
-        peer.set_id(client_id);
-
-        auto response_message = message->generate_response();
-        response_message->add_peer(peer);
-        response_message->generate_transaction_id();
-
-        auto response = std::make_shared<RequestObject>(*transport_object);
-        response->set_message(response_message);
-
-        push_to_write_queue(response);
-    }
-
-    void get_predecessor_and_succ_list_request(RequestObjectUPtr transport_object)
-    {
-        auto message = transport_object->get_message();
-        if(message->get_peers().size() != 0){
-            //TODO: handle_invalid_message!
-            util::log(warning, "Invalid message handle_get_predecessor_req");
-        }
-
-        auto response = message->generate_response();
-        Peer predecessor;
-        if(routing_table_.try_get_predecessor(predecessor)){
-            auto peers = routing_table_.get_peers();
-            peers.insert(peers.begin(), predecessor);
-            response->set_peers(peers);
-        } else {
-            //TODO: send invalid message here, so that requestor knows that there
-            //is no predecessor
-            /* std::cout << "[MessageHandler] handle_get_predecessor_request():" */
-                      /* << "not yet implemented" << '\n'; */
-        }
-        response->generate_transaction_id();
-
-        auto response_object = std::make_shared<RequestObject>(*transport_object);
-        response_object->set_message(response);
-        push_to_write_queue(response_object);
-    }
-
     void handle_response(RequestObjectUPtr transport_object)
     {
       //Get the CorrelationID to check if there is an OpenRequest matching
@@ -536,41 +494,6 @@ public:
           util::log(warning, "Invalid Message");
           //TODO: handle invalid message
       }
-    }
-
-    //TODO: add stabilization according to "how to make chord correct", using the extended succ list
-    void stabilize()
-    {
-      stabilize_flag_ = true;
-      auto StabilizeMessage =
-          std::make_shared<peerpaste::message::Stabilize>(&routing_table_, &stabilize_flag_);
-
-      StabilizeMessage->Attach(this);
-      thread_pool_.submit(StabilizeMessage);
-      active_messages_.push_back(std::move(StabilizeMessage));
-      //Peer target;
-      //if(not routing_table_.try_get_successor(target)){
-      //    return;
-      //}
-
-      //auto get_predecessor_msg = std::make_shared<Message>(
-      //                    Message::create_request(
-      //                        "get_predecessor_and_succ_list"));
-      //auto transaction_id = get_predecessor_msg->get_transaction_id();
-
-      //auto handler = std::bind(&MessageHandler::handle_stabilize,
-      //                         this,
-      //                         std::placeholders::_1);
-
-      //auto request = std::make_shared<RequestObject>();
-      //request->set_handler(handler);
-      //request->set_message(get_predecessor_msg);
-      //request->set_connection(std::make_shared<Peer>(target));
-      //assert(not request->is_session());
-      //push_to_write_queue(request);
-      //assert(not request->is_session());
-
-      //stabilize_flag_ = true;
     }
 
     void stabilize_storage()
@@ -663,32 +586,6 @@ public:
         push_to_write_queue(store_request);
     }
 
-    void check_predecessor()
-    {
-      auto CheckPreMessage = std::make_shared<peerpaste::message::CheckPredecessor>(&routing_table_, &check_predecessor_flag_);
-
-      CheckPreMessage->Attach(this);
-      thread_pool_.submit(CheckPreMessage);
-      active_messages_.push_back(std::move(CheckPreMessage));
-    }
-
-    void notify()
-    {
-      auto NotifyMessage = std::make_shared<peerpaste::message::Notification>(&routing_table_);
-
-      NotifyMessage->Attach(this);
-      thread_pool_.submit(NotifyMessage);
-      active_messages_.push_back(std::move(NotifyMessage));
-    }
-
-    [[deprecated]]
-    void handle_get_response(RequestObjectUPtr transport_object)
-    {
-        std::cout << "GET RESPONSE HANDLER" << std::endl;
-
-        std::cout << transport_object->get_message()->get_data() << std::endl;
-    }
-
     std::future<std::string> get(const std::string& ip,
              const std::string& port,
              const std::string& data)
@@ -765,225 +662,6 @@ public:
 
         push_to_write_queue(put_request);
         return future_;
-    }
-
-    [[deprecated]]
-    void handle_put_response(RequestObjectUPtr transport_object)
-    {
-        /* std::cout << "###############################" << std::endl; */
-        /* std::cout << "######HANDLE_PUT_RESPONSE######" << std::endl; */
-        /* std::cout << "###############################" << std::endl; */
-        std::cout << "Paste is stored. Get it using this is: " << std::endl;
-        std::cout << transport_object->get_message()->get_data() << std::endl;
-    }
-
-    void join(std::string address, std::string port)
-    {
-      auto NotifyMessage = std::make_shared<peerpaste::message::Join>(&routing_table_, address, port);
-
-      NotifyMessage->Attach(this);
-      thread_pool_.submit(NotifyMessage);
-      active_messages_.push_back(std::move(NotifyMessage));
-        //Peer self;
-        //if(not routing_table_.try_get_self(self)){
-        //    util::log(warning, "Cant join, self not set");
-        //}
-
-        ////Generate Query
-        //auto query_request = std::make_shared<Message>(
-        //                    Message::create_request("query", { self }));
-        //auto transaction_id = query_request->get_transaction_id();
-
-        //auto target = std::make_shared<Peer>("", address, port);
-
-        //auto handler = std::bind(&MessageHandler::handle_query_response,
-        //                                                    this,
-        //                                                    std::placeholders::_1);
-
-        //auto request = std::make_shared<RequestObject>();
-        //request->set_handler(handler);
-        //request->set_message(query_request);
-        //request->set_connection(target);
-
-        ////Generate Find Successor Request
-        //auto find_successor_request = std::make_shared<Message>(
-        //                    Message::create_request("find_successor"));
-
-        //auto successor_handler = std::bind(&MessageHandler::handle_join_response,
-        //                                                    this,
-        //                                                    std::placeholders::_1);
-
-        //auto successor_request = std::make_shared<RequestObject>();
-        //successor_request->set_handler(successor_handler);
-        //successor_request->set_message(find_successor_request);
-        //successor_request->set_connection(target);
-
-        ////Add succsessor request as aggregat, so that it gets send
-        ////as soon as the query_response was handled
-        //aggregator_.add_aggregat(successor_request, { transaction_id });
-        //push_to_write_queue(request);
-    }
-
-    void handle_join_response(RequestObjectUPtr transport_object)
-    {
-        auto message = transport_object->get_message();
-        if(message->get_peers().size() != 1){
-            //TODO: handle invalid message
-        }
-
-        auto successor = message->get_peers().front();
-        routing_table_.set_successor(successor);
-
-        //Generate get_successor_list request
-        auto get_successor_list_request = std::make_shared<Message>(
-                            Message::create_request("get_successor_list"));
-
-        auto successor_handler = std::bind(&MessageHandler::handle_get_successor_list_response,
-                                                            this,
-                                                            std::placeholders::_1);
-
-        auto successor_list_request = std::make_shared<RequestObject>();
-        successor_list_request->set_handler(successor_handler);
-        successor_list_request->set_message(get_successor_list_request);
-        successor_list_request->set_connection(std::make_shared<Peer>(successor));
-
-        push_to_write_queue(successor_list_request);
-    }
-
-    void handle_get_successor_list_response(RequestObjectUPtr transport_object)
-    {
-        auto message = transport_object->get_message();
-        auto new_succ_list = message->get_peers();
-        routing_table_.replace_after_successor(new_succ_list);
-    }
-
-    void handle_set_pred_succ_list(RequestObjectUPtr transport_object)
-    {
-        if(transport_object->is_request()){
-            notify();
-            stabilize_flag_ = false;
-            return;
-        }
-        auto message = transport_object->get_message();
-        auto new_succ_list = message->get_peers();
-        routing_table_.replace_successor_list(new_succ_list);
-        notify();
-        stabilize_flag_ = false;
-
-    }
-
-    void handle_get_self_and_successor_list_request(RequestObjectUPtr transport_object)
-    {
-        auto message = transport_object->get_message();
-
-        auto response_message = message->generate_response();
-        auto succ_list = routing_table_.get_peers();
-
-        Peer self;
-        if(not routing_table_.try_get_self(self)){
-            util::log(warning, "Could not get self in handle_get_self_and_successor_list_request");
-        }
-        succ_list.insert(succ_list.begin(), self);
-        response_message->set_peers(succ_list);
-        response_message->generate_transaction_id();
-
-        auto response = std::make_shared<RequestObject>(*transport_object);
-        response->set_message(response_message);
-
-        push_to_write_queue(response);
-    }
-
-    void handle_get_successor_list_request(RequestObjectUPtr transport_object)
-    {
-        auto message = transport_object->get_message();
-
-        auto response_message = message->generate_response();
-        response_message->set_peers(routing_table_.get_peers());
-        response_message->generate_transaction_id();
-
-        auto response = std::make_shared<RequestObject>(*transport_object);
-        response->set_message(response_message);
-
-        push_to_write_queue(response);
-    }
-
-    void handle_query_response(RequestObjectUPtr transport_object)
-    {
-        auto message = transport_object->get_message();
-        if(message->get_peers().size() == 1){
-            //TODO: make  message peers to be shared_ptrs
-            auto peer = message->get_peers().front();
-            routing_table_.set_self(peer);
-        } else {
-            util::log(warning, "Wrong Message_Size");
-            //TODO: handle invalid message
-        }
-    }
-
-    void handle_stabilize(RequestObjectUPtr transport_object)
-    {
-        auto message = transport_object->get_message();
-        //check if message is still request, which would mean it timed out
-        if(message->is_request()){
-            util::log(debug, "handle_stabilize aborted, transport obj is request");
-        }
-
-
-        Peer self;
-        if(not routing_table_.try_get_self(self)){
-            util::log(warning, "Cant handle stabilize: self not set");
-            return;
-        }
-
-        if(message->get_peers().size() < 1 || message->is_request()){
-            //TODO: handle invalid message
-            //TODO: CHange to pop_front()
-            routing_table_.pop_front();
-            stabilize_flag_ = false;
-            notify();
-            return;
-        }
-
-        //get peers, they consists of: {predecessor, successor_list}
-        auto peers = message->get_peers();
-        //get the predecessor and erase him aftwerwards
-        auto successors_predecessor = peers.front();
-        if(peers.size() > 1){
-            peers.erase(peers.begin());
-        }
-        //get own successor
-        Peer successor;
-        if(not routing_table_.try_get_successor(successor)){
-            util::log(warning, "Cant handle stabilize: successor not set");
-            return;
-        }
-
-        //insert the peer at beginning of his succ list to make it our own succ list
-        peers.insert(peers.begin(), successor);
-        routing_table_.replace_successor_list(peers);
-
-
-        //check if successors predecessor will be our new successor
-        if(util::between(self.get_id(),
-                         successors_predecessor.get_id(),
-                         successor.get_id())){
-            auto get_successor_list_request = std::make_shared<Message>(
-                            Message::create_request("get_self_and_successor_list"));
-
-            auto successor_handler = std::bind(&MessageHandler::handle_set_pred_succ_list,
-                                                                this,
-                                                                std::placeholders::_1);
-
-            auto successor_list_request = std::make_shared<RequestObject>();
-            successor_list_request->set_handler(successor_handler);
-            successor_list_request->set_message(get_successor_list_request);
-            successor_list_request->set_connection(std::make_shared<Peer>(successors_predecessor));
-
-            push_to_write_queue(successor_list_request);
-        } else {
-            notify();
-            stabilize_flag_ = false;
-        }
     }
 
     std::tuple<Peer, Peer, Peer> get_routing_information()

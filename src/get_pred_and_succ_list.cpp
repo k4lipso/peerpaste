@@ -78,14 +78,7 @@ void GetPredAndSuccList::handle_request()
   auto response = message->generate_response();
 
   Peer predecessor;
-  if(!routing_table_->try_get_predecessor(predecessor))
-  {
-    //state_ = MESSAGE_STATE::FAILED;
-    //set_promise({});
-    //RequestDestruction();
-    //return;
-  }
-  else
+  if(routing_table_->try_get_predecessor(predecessor))
   {
     auto peers = routing_table_->get_peers();
     peers.insert(peers.begin(), predecessor);
