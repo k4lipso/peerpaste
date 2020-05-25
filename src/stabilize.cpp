@@ -159,6 +159,11 @@ void  Stabilize::handle_get_self_and_succ_list_notify(MessagingBase* MessagePtr)
   dependencies_.clear();
   time_point_ = std::chrono::system_clock::now() + DURATION;
 
+  //if(transport_object->is_request()){
+  //  create_notification();
+  //  return;
+  //}
+
   routing_table_->replace_successor_list(SelfAndSuccList);
   *stabilize_flag_ = false;
   create_notification();

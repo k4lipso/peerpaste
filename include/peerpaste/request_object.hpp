@@ -38,7 +38,6 @@ enum class MessageType
 template<typename Handler>
 struct HandlerObject
 {
-//  HandlerObject() {}
   HandlerObject(std::string correlation_id, const Handler& handler, std::weak_ptr<MessagingBase> parent)
     : correlation_id_(std::move(correlation_id))
     , handler_(handler)
