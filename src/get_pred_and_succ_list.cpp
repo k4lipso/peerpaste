@@ -98,7 +98,8 @@ void GetPredAndSuccList::handle_request()
 
 void GetPredAndSuccList::handle_response(RequestObject request_object)
 {
-  if(request_object.is_request()){
+  if(request_object.is_request())
+  {
     state_ = MESSAGE_STATE::FAILED;
     set_promise({});
     RequestDestruction();

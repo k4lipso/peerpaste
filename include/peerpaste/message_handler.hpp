@@ -21,6 +21,7 @@
 #include "peerpaste/messages/stabilize.hpp"
 #include "peerpaste/messages/get_pred_and_succ_list.hpp"
 #include "peerpaste/messages/get_self_and_succ_list.hpp"
+#include "peerpaste/messages/broadcast_file_list.hpp"
 
 
 class MessageHandler : public ObserverBase
@@ -34,11 +35,12 @@ public:
     MessageHandler(short port)
       : routing_table_()
       , storage_(nullptr)
+      , static_storage_(nullptr)
       , aggregator_()
       , stabilize_flag_(false)
       , check_predecessor_flag_(false)
       , thread_pool_(0)
-      , message_factory_{ &routing_table_ }
+      , message_factory_{nullptr}
     {
         //TODO: setup self more accurate
         auto self_ip = "127.0.0.1";
@@ -47,6 +49,10 @@ public:
         routing_table_.set_self(Peer(self_id, self_ip, self_port));
 
         storage_ = std::make_unique<Storage>(self_id);
+        static_storage_ = std::make_unique<StaticStorage>(self_id);
+        message_factory_ =
+            std::make_unique<peerpaste::message::MessageFactory>(&routing_table_,
+                                                                 static_storage_.get());
     }
 
     void init(std::shared_ptr<peerpaste::ConcurrentQueue<RequestObject>> queue__)
@@ -79,7 +85,7 @@ public:
 
     void run(){
         run_thread_.emplace_back( [this]{ run_chord_internal(); } );
-        //run_thread_.emplace_back( [=]{ run_paste_internal(); } );
+        run_thread_.emplace_back( [this]{ run_paste_internal(); } );
     }
 
     void stop()
@@ -110,12 +116,15 @@ public:
 
     void run_paste_internal()
     {
-        stabilize_storage();
-        std::this_thread::sleep_for(std::chrono::milliseconds(5000));
+      //stabilize_storage();
+      //const auto files = static_storage_->get_files();
+      create_request<peerpaste::message::BroadcastFilelist>(&routing_table_, static_storage_.get());
 
-        if (running_) {
-          run_paste_internal();
-        }
+      std::this_thread::sleep_for(std::chrono::milliseconds(800));
+
+      if (running_) {
+        run_paste_internal();
+      }
     }
 
     void push_to_write_queue(RequestObjectSPtr shared_transport_object)
@@ -133,7 +142,7 @@ public:
 	void create_request(ArgsT&&... Args)
 	{
 		std::shared_ptr<MessageType> Message =
-				message_factory_.create_request<MessageType>(std::forward<ArgsT>(Args)...);
+				message_factory_->create_request<MessageType>(std::forward<ArgsT>(Args)...);
 
 		Message->Attach(this);
 		thread_pool_.submit(Message);
@@ -165,7 +174,7 @@ public:
   void handle_request(RequestObjectUPtr transport_object)
   {
     std::shared_ptr<MessagingBase> message_object
-      = message_factory_.create_from_request(*transport_object);
+      = message_factory_->create_from_request(*transport_object);
 
     if(message_object)
     {
@@ -680,6 +689,7 @@ private:
     peerpaste::deprecated::ConcurrentRequestHandler<RequestObjectSPtr> open_requests_deprecated_;
     std::shared_ptr<peerpaste::ConcurrentQueue<RequestObject>>  send_queue_;
     std::unique_ptr<Storage> storage_;
+    std::unique_ptr<StaticStorage> static_storage_;
     Aggregator aggregator_;
 
     mutable std::mutex mutex_;
@@ -689,7 +699,7 @@ private:
     bool running_ = true;
     std::vector<std::thread> run_thread_;
 
-    peerpaste::message::MessageFactory message_factory_;
+    std::unique_ptr<peerpaste::message::MessageFactory> message_factory_;
     peerpaste::ConcurrentDeque<std::shared_ptr<MessagingBase>> active_messages_;
     peerpaste::ConcurrentSet<HandlerObject<HandlerFunction>, std::less<>> active_handlers_;
 };

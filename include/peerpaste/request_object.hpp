@@ -33,6 +33,8 @@ enum class MessageType
   GET_SELF_AND_SUCC_LIST,
   GET_PRED_AND_SUCC_LIST,
   STABILIZE,
+  BROADCAST_FILELIST,
+  GET_FILE,
 };
 
 template<typename Handler>

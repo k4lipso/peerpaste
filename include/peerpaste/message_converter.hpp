@@ -62,6 +62,12 @@ public:
             message->add_peer(peer);
         }
 
+        const int protobuf_files_size = protobuf_message->files_size();
+        for(int i = 0; i < protobuf_files_size; i++){
+          auto protobuf_file = protobuf_message->files(i);
+          message->add_file(protobuf_file.file_name());
+        }
+
         if(protobuf_message->has_data()){
             message->set_data(protobuf_message->data());
         }
@@ -90,6 +96,11 @@ public:
             protobuf_peer->set_peer_id(peer.get_id());
             protobuf_peer->set_peer_ip(peer.get_ip());
             protobuf_peer->set_peer_port(peer.get_port());
+        }
+
+        for(const auto file : message->get_files()){
+            auto protobuf_filename = protobuf_message->add_files();
+            protobuf_filename->set_file_name(file);
         }
 
         if(message->get_data() != ""){

@@ -8,14 +8,17 @@
 #include "peerpaste/messages/get_successor_list.hpp"
 #include "peerpaste/messages/get_self_and_succ_list.hpp"
 #include "peerpaste/messages/get_pred_and_succ_list.hpp"
+#include "peerpaste/messages/broadcast_file_list.hpp"
+#include "peerpaste/messages/get_file.hpp"
 
 #include <memory>
 
 namespace peerpaste::message
 {
 
-MessageFactory::MessageFactory(ConcurrentRoutingTable<Peer>* routing_table)
+MessageFactory::MessageFactory(ConcurrentRoutingTable<Peer>* routing_table, StaticStorage* storage)
 	: routing_table_{ routing_table }
+	, storage_{storage}
 {}
 
 std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const RequestObject& request)
@@ -55,6 +58,14 @@ std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const Request
 	if(type == "get_self_and_successor_list")
 	{
 		return std::make_unique<GetSelfAndSuccList>(routing_table_, request);
+	}
+	if(type == "broadcast_filelist")
+	{
+		return std::make_unique<BroadcastFilelist>(routing_table_, storage_, request);
+	}
+	if(type == "get_file")
+	{
+		return std::make_unique<GetFile>(storage_, request);
 	}
 
 	if(type == "put")

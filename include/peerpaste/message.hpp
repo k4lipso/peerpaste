@@ -81,7 +81,7 @@ public:
         peers_.push_back(peer);
     }
 
-    const std::string stringify() const
+    std::string stringify() const
     {
         std::stringstream str;
         str << header_.stringify();
@@ -130,17 +130,22 @@ public:
       return transaction_id;
     }
 
-    const std::string get_transaction_id() const
+    std::string get_transaction_id() const
     {
         return get_header().get_transaction_id();
     }
 
-    const std::string get_correlational_id() const
+    void set_correlational_id(const std::string& id)
+    {
+        get_header().set_correlational_id(id);
+    }
+
+    std::string get_correlational_id() const
     {
         return get_header().get_correlational_id();
     }
 
-    const std::string get_request_type() const
+    std::string get_request_type() const
     {
         return get_header().get_request_type();
     }
@@ -155,9 +160,25 @@ public:
         return data_;
     }
 
+    void add_file(const std::string& filename)
+    {
+      files_.push_back(filename);
+    }
+
+    void set_filelist(const std::vector<std::string>& files)
+    {
+      files_ = files;
+    }
+
+    auto get_files() const
+    {
+      return files_;
+    }
+
 private:
     Header header_;
     std::vector<Peer> peers_;
+    std::vector<std::string> files_;
     std::string data_;
 };
 

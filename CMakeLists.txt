@@ -56,6 +56,8 @@ add_library(libpeerpaste
     "src/get_self_and_succ_list.cpp"
     "src/get_pred_and_succ_list.cpp"
     "src/stabilize.cpp"
+    "src/broadcast_file_list.cpp"
+    "src/get_file.cpp"
     "src/message_factory.cpp"
     "src/concurrent_request_handler.cpp"
     "src/concurrent_set.cpp"
