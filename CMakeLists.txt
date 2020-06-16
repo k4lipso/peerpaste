@@ -77,6 +77,8 @@ target_include_directories(libpeerpaste
 target_link_libraries(libpeerpaste
     PUBLIC
         ${CMAKE_THREAD_LIBS_INIT}
+        Boost::log_setup
+        Boost::log
         Boost::system
         Boost::thread
         Boost::regex

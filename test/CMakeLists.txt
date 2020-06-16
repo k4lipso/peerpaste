@@ -15,5 +15,8 @@ target_include_directories(test
 target_link_libraries(test
     PUBLIC
         libpeerpaste
- 	-fsanitize=address
+        -fsanitize=address
 )
+
+enable_testing()
+add_test(NAME test COMMAND test)
