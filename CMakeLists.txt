@@ -8,27 +8,22 @@ SET(CMAKE_CXX_FLAGS  "-g -O0")
 project("PeerPaste" CXX)
 
 option(BUILD_TESTS "test will be build" OFF)
-option(DEBUG "sanitizers activated" OFF)
+option(BUILD_DOC "build documentation" OFF)
+option(SANITIZE "address sanitizers" OFF)
 
 find_package (Threads REQUIRED)
-
 find_package(Protobuf REQUIRED)
-# add_subdirectory(proto)
-
 find_package(CryptoPP REQUIRED)
 
-SET(Boost_USE_STATIC_LIBS OFF)
 SET(Boost_USE_MULTITHREAD ON)
-FIND_PACKAGE(Boost 1.71.0 REQUIRED COMPONENTS log_setup log program_options system thread regex)
-#FIND_PACKAGE(Boost 1.71.0 REQUIRED)
-MESSAGE("Boost information")
-MESSAGE("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
-MESSAGE("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
-MESSAGE("Boost Libraries: ${Boost_LIBRARIES}")
-MESSAGE("PROTOBUF INCLUDE DIRS ${PROTOBUF_INCLUDE_DIRS}")
-MESSAGE("PROTOBUF LIBRARIES ${PROTOBUF_LIBRARIES}")
+FIND_PACKAGE(Boost 1.72.0 REQUIRED COMPONENTS log_setup log program_options system thread regex filesystem)
 
-# Add sanitizer
+message("Boost information")
+message("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
+message("Boost_LIBRARY_DIRS: ${Boost_LIBRARY_DIRS}")
+message("Boost Libraries: ${Boost_LIBRARIES}")
+message("PROTOBUF INCLUDE DIRS ${PROTOBUF_INCLUDE_DIRS}")
+message("PROTOBUF LIBRARIES ${PROTOBUF_LIBRARIES}")
 
 add_library(libpeerpaste
     "include/peerpaste/peerpaste.hpp"
@@ -67,7 +62,6 @@ add_library(libpeerpaste
     "include/peerpaste/concurrent_routing_table.hpp"
     "include/peerpaste/consumer.hpp"
     "include/peerpaste/concurrent_request_handler.hpp"
-
     )
 
 set_target_properties(libpeerpaste PROPERTIES LINKER_LANGUAGE CXX)
@@ -83,15 +77,10 @@ target_include_directories(libpeerpaste
 target_link_libraries(libpeerpaste
     PUBLIC
         ${CMAKE_THREAD_LIBS_INIT}
-        #${Boost_LOG_LIBRARY}
-        #${Boost_LIBRARIES}
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log_setup.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_program_options.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_system.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_thread.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_regex.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_filesystem.so.1.71.0"
+        Boost::system
+        Boost::thread
+        Boost::regex
+        Boost::filesystem
         ${PROTOBUF_LIBRARIES}
         ${CRYPTOPP_LIBRARIES}
         -lsodium
@@ -110,20 +99,10 @@ target_include_directories(peerpaste
 
 target_link_libraries(peerpaste
     PUBLIC
-        #${Boost_LOG_LIBRARY}
-        #${Boost_LIBRARIES}
-        #${Boost_LIBRARY_DIRS}
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log_setup.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_log.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_program_options.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_system.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_thread.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_regex.so.1.71.0"
-        "/nix/store/qn536vqp6gpfizn41s5wzrbcirgbcb3m-boost-1.71.0/lib/libboost_filesystem.so.1.71.0"
+        Boost::log_setup
+        Boost::log
+        Boost::program_options
         libpeerpaste
-        # if(DEBUG)
-            # -fsanitize=address
-        # endif()
 )
 
 target_compile_options(peerpaste
@@ -134,29 +113,36 @@ target_compile_options(peerpaste
 if(BUILD_TESTS)
     add_subdirectory(test)
 endif()
-#if(DEBUG)
-#    add_definitions(-Wall -fsanitize=address -g3 -fno-omit-frame-pointer)
-#endif()
 
-# look for Doxygen package
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-  message("Found Doxygen")
-  # exclude sqlite code
-  set(DOXYGEN_EXCLUDE_PATTERNS
-    */sqlite3/*
-    )
-  # doxygen settings can be set here, prefixed with "DOXYGEN_"
-  set(DOXYGEN_SOURCE_BROWSER YES)
-  set(DOXYGEN_EXTRACT_PRIVATE YES)
-  set(DOXYGEN_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/api-docs")
-  # this target will only be built if specifically asked to.
-  # run "make api-docs" to create the doxygen documentation
-  doxygen_add_docs(
-    api-docs
-    ${PROJECT_SOURCE_DIR}
-    COMMENT "Generate API-documents for NoteSearch."
-    )
-endif(DOXYGEN_FOUND)
+
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g3 -fno-omit-frame-pointer")
+
+if(SANITIZE)
+  message("compiling with address sanitzers...")
+  set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fsanitize=address")
+endif()
+
+if(BUILD_DOC)
+  # look for Doxygen package
+  find_package(Doxygen)
+  if(DOXYGEN_FOUND)
+    message("Found Doxygen")
+    # exclude sqlite code
+    set(DOXYGEN_EXCLUDE_PATTERNS
+      */sqlite3/*
+      )
+    # doxygen settings can be set here, prefixed with "DOXYGEN_"
+    set(DOXYGEN_SOURCE_BROWSER YES)
+    set(DOXYGEN_EXTRACT_PRIVATE YES)
+    set(DOXYGEN_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/api-docs")
+    # this target will only be built if specifically asked to.
+    # run "make api-docs" to create the doxygen documentation
+    doxygen_add_docs(
+      api-docs
+      ${PROJECT_SOURCE_DIR}
+      COMMENT "Generate API-documents for NoteSearch."
+      )
+  endif(DOXYGEN_FOUND)
+endif()
 
 message("End")
