@@ -2,7 +2,8 @@
 
 #include "peerpaste/thread_pool.hpp"
 
-ThreadPool::ThreadPool(unsigned thread_count) : done_(false)
+ThreadPool::ThreadPool(unsigned thread_count)
+	: done_(false)
 {
 	thread_count = thread_count ? thread_count : std::thread::hardware_concurrency();
 	threads_.reserve(thread_count);
@@ -16,7 +17,7 @@ ThreadPool::~ThreadPool()
 {
 	done_ = true;
 
-	for(auto& thread : threads_)
+	for(auto &thread : threads_)
 	{
 		thread.join();
 	}

@@ -1,27 +1,28 @@
 #include "peerpaste/message_factory.hpp"
 #include "peerpaste/cryptowrapper.hpp"
 
-#include "peerpaste/messages/notify.hpp"
-#include "peerpaste/messages/check_predecessor.hpp"
-#include "peerpaste/messages/query.hpp"
-#include "peerpaste/messages/find_successor.hpp"
-#include "peerpaste/messages/get_successor_list.hpp"
-#include "peerpaste/messages/get_self_and_succ_list.hpp"
-#include "peerpaste/messages/get_pred_and_succ_list.hpp"
 #include "peerpaste/messages/broadcast_file_list.hpp"
+#include "peerpaste/messages/check_predecessor.hpp"
+#include "peerpaste/messages/find_successor.hpp"
 #include "peerpaste/messages/get_file.hpp"
+#include "peerpaste/messages/get_pred_and_succ_list.hpp"
+#include "peerpaste/messages/get_self_and_succ_list.hpp"
+#include "peerpaste/messages/get_successor_list.hpp"
+#include "peerpaste/messages/notify.hpp"
+#include "peerpaste/messages/query.hpp"
 
 #include <memory>
 
 namespace peerpaste::message
 {
 
-MessageFactory::MessageFactory(ConcurrentRoutingTable<Peer>* routing_table, StaticStorage* storage)
-	: routing_table_{ routing_table }
+MessageFactory::MessageFactory(ConcurrentRoutingTable<Peer> *routing_table, StaticStorage *storage)
+	: routing_table_{routing_table}
 	, storage_{storage}
-{}
+{
+}
 
-std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const RequestObject& request)
+std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const RequestObject &request)
 {
 	if(!request.is_request())
 	{
@@ -29,7 +30,7 @@ std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const Request
 		return nullptr;
 	}
 
-	const auto type{ request.get_request_type() };
+	const auto type{request.get_request_type()};
 
 	if(type == "notify")
 	{
@@ -87,4 +88,4 @@ std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const Request
 	return nullptr;
 }
 
-} //closing namespace peerpaste::message
+} // namespace peerpaste::message

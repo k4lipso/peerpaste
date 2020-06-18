@@ -1,33 +1,36 @@
 #include "peerpaste/aggregator.hpp"
 
-Aggregator::Aggregator(){}
+Aggregator::Aggregator()
+{
+}
 
 const RequestObjectPtr Aggregator::add_aggregat(MessagePtr message)
 {
-    std::scoped_lock lk(mutex_);
-    //for every aggregat
-    for(auto aggregat = aggregats_.begin();
-             aggregat != aggregats_.end();
-             aggregat++){
+	std::scoped_lock lk(mutex_);
+	// for every aggregat
+	for(auto aggregat = aggregats_.begin(); aggregat != aggregats_.end(); aggregat++)
+	{
 
-        //skip if the message doesnt match the aggregat
-        if(not aggregat->add_message(message)){
-            continue;
-        }
+		// skip if the message doesnt match the aggregat
+		if(not aggregat->add_message(message))
+		{
+			continue;
+		}
 
-        //if complete return result message and erase aggregat
-        if(aggregat->is_complete()){
-            auto result = aggregat->get_result_message();
-            aggregats_.erase(aggregat);
-            return result;
-        }
-        break;
-    }
-    return nullptr;
+		// if complete return result message and erase aggregat
+		if(aggregat->is_complete())
+		{
+			auto result = aggregat->get_result_message();
+			aggregats_.erase(aggregat);
+			return result;
+		}
+		break;
+	}
+	return nullptr;
 }
 
 void Aggregator::add_aggregat(RequestObjectPtr request, std::unordered_set<std::string> ids)
 {
-    std::scoped_lock lk(mutex_);
-    aggregats_.push_back(Aggregat(request, ids));
+	std::scoped_lock lk(mutex_);
+	aggregats_.push_back(Aggregat(request, ids));
 }

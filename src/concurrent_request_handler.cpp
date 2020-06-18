@@ -3,4 +3,4 @@
 namespace peerpaste
 {
 
-} // closing namespace peerpaste
+} // namespace peerpaste

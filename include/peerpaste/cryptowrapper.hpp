@@ -1,21 +1,21 @@
 #pragma once
 
-#include "cryptopp/sha.h"
-#include "cryptopp/filters.h"
-#include "cryptopp/hex.h"
-#include "sodium.h"
+#include <boost/log/attributes/named_scope.hpp>
+#include <boost/log/attributes/timer.hpp>
+#include <boost/log/common.hpp>
+#include <boost/log/expressions.hpp>
+#include <boost/log/sources/logger.hpp>
+#include <boost/log/support/date_time.hpp>
+#include <boost/log/utility/setup/common_attributes.hpp>
+#include <boost/log/utility/setup/console.hpp>
+#include <boost/log/utility/setup/file.hpp>
 #include <cctype>
 #include <iostream>
 
-#include <boost/log/common.hpp>
-#include <boost/log/expressions.hpp>
-#include <boost/log/utility/setup/file.hpp>
-#include <boost/log/utility/setup/console.hpp>
-#include <boost/log/utility/setup/common_attributes.hpp>
-#include <boost/log/attributes/timer.hpp>
-#include <boost/log/attributes/named_scope.hpp>
-#include <boost/log/sources/logger.hpp>
-#include <boost/log/support/date_time.hpp>
+#include "cryptopp/filters.h"
+#include "cryptopp/hex.h"
+#include "cryptopp/sha.h"
+#include "sodium.h"
 namespace logging = boost::log;
 namespace sinks = boost::log::sinks;
 namespace attrs = boost::log::attributes;
@@ -25,68 +25,57 @@ namespace keywords = boost::log::keywords;
 
 enum severity_level
 {
-    notify,
-    info,
-    warning,
-    error,
-    critical,
-    debug,
-    message_out,
-    message_in
+	notify,
+	info,
+	warning,
+	error,
+	critical,
+	debug,
+	message_out,
+	message_in
 };
 
 // The formatting logic for the severity level
-template< typename CharT, typename TraitsT >
-inline std::basic_ostream< CharT, TraitsT >& operator<< (
-    std::basic_ostream< CharT, TraitsT >& strm, severity_level lvl)
+template<typename CharT, typename TraitsT>
+inline std::basic_ostream<CharT, TraitsT> &operator<<(std::basic_ostream<CharT, TraitsT> &strm, severity_level lvl)
 {
-    static const char* const str[] =
-    {
-        "notify",
-        "info",
-        "warning",
-        "error",
-        "critical",
-        "debug",
-        "message_out",
-        "message_in"
-    };
-    if (static_cast< std::size_t >(lvl) < (sizeof(str) / sizeof(*str)))
-        strm << str[lvl];
-    else
-        strm << static_cast< int >(lvl);
-    return strm;
+	static const char *const str[] = {
+		"notify", "info", "warning", "error", "critical", "debug", "message_out", "message_in"};
+	if(static_cast<std::size_t>(lvl) < (sizeof(str) / sizeof(*str)))
+		strm << str[lvl];
+	else
+		strm << static_cast<int>(lvl);
+	return strm;
 }
 
-namespace util {
+namespace util
+{
 
-    /**
-     * Generates an SHA256 hash from the given string using crypto++
-     */
-    const std::string generate_sha256(const std::string& data);
-    const std::string generate_sha256(const std::string& ip, const std::string& port);
-    const std::string encrypt(const std::string& key_str, const std::string& data);
-    const std::string decrypt(const std::string& key_str, const std::string& data);
+/**
+ * Generates an SHA256 hash from the given string using crypto++
+ */
+const std::string generate_sha256(const std::string &data);
+const std::string generate_sha256(const std::string &ip, const std::string &port);
+const std::string encrypt(const std::string &key_str, const std::string &data);
+const std::string decrypt(const std::string &key_str, const std::string &data);
 
-    const bool between(const std::string& id_1, const std::string& id_2,
-                                                const std::string& id_3);
-    const size_t generate_hash(const std::string& data);
-    const size_t generate_limited_hash(const std::string& data, const size_t limit);
+const bool between(const std::string &id_1, const std::string &id_2, const std::string &id_3);
+const size_t generate_hash(const std::string &data);
+const size_t generate_limited_hash(const std::string &data, const size_t limit);
 
-    void log(severity_level lvl, const std::string& message);
+void log(severity_level lvl, const std::string &message);
 
+/* enum severity_level */
+/* { */
+/*     info, */
+/*     warning, */
+/*     error, */
+/*     critical, */
+/*     debug, */
+/*     message_out, */
+/*     message_in */
+/* }; */
 
-    /* enum severity_level */
-    /* { */
-    /*     info, */
-    /*     warning, */
-    /*     error, */
-    /*     critical, */
-    /*     debug, */
-    /*     message_out, */
-    /*     message_in */
-    /* }; */
+/* void log(severity_level lvl, const std::string& message); */
 
-    /* void log(severity_level lvl, const std::string& message); */
-
-}
+} // namespace util

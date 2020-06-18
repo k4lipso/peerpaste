@@ -1,10 +1,10 @@
 #pragma once
 
-#include <thread>
-#include <vector>
 #include <atomic>
 #include <functional>
+#include <thread>
 #include <type_traits>
+#include <vector>
 
 #include "peerpaste/concurrent_queue.hpp"
 
@@ -17,12 +17,11 @@ public:
 	template<typename FunctionType>
 	void submit(std::shared_ptr<FunctionType> function)
 	{
-		work_queue_.push_new(std::bind(&FunctionType::operator(),
-																	 function));
+		work_queue_.push_new(std::bind(&FunctionType::operator(), function));
 	}
 
 	template<typename FunctionType>
-	void submit(FunctionType&& function)
+	void submit(FunctionType &&function)
 	{
 		using BareFunctionType = std::remove_cv_t<std::remove_reference_t<FunctionType>>;
 		work_queue_.push_new(std::bind(&BareFunctionType::operator(),
@@ -30,9 +29,9 @@ public:
 	}
 
 private:
-  void worker_thread();
+	void worker_thread();
 
-  std::atomic<bool> done_;
-  std::vector<std::thread> threads_;
-  peerpaste::ConcurrentQueue<std::function<void()>> work_queue_;
+	std::atomic<bool> done_;
+	std::vector<std::thread> threads_;
+	peerpaste::ConcurrentQueue<std::function<void()>> work_queue_;
 };

@@ -16,7 +16,7 @@ find_package(Protobuf REQUIRED)
 find_package(CryptoPP REQUIRED)
 
 SET(Boost_USE_MULTITHREAD ON)
-FIND_PACKAGE(Boost 1.72.0 REQUIRED COMPONENTS log_setup log program_options system thread regex filesystem)
+FIND_PACKAGE(Boost 1.71.0 REQUIRED COMPONENTS log_setup log program_options system thread regex filesystem)
 
 message("Boost information")
 message("Boost_INCLUDE_DIRS: ${Boost_INCLUDE_DIRS}")
