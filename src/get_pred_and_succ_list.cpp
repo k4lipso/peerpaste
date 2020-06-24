@@ -112,7 +112,6 @@ void GetPredAndSuccList::handle_response(RequestObject request_object)
 void GetPredAndSuccList::handle_failed()
 {
 	state_ = MESSAGE_STATE::FAILED;
-	set_promise({});
 }
 
 } // namespace peerpaste::message
