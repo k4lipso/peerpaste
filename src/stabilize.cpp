@@ -204,6 +204,11 @@ void Stabilize::handle_response(RequestObject request_object)
 }
 void Stabilize::handle_failed()
 {
+	if(dependencies_.size() == 1)
+	{
+		routing_table_->pop_front();
+	}
+
 	state_ = MESSAGE_STATE::FAILED;
 	*stabilize_flag_ = false;
 }
