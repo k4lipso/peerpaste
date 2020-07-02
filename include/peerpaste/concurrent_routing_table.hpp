@@ -157,15 +157,17 @@ public:
 		return successor_list_;
 	}
 
-	void pop_front()
+	bool pop_front()
 	{
 		std::scoped_lock lk(mutex_);
 		if(successor_list_.size() <= 1)
 		{
 			util::log(warning, "Cant pop fron, succ list to small");
-			return;
+			return false;
 		}
+
 		successor_list_.erase(successor_list_.begin());
+		return true;
 	}
 
 	void wait_til_valid()
