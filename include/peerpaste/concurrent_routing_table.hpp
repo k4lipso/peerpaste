@@ -24,6 +24,7 @@ class ConcurrentRoutingTable
 	std::unique_ptr<T> self_;
 	std::unique_ptr<T> predecessor_;
 	std::vector<T> successor_list_;
+	static constexpr int succ_list_size_ = 10;
 
 public:
 	ConcurrentRoutingTable()
@@ -128,14 +129,14 @@ public:
 	{
 		std::scoped_lock lk(mutex_);
 		successor_list_ = std::move(new_succ_list);
-		successor_list_.resize(3);
+		successor_list_.resize(succ_list_size_);
 	}
 
 	void replace_after_successor(std::vector<T> new_succ_list)
 	{
 		std::scoped_lock lk(mutex_);
 		successor_list_.insert(successor_list_.begin() + 1, new_succ_list.begin(), new_succ_list.end());
-		successor_list_.resize(3);
+		successor_list_.resize(succ_list_size_);
 	}
 
 	size_t size() const
