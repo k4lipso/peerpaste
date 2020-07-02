@@ -1,4 +1,3 @@
-#include "peerpaste/aggregator.hpp"
 #include "peerpaste/concurrent_queue.hpp"
 #include "peerpaste/concurrent_routing_table.hpp"
 #include "peerpaste/consumer.hpp"

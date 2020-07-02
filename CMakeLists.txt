@@ -35,8 +35,6 @@ add_library(libpeerpaste
     "include/peerpaste/server.hpp"
     "include/peerpaste/message_handler.hpp"
     "include/peerpaste/request_object.hpp"
-    "src/aggregator.cpp"
-    "src/aggregat.cpp"
     "src/cryptowrapper.cpp"
     "src/thread_pool.cpp"
     "src/messaging_base.cpp"

@@ -3,7 +3,6 @@
 #include <functional>
 #include <future>
 
-#include "peerpaste/aggregator.hpp"
 #include "peerpaste/concurrent_request_handler.hpp"
 #include "peerpaste/concurrent_routing_table.hpp"
 #include "peerpaste/message.hpp"
