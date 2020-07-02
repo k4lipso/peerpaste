@@ -84,7 +84,6 @@ void Stabilize::handle_get_pred_and_succ_list_notify(MessagingBase *MessagePtr)
 	// PredAndSuccList consists of: {predecessor, successor_list}
 	auto PredAndSuccList = dynamic_cast<GetPredAndSuccList *>(MessagePtr)->get_future().get().value();
 
-	dependencies_.clear();
 	time_point_ = std::chrono::system_clock::now() + DURATION;
 
 	if(PredAndSuccList.empty())
@@ -135,7 +134,7 @@ void Stabilize::handle_get_pred_and_succ_list_notify(MessagingBase *MessagePtr)
 		auto GetSelfAndSuccListMessage = std::make_shared<GetSelfAndSuccList>(successors_predecessor);
 		GetSelfAndSuccListMessage->Attach(this);
 
-		dependencies_.emplace_back(std::make_pair(std::move(GetSelfAndSuccListMessage), true));
+		dependencies_.emplace(dependencies_.begin(), std::make_pair(std::move(GetSelfAndSuccListMessage), true));
 		(*dependencies_.front().first)();
 	}
 	else
@@ -149,7 +148,6 @@ void Stabilize::handle_get_self_and_succ_list_notify(MessagingBase *MessagePtr)
 {
 	const auto SelfAndSuccList = dynamic_cast<GetSelfAndSuccList *>(MessagePtr)->get_future().get().value();
 
-	dependencies_.clear();
 	time_point_ = std::chrono::system_clock::now() + DURATION;
 
 	// if(transport_object->is_request()){
@@ -173,7 +171,7 @@ void Stabilize::create_notification()
 	auto NotifyMessage = std::make_shared<Notification>(routing_table_);
 	NotifyMessage->Attach(this);
 
-	dependencies_.emplace_back(std::make_pair(std::move(NotifyMessage), true));
+	dependencies_.emplace(dependencies_.begin(), std::make_pair(std::move(NotifyMessage), true));
 	(*dependencies_.front().first)();
 }
 
@@ -192,7 +190,7 @@ void Stabilize::create_request()
 	auto GetPredAndSuccListMessage = std::make_shared<GetPredAndSuccList>(target);
 	GetPredAndSuccListMessage->Attach(this);
 
-	dependencies_.emplace_back(std::make_pair(std::move(GetPredAndSuccListMessage), true));
+	dependencies_.emplace(dependencies_.begin(), std::make_pair(std::move(GetPredAndSuccListMessage), true));
 	(*dependencies_.front().first)();
 }
 
