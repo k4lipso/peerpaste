@@ -98,8 +98,7 @@ MESSAGE_STATE MessagingBase::check_state()
 		return state_;
 	}
 
-	const auto already_timed_out = [](auto dependencie_pair)
-	{
+	const auto already_timed_out = [](auto dependencie_pair) {
 		const auto state = dependencie_pair.first->check_state();
 		if(state == MESSAGE_STATE::FAILED || state == MESSAGE_STATE::TIMEDOUT)
 		{
@@ -142,7 +141,7 @@ bool MessagingBase::is_timed_out()
 		return true;
 	};
 
-	dependencies_.erase(std::remove_if(dependencies_.begin(), dependencies_.end(), check_time_out), dependencies_.end());
+	std::for_each(dependencies_.begin(), dependencies_.end(), check_time_out);
 
 	return removed_essential_dependency;
 }
