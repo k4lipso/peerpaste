@@ -82,12 +82,32 @@ std::chrono::time_point<std::chrono::system_clock> MessagingBase::get_timeout() 
 
 MESSAGE_STATE MessagingBase::check_state()
 {
+	std::scoped_lock lk{mutex_};
 	if(is_done_)
 	{
-		return MESSAGE_STATE::DONE;
+		return state_;
 	}
 
-	if(is_timed_out())
+	if(std::chrono::system_clock::now() > time_point_)
+	{
+		util::log(debug, "Message Timed Out");
+		util::log(debug, std::to_string(static_cast<int>(type_)));
+		state_ = MESSAGE_STATE::TIMEDOUT;
+		is_done_ = true;
+		return state_;
+	}
+
+	const auto already_timed_out = [](auto dependencie_pair)
+	{
+		const auto state = dependencie_pair.first->check_state();
+		if(state == MESSAGE_STATE::FAILED || state == MESSAGE_STATE::TIMEDOUT)
+		{
+			return dependencie_pair.second;
+		}
+		return false;
+	};
+
+	if(std::any_of(dependencies_.begin(), dependencies_.end(), already_timed_out))
 	{
 		util::log(debug, "Message Timed Out");
 		util::log(debug, std::to_string(static_cast<int>(type_)));

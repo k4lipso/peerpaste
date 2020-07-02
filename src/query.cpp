@@ -34,6 +34,7 @@ void Query::HandleNotification(const RequestObject &request_object)
 
 void Query::create_request()
 {
+	std::scoped_lock lk{mutex_};
 	Peer self;
 	if(not routing_table_->try_get_self(self))
 	{
@@ -59,6 +60,7 @@ void Query::create_request()
 
 void Query::handle_request()
 {
+	std::scoped_lock lk{mutex_};
 	auto message = request_.value().get_message();
 	if(message->get_peers().size() != 1)
 	{
@@ -86,6 +88,7 @@ void Query::handle_request()
 
 void Query::handle_response(RequestObject request_object)
 {
+	std::scoped_lock lk{mutex_};
 	auto message = request_object.get_message();
 
 	if(message->get_peers().size() == 1)

@@ -34,6 +34,7 @@ void GetSelfAndSuccList::HandleNotification(const RequestObject &request_object)
 
 void GetSelfAndSuccList::create_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!target_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -58,6 +59,7 @@ void GetSelfAndSuccList::create_request()
 
 void GetSelfAndSuccList::handle_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!request_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -92,6 +94,7 @@ void GetSelfAndSuccList::handle_request()
 
 void GetSelfAndSuccList::handle_response(RequestObject request_object)
 {
+	std::scoped_lock lk{mutex_};
 	if(request_object.is_request())
 	{
 		state_ = MESSAGE_STATE::FAILED;

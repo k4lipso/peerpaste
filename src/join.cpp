@@ -46,6 +46,7 @@ void Join::HandleNotification(const RequestObject &request_object, HandlerObject
 
 void Join::HandleNotification()
 {
+	std::scoped_lock lk{mutex_};
 	const auto MessagePtr = dependencies_.front().first;
 
 	if(MessagePtr == nullptr)
@@ -115,6 +116,7 @@ void Join::handle_get_successor_list_notify(MessagingBase *MessagePtr)
 
 void Join::create_request()
 {
+	std::scoped_lock lk{mutex_};
 	(*dependencies_.front().first)();
 }
 

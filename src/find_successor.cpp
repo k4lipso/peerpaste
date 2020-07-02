@@ -43,6 +43,7 @@ void FindSuccessor::HandleNotification(const RequestObject &request_object)
 
 void FindSuccessor::create_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!target_.has_value())
 	{
 		const auto successor_ptr = find_successor(id_);
@@ -79,6 +80,7 @@ void FindSuccessor::create_request()
 
 void FindSuccessor::handle_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!request_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -148,6 +150,7 @@ void FindSuccessor::forward_request()
 
 void FindSuccessor::handle_forwarded_response(RequestObject request_object)
 {
+	std::scoped_lock lk{mutex_};
 	if(!request_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -174,6 +177,7 @@ void FindSuccessor::handle_forwarded_response(RequestObject request_object)
 
 void FindSuccessor::handle_response(RequestObject request_object)
 {
+	std::scoped_lock lk{mutex_};
 	const auto message = request_object.get_message();
 	if(message->get_peers().size() != 1)
 	{

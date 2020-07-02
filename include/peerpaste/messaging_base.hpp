@@ -80,5 +80,6 @@ protected:
 	std::atomic<bool> is_done_ = false;
 	std::atomic<MESSAGE_STATE> state_ = MESSAGE_STATE::VALID;
 	std::atomic<bool> is_request_handler_ = false;
+	mutable std::mutex mutex_;
 	static constexpr std::chrono::milliseconds DURATION{10000};
 };

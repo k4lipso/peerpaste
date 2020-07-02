@@ -32,6 +32,7 @@ void GetSuccessorList::HandleNotification(const RequestObject &request_object)
 
 void GetSuccessorList::create_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!connection_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -56,6 +57,7 @@ void GetSuccessorList::create_request()
 
 void GetSuccessorList::handle_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!routing_table_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -80,6 +82,7 @@ void GetSuccessorList::handle_request()
 
 void GetSuccessorList::handle_response(RequestObject request_object)
 {
+	std::scoped_lock lk{mutex_};
 	set_promise(request_object.get_message()->get_peers());
 	state_ = MESSAGE_STATE::DONE;
 	RequestDestruction();

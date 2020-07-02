@@ -29,6 +29,7 @@ Notification::~Notification()
 
 void Notification::create_request()
 {
+	std::scoped_lock lk{mutex_};
 	Peer self;
 
 	if(not routing_table_->try_get_self(self))
@@ -64,6 +65,7 @@ void Notification::create_request()
 
 void Notification::handle_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!request_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -125,12 +127,14 @@ void Notification::handle_request()
 
 void Notification::handle_response(RequestObject request_object)
 {
+	std::scoped_lock lk{mutex_};
 	state_ = MESSAGE_STATE::DONE;
 	RequestDestruction();
 }
 
 void Notification::handle_failed()
 {
+	std::scoped_lock lk{mutex_};
 	state_ = MESSAGE_STATE::FAILED;
 }
 

@@ -179,6 +179,7 @@ void Stabilize::create_notification()
 
 void Stabilize::create_request()
 {
+	std::scoped_lock lk{mutex_};
 	Peer target;
 	if(not routing_table_->try_get_successor(target))
 	{

@@ -77,7 +77,7 @@ public:
 
 	virtual void HandleNotification() override
 	{
-		active_messages_.clean();
+		//active_messages_.clean();
 		active_handlers_.erase_if([](auto &Handler) { return !Handler.is_valid(); });
 	}
 
@@ -109,7 +109,8 @@ public:
 		}
 
 		open_requests_deprecated_.handle_timeouts();
-		std::this_thread::sleep_for(std::chrono::milliseconds(200));
+		active_messages_.clean();
+		std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 
 		if(running_)
 		{
@@ -123,7 +124,7 @@ public:
 		// const auto files = static_storage_->get_files();
 		create_request<peerpaste::message::BroadcastFilelist>(&routing_table_, static_storage_.get());
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(800));
+		std::this_thread::sleep_for(std::chrono::milliseconds(2000));
 
 		if(running_)
 		{

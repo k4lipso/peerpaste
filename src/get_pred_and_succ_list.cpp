@@ -34,6 +34,7 @@ void GetPredAndSuccList::HandleNotification(const RequestObject &request_object)
 
 void GetPredAndSuccList::create_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!target_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -58,6 +59,7 @@ void GetPredAndSuccList::create_request()
 
 void GetPredAndSuccList::handle_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!request_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -96,6 +98,7 @@ void GetPredAndSuccList::handle_request()
 
 void GetPredAndSuccList::handle_response(RequestObject request_object)
 {
+	std::scoped_lock lk{mutex_};
 	if(request_object.is_request())
 	{
 		state_ = MESSAGE_STATE::FAILED;

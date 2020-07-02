@@ -1,5 +1,4 @@
 #include "peerpaste/messages/get_file.hpp"
-
 namespace peerpaste::message
 {
 
@@ -37,6 +36,7 @@ void GetFile::HandleNotification(const RequestObject &request_object)
 
 void GetFile::create_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!target_.has_value() || !file_name_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -62,6 +62,7 @@ void GetFile::create_request()
 
 void GetFile::handle_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!request_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -95,6 +96,7 @@ void GetFile::handle_request()
 
 void GetFile::handle_response(RequestObject request_object)
 {
+	std::scoped_lock lk{mutex_};
 	if(request_object.is_request())
 	{
 		state_ = MESSAGE_STATE::FAILED;

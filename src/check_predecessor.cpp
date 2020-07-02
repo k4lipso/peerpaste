@@ -35,6 +35,7 @@ void CheckPredecessor::HandleNotification(const RequestObject &request_object)
 
 void CheckPredecessor::create_request()
 {
+	std::scoped_lock lk{mutex_};
 	Peer target;
 	if(not routing_table_->try_get_predecessor(target))
 	{
@@ -59,6 +60,7 @@ void CheckPredecessor::create_request()
 
 void CheckPredecessor::handle_request()
 {
+	std::scoped_lock lk{mutex_};
 	if(!request_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
@@ -83,6 +85,7 @@ void CheckPredecessor::handle_request()
 
 void CheckPredecessor::handle_response(RequestObject request_object)
 {
+	std::scoped_lock lk{mutex_};
 	*check_predecessor_flag_ = false;
 	if(!request_object.get_message()->is_request())
 	{
