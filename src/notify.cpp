@@ -134,7 +134,6 @@ void Notification::handle_response(RequestObject request_object)
 
 void Notification::handle_failed()
 {
-	std::scoped_lock lk{mutex_};
 	state_ = MESSAGE_STATE::FAILED;
 }
 
