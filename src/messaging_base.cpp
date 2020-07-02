@@ -94,6 +94,7 @@ MESSAGE_STATE MessagingBase::check_state()
 		util::log(debug, std::to_string(static_cast<int>(type_)));
 		state_ = MESSAGE_STATE::TIMEDOUT;
 		is_done_ = true;
+		handle_failed();
 		return state_;
 	}
 
