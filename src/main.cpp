@@ -30,10 +30,6 @@ int main(int argc, char **argv)
 
 	description.add_options()("help,h", "Display help message")("port,p", po::value<unsigned>(), "Port to listen on")(
 		"join,j", po::value<std::vector<std::string>>()->multitoken()->composing(), "IP and Port of Host to connect to")(
-		"put", po::value<std::vector<std::string>>()->multitoken()->composing(), "Path to text file")(
-		"get", po::value<std::vector<std::string>>()->multitoken()->composing(), "Hash of a stored Paste")(
-		"put-unencrypted", po::value<std::vector<std::string>>()->multitoken()->composing(), "Path to text file")(
-		"get-unencrypted", po::value<std::vector<std::string>>()->multitoken()->composing(), "Hash of a stored Paste")(
 		"verbose", "show additional information")("create", "create new ring")("log-messages", "log messages to files")(
 		"debug", "Send routing information to localhost");
 
@@ -139,60 +135,9 @@ int main(int argc, char **argv)
 		}
 		peerpaste.run();
 
-		if(vm.count("put"))
-		{
-			auto vec = vm["put"].as<std::vector<std::string>>();
-			auto ip = vec.at(0);
-			auto port = vec.at(1);
-			std::string filename = vec.at(2);
-			std::ifstream f(filename);
-			std::string data((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-			auto data_key = util::generate_sha256(data, "");
-			auto data_encrypted = util::encrypt(data_key, data);
-			auto future_ = peerpaste.async_put(ip, port, data_encrypted);
-			future_.wait();
-			std::cout << data_key << future_.get() << std::endl;
-		}
-		else if(vm.count("put-unencrypted"))
-		{
-			auto vec = vm["put-unencrypted"].as<std::vector<std::string>>();
-			auto ip = vec.at(0);
-			auto port = vec.at(1);
-			std::string filename = vec.at(2);
-			std::ifstream f(filename);
-			std::string data((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
-			auto future_ = peerpaste.async_put(ip, port, data);
-			future_.wait();
-			std::cout << future_.get() << std::endl;
-		}
-		else if(vm.count("get"))
-		{
-			auto vec = vm["get"].as<std::vector<std::string>>();
-			auto ip = vec.at(0);
-			auto port = vec.at(1);
-			auto data = vec.at(2);
-			auto data_key = data.substr(0, 64);
-			auto data_hash = data.substr(64, 64);
-			auto future_ = peerpaste.async_get(ip, port, data_hash);
-			future_.wait();
-			std::cout << util::decrypt(data_key, future_.get()) << std::endl;
-		}
-		else if(vm.count("get-unencrypted"))
-		{
-			auto vec = vm["get-unencrypted"].as<std::vector<std::string>>();
-			auto ip = vec.at(0);
-			auto port = vec.at(1);
-			auto data = vec.at(2);
-			auto future_ = peerpaste.async_get(ip, port, data);
-			future_.wait();
-			std::cout << future_.get() << std::endl;
-		}
-		else
-		{
-			// only call msg_handler.run() when this node
-			// should be part of the ring
-			peerpaste.wait_till_finish();
-		}
+		// only call msg_handler.run() when this node
+		// should be part of the ring
+		peerpaste.wait_till_finish();
 	}
 	catch(const po::error &ex)
 	{

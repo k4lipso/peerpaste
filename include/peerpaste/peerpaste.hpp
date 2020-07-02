@@ -72,16 +72,6 @@ public:
 		dispatcher_->send_routing_information();
 	}
 
-	std::future<std::string> async_put(const std::string &ip, const std::string &port, const std::string &data)
-	{
-		return handler_->put(ip, port, data);
-	}
-
-	std::future<std::string> async_get(const std::string &ip, const std::string &port, const std::string &data)
-	{
-		return handler_->get(ip, port, data);
-	}
-
 	void wait_till_finish()
 	{
 		dispatcher_->join();
