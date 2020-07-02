@@ -102,6 +102,7 @@ void CheckPredecessor::handle_failed()
 {
 	state_ = MESSAGE_STATE::FAILED;
 	routing_table_->reset_predecessor();
+	*check_predecessor_flag_ = false;
 }
 
 } // namespace peerpaste::message
