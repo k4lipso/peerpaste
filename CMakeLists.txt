@@ -15,6 +15,8 @@ find_package (Threads REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(CryptoPP REQUIRED)
 
+add_subdirectory(include/peerpaste/proto)
+
 SET(Boost_USE_MULTITHREAD ON)
 FIND_PACKAGE(Boost 1.71.0 REQUIRED COMPONENTS log_setup log program_options system thread regex filesystem)
 
@@ -55,7 +57,6 @@ add_library(libpeerpaste
     "src/concurrent_request_handler.cpp"
     "src/concurrent_set.cpp"
     "include/peerpaste/storage.hpp"
-    "include/peerpaste/proto/messages.pb.cc"
     "include/peerpaste/concurrent_queue.hpp"
     "include/peerpaste/concurrent_routing_table.hpp"
     "include/peerpaste/consumer.hpp"
@@ -70,6 +71,7 @@ target_include_directories(libpeerpaste
         $<INSTALL_INTERFACE:include>
         ${Boost_INCLUDE_DIRS}
         ${CRYPTOPP_INCLUDE_DIR}
+	      "${CMAKE_CURRENT_BINARY_DIR}/include/peerpaste"
     )
 
 target_link_libraries(libpeerpaste
@@ -81,6 +83,7 @@ target_link_libraries(libpeerpaste
         Boost::thread
         Boost::regex
         Boost::filesystem
+	      proto
         ${PROTOBUF_LIBRARIES}
         ${CRYPTOPP_LIBRARIES}
         -lsodium
