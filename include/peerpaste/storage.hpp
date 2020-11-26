@@ -15,7 +15,7 @@ class StaticStorage
 public:
 	StaticStorage(const std::string &id)
 		: id_(id)
-		, storage_path_("/tmp/" + id_ + '/')
+		, storage_path_("/tmp/peerpaste/" + id_ + '/')
 	{
 		if(not boost::filesystem::create_directories(storage_path_))
 		{
