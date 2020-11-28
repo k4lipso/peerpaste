@@ -7,6 +7,24 @@
 #include "cryptowrapper.hpp"
 #include "header.hpp"
 #include "peer.hpp"
+
+namespace peerpaste
+{
+
+struct FileInfo
+{
+	FileInfo(std::string name, size_t size)
+		: file_name(std::move(name))
+		, file_size(std::move(size))
+	{
+	}
+
+	std::string file_name;
+	size_t file_size = 0;
+};
+
+}
+
 class Message
 {
 public:
@@ -165,12 +183,12 @@ public:
 		return data_;
 	}
 
-	void add_file(const std::string &filename)
+	void add_file(const std::string &filename, int size = 0)
 	{
-		files_.push_back(filename);
+		files_.emplace_back(filename, size);
 	}
 
-	void set_filelist(const std::vector<std::string> &files)
+	void set_filelist(const std::vector<peerpaste::FileInfo> &files)
 	{
 		files_ = files;
 	}
@@ -183,7 +201,7 @@ public:
 private:
 	Header header_;
 	std::vector<Peer> peers_;
-	std::vector<std::string> files_;
+	std::vector<peerpaste::FileInfo> files_;
 	std::string data_;
 };
 

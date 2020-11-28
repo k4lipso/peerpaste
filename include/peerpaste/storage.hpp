@@ -9,6 +9,7 @@
 #include <map>
 
 #include "peerpaste/cryptowrapper.hpp"
+#include "peerpaste/message.hpp"
 
 class StaticStorage
 {
@@ -59,10 +60,10 @@ public:
 
 	auto get_files()
 	{
-		std::vector<std::string> file_names;
+		std::vector<peerpaste::FileInfo> file_names;
 		for(const auto &entry : std::filesystem::directory_iterator(storage_path_))
 		{
-			file_names.push_back(entry.path().filename().string());
+			file_names.emplace_back(entry.path().filename().string(), std::filesystem::file_size(entry.path()));
 		}
 
 		return file_names;

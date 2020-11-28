@@ -125,7 +125,7 @@ void BroadcastFilelist::handle_request()
 	flag_ = false;
 	for(const auto &file : file_list)
 	{
-		if(!storage_->exists(file))
+		if(!storage_->exists(file.file_name))
 		{
 			time_point_ = std::chrono::system_clock::now() + DURATION;
 
