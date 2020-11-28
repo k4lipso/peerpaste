@@ -66,7 +66,12 @@ public:
 		for(int i = 0; i < protobuf_files_size; i++)
 		{
 			auto protobuf_file = protobuf_message->files(i);
-			message->add_file(protobuf_file.file_name());
+			size_t size = 0;
+			if(protobuf_file.has_file_size())
+			{
+				size = protobuf_file.file_size();
+			}
+			message->add_file(protobuf_file.file_name(), size);
 		}
 
 		if(protobuf_message->has_data())
@@ -101,10 +106,11 @@ public:
 			protobuf_peer->set_peer_port(peer.get_port());
 		}
 
-		for(const auto file : message->get_files())
+		for(const auto file_info : message->get_files())
 		{
-			auto protobuf_filename = protobuf_message->add_files();
-			protobuf_filename->set_file_name(file);
+			auto protobuf_file_info = protobuf_message->add_files();
+			protobuf_file_info->set_file_name(file_info.file_name);
+			protobuf_file_info->set_file_size(file_info.file_size);
 		}
 
 		if(message->get_data() != "")
