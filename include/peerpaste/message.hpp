@@ -23,6 +23,18 @@ struct FileInfo
 	size_t file_size = 0;
 };
 
+struct FileChunk
+{
+	FileChunk(char* data_ptr, size_t data_size)
+		: size(data_size)
+		,	data{data_ptr, data_ptr + data_size}
+	{
+	}
+
+	size_t size;
+	std::vector<char> data;
+};
+
 }
 
 class Message
@@ -198,11 +210,22 @@ public:
 		return files_;
 	}
 
+	void set_file_chunk(const peerpaste::FileChunk& file_chunk)
+	{
+		file_chunk_ = file_chunk;
+	}
+
+	auto& get_file_chunk(const peerpaste::FileChunk& file_chunk)
+	{
+		return file_chunk_;
+	}
+
 private:
 	Header header_;
 	std::vector<Peer> peers_;
 	std::vector<peerpaste::FileInfo> files_;
 	std::string data_;
+	std::optional<peerpaste::FileChunk> file_chunk_;
 };
 
 #endif /* MESSAGE_HPP */
