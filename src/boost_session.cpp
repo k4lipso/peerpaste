@@ -43,6 +43,24 @@ void BoostSession::write(const std::vector<uint8_t> &encoded_message)
 		write_strand_.wrap([me = shared_from_this(), encoded_message]() { me->queue_message(encoded_message); }));
 }
 
+void BoostSession::write_direct(const DataBuffer& encoded_message, const std::function<void(bool)>& handler)
+{
+	async_write(socket_,
+							boost::asio::buffer(encoded_message),
+							write_strand_.wrap([&handler](boost::system::error_code const& ec,
+																						std::size_t)
+	{
+		if(ec)
+		{
+			std::stringstream sstr;
+			sstr << "BoostSession::write_direct failed, reason: " << ec << '\n';
+			util::log(error, sstr.str());
+		}
+
+		handler(static_cast<bool>(ec));
+	}));
+}
+
 void BoostSession::write_to(const std::vector<uint8_t> &encoded_message,
 														const std::string &address,
 														const std::string &port)

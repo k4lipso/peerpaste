@@ -20,6 +20,7 @@ public:
 	}
 	virtual void write(const DataBuffer &encoded_message) = 0;
 	virtual void write_to(const DataBuffer &encoded_message, const std::string &address, const std::string &port) = 0;
+	virtual void write_direct(const DataBuffer &encoded_message, const std::function<void(bool)>& handler) = 0;
 	virtual void read() = 0;
 	virtual const std::string get_client_ip() const = 0;
 
