@@ -63,7 +63,7 @@ public:
 	bool is_timed_out();
 
 protected:
-	virtual void create_handler_object(const std::string &correlation_id, HandlerFunction handler_function);
+	virtual void create_handler_object(const std::string &correlation_id, HandlerFunction handler_function, bool is_persistent = false);
 
 	virtual void create_request() = 0;
 	virtual void handle_request() = 0;
