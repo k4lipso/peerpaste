@@ -146,8 +146,8 @@ bool MessagingBase::is_timed_out()
 	return removed_essential_dependency;
 }
 
-void MessagingBase::create_handler_object(const std::string &correlation_id, HandlerFunction handler_function)
+void MessagingBase::create_handler_object(const std::string &correlation_id, HandlerFunction handler_function, bool is_persistent /* = false */)
 {
 	handler_object_ =
-		std::make_unique<HandlerObject<HandlerFunction>>(correlation_id, handler_function, shared_from_this());
+		std::make_unique<HandlerObject<HandlerFunction>>(correlation_id, handler_function, shared_from_this(), is_persistent);
 }

@@ -48,10 +48,22 @@ struct HandlerObject
 	{
 	}
 
+	HandlerObject(std::string correlation_id,
+								const Handler &handler,
+								std::weak_ptr<MessagingBase> parent,
+								bool is_persistent)
+		: correlation_id_(std::move(correlation_id))
+		, handler_(handler)
+		, parent_(parent)
+		, is_persistent_(is_persistent)
+	{
+	}
+
 	HandlerObject(const HandlerObject &other)
 		: correlation_id_(other.correlation_id_)
 		, handler_(other.handler_)
 		, parent_(other.parent_)
+		, is_persistent_(other.is_persistent_)
 	{
 	}
 
@@ -75,9 +87,26 @@ struct HandlerObject
 		return parent_.lock();
 	}
 
+	void set_persistency(bool persistency)
+	{
+		is_persistent_ = persistency;
+	}
+
+	bool get_persistency() const
+	{
+		return is_persistent_;
+	}
+
+	bool is_persistent() const
+	{
+		return is_persistent_;
+	}
+
+
 	std::string correlation_id_;
 	Handler handler_;
 	std::weak_ptr<MessagingBase> parent_;
+	bool is_persistent_ = false;
 };
 
 template<typename Handler>
