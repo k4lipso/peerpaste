@@ -16,7 +16,9 @@ message Request
 
     repeated FileInfo files = 3;
 
-    optional bytes data = 4;
+    optional FileChunk file_chunk = 4;
+
+    optional bytes data = 5;
 }
 
 message CommonHeader
@@ -59,11 +61,13 @@ message PeerInfo
 message FileInfo
 {
     required string file_name = 1;
+    optional int64 file_size = 2;
 }
 
 message FileChunk {
-   optional int64 offset = 1;
-   optional bytes data = 2;
+   //required int64 offset = 1;
+   required int64 chunk_size = 2;
+   required bytes data = 3;
 }
 
 //message gerneral_object
