@@ -152,11 +152,19 @@ public:
 
 			if(send_object->is_session())
 			{
-				auto session = send_object->get_session();
-				session->write(encoded_buf);
-				if(message_is_request)
+				const auto session = send_object->get_session();
+
+				if(send_object->has_on_write_handler())
 				{
-					session->read();
+					session->write_direct(encoded_buf, send_object->get_on_write_handler());
+				}
+				else
+				{
+					session->write(encoded_buf);
+					if(message_is_request)
+					{
+						session->read();
+					}
 				}
 			}
 			else
