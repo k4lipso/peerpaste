@@ -37,6 +37,27 @@ public:
 		return return_value;
 	}
 
+	template<typename KeyType, typename Pred>
+	std::optional<T> get_and_erase_if(const KeyType &key, const Pred& pred)
+	{
+		std::scoped_lock lk{mutex_};
+
+		const auto search = set_.find(key);
+		if(set_.find(key) == set_.end())
+		{
+			return {};
+		}
+
+		if(pred(*search))
+		{
+			std::optional<T> return_value{std::move(*search)};
+			set_.erase(search);
+			return return_value;
+		}
+
+		return *search;
+	}
+
 	void insert(const T &value)
 	{
 		std::scoped_lock lk{mutex_};

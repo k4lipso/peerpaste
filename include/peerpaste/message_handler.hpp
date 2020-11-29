@@ -180,7 +180,12 @@ public:
 		// that ID
 		auto correlational_id = transport_object->get_correlational_id();
 
-		const auto handler_object = active_handlers_.get_and_erase(correlational_id);
+		constexpr auto CanHandlerBeErased = [](const auto& handler_obj)
+		{
+			return !handler_obj.is_persistent();
+		};
+
+		const auto handler_object = active_handlers_.get_and_erase_if(correlational_id, CanHandlerBeErased);
 		if(handler_object.has_value())
 		{
 			if(auto parent = handler_object.value().lock())
