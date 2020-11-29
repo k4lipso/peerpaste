@@ -25,7 +25,8 @@ struct FileInfo
 
 struct FileChunk
 {
-	FileChunk(char* data_ptr, size_t data_size)
+	FileChunk() = default;
+	explicit FileChunk(char* data_ptr, size_t data_size)
 		: size(data_size)
 		,	data{data_ptr, data_ptr + data_size}
 	{
@@ -150,6 +151,7 @@ public:
 	{
 		static std::atomic<unsigned int> Counter = 0;
 
+
 		if(Counter == std::numeric_limits<unsigned int>::max())
 		{
 			Counter = 0;
@@ -215,7 +217,7 @@ public:
 		file_chunk_ = file_chunk;
 	}
 
-	auto& get_file_chunk(const peerpaste::FileChunk& file_chunk)
+	auto& get_file_chunk()
 	{
 		return file_chunk_;
 	}

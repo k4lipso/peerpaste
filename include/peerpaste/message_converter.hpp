@@ -74,6 +74,16 @@ public:
 			message->add_file(protobuf_file.file_name(), size);
 		}
 
+		if(protobuf_message->has_file_chunk())
+		{
+			auto protobuf_file_chunk = protobuf_message->file_chunk();
+			peerpaste::FileChunk file_chunk;
+			file_chunk.size = protobuf_file_chunk.chunk_size();
+			file_chunk.data = std::vector<char>(protobuf_file_chunk.data().data(), protobuf_file_chunk.data().data() + file_chunk.size);
+
+			message->set_file_chunk(std::move(file_chunk));
+		}
+
 		if(protobuf_message->has_data())
 		{
 			message->set_data(protobuf_message->data());
@@ -111,6 +121,13 @@ public:
 			auto protobuf_file_info = protobuf_message->add_files();
 			protobuf_file_info->set_file_name(file_info.file_name);
 			protobuf_file_info->set_file_size(file_info.file_size);
+		}
+
+		if(message->get_file_chunk().has_value())
+		{
+			auto protobuf_file_chunk = protobuf_message->mutable_file_chunk();
+			protobuf_file_chunk->set_chunk_size(message->get_file_chunk().value().size);
+			protobuf_file_chunk->set_data(message->get_file_chunk().value().data.data(), message->get_file_chunk().value().size);
 		}
 
 		if(message->get_data() != "")
