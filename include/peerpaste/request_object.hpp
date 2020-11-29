@@ -7,6 +7,7 @@
 #include <future>
 #include <optional>
 #include <variant>
+#include <functional>
 
 #include "boost_session.hpp"
 
@@ -244,6 +245,21 @@ public:
 		return true;
 	}
 
+	bool has_on_write_handler() const
+	{
+		return on_write_handler_.has_value();
+	}
+
+	void set_on_write_handler(const std::function<void(bool)>& handler)
+	{
+		on_write_handler_ = handler;
+	}
+
+	auto get_on_write_handler() const
+	{
+		return on_write_handler_.value();
+	}
+
 	MessageType type_;
 
 private:
@@ -264,4 +280,5 @@ private:
 	std::optional<DataPromise> data_promise_deprecated_; // deprecated
 	std::variant<PeerPtr, SessionPtr> connection_;
 	std::chrono::steady_clock::time_point start_;
+	std::optional<std::function<void(bool)>> on_write_handler_;
 };
