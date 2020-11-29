@@ -26,9 +26,11 @@ public:
 							 std::shared_ptr<peerpaste::ConcurrentQueue<std::pair<DataBuffer, SessionPtr>>> msg_queue);
 	~BoostSession();
 	void write(const DataBuffer &encoded_message) override;
+	void write_direct(const DataBuffer& encoded_message, const std::function<void(bool)>& handler) override;
 	void write_to(const DataBuffer &encoded_message, const std::string &address, const std::string &port) override;
 	void read() override;
 	const std::string get_client_ip() const override;
+
 	const unsigned get_client_port() const;
 	boost::asio::ip::tcp::socket &get_socket();
 
