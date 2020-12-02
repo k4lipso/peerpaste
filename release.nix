@@ -1,6 +1,7 @@
-{ pkgs, ... }:
+{ ... }:
 
 let
+  pkgs = (import <nixpkgs> {});
   compilers = with pkgs; {
     gcc9 = stdenv;
     gcc10 = overrideCC stdenv gcc10;
