@@ -1,7 +1,4 @@
-{
-  nixpkgs ? <nixpkgs>,
-  pkgs ? import nixpkgs {}
-}:
+{ pkgs, ... }:
 
 let
   compilers = with pkgs; {
