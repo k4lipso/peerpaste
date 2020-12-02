@@ -1,7 +1,13 @@
 { ... }:
 
 let
-  pkgs = (import <nixpkgs> {});
+  pkgs = (import (builtins.fetchGit {
+    name = "nixos-unstable-2020-10-23";
+    url = "https://github.com/nixos/nixpkgs/";
+    ref = "refs/heads/nixos-unstable";
+    rev = "24eb3f87fc610f18de7076aee7c5a84ac5591e3e";
+  }) {});
+
   compilers = with pkgs; {
     gcc9 = stdenv;
     gcc10 = overrideCC stdenv gcc10;
