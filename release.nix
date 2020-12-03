@@ -1,7 +1,7 @@
-{ ... }:
+{ pkgs }:
 
 let
-  pkgs = (import <nixpkgs> {});
+  #pkgs = (import <nixpkgs> {});
 
   compilers = with pkgs; {
     gcc9 = stdenv;
