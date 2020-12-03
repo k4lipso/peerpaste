@@ -17,7 +17,10 @@
           packages.peerpaste = import ./derivation.nix { pkgs = pkgs; boost = pkgs.boost173; stdenv = pkgs.overrideCC pkgs.stdenv pkgs.gcc9; };
           packages.peerpaste_future = import ./derivation.nix { pkgs = pkgs; boost = pkgs.boost174; stdenv = pkgs.overrideCC pkgs.stdenv pkgs.gcc9; };
 
-          #defaultPackage = self.packages.${system}.peerpaste;
+          defaultPackage = self.packages.${system}.peerpaste;
+
+          hydraJobs.peerpaste = self.packages.${system}.peerpaste;
+          hydraJobs.peerpaste_future = self.packages.${system}.peerpaste_future;
         }
       );
 }
