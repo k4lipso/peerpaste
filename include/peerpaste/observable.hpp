@@ -2,6 +2,7 @@
 
 #include <string>
 #include <vector>
+#include <memory>
 
 #include "peerpaste/request_object.hpp"
 
@@ -11,11 +12,11 @@ class RequestObject;
 class Observable
 {
 public:
-	void Attach(ObserverBase *const observer);
+	void Attach(std::weak_ptr<ObserverBase> observer);
 	void Notify(const RequestObject &notification);
 	void Notify(const RequestObject &request_object, HandlerObject<HandlerFunction> handler);
 	void Notify();
 
 protected:
-	std::vector<ObserverBase *> observers_;
+	std::vector<std::weak_ptr<ObserverBase>> observers_;
 };

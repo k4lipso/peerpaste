@@ -12,7 +12,6 @@ Join::Join(ConcurrentRoutingTable<Peer> *routing_table, const std::string &addre
 	, target_(Peer("", address, port))
 {
 	dependencies_.emplace_back(std::make_pair(std::make_shared<Query>(routing_table, address, port), true));
-	dependencies_.front().first->Attach(this);
 }
 
 Join::Join(ConcurrentRoutingTable<Peer> *routing_table, RequestObject request)
@@ -86,7 +85,7 @@ void Join::handle_query_notify(MessagingBase *MessagePtr)
 	dependencies_.emplace_back(
 		std::make_pair(std::make_shared<FindSuccessor>(routing_table_, target_, self.get_id()), true));
 
-	dependencies_.front().first->Attach(this);
+	dependencies_.front().first->Attach(weak_from_this());
 	(*dependencies_.front().first)();
 }
 
@@ -99,7 +98,7 @@ void Join::handle_find_successor_notify(MessagingBase *MessagePtr)
 	time_point_ = std::chrono::system_clock::now() + DURATION;
 	dependencies_.emplace_back(std::make_pair(std::make_shared<GetSuccessorList>(successor), true));
 
-	dependencies_.front().first->Attach(this);
+	dependencies_.front().first->Attach(weak_from_this());
 	// dependencies_.front().first->create_request();
 	(*dependencies_.front().first)();
 }
@@ -117,6 +116,7 @@ void Join::handle_get_successor_list_notify(MessagingBase *MessagePtr)
 void Join::create_request()
 {
 	std::scoped_lock lk{mutex_};
+	dependencies_.front().first->Attach(weak_from_this());
 	(*dependencies_.front().first)();
 }
 

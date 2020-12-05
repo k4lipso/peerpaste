@@ -20,7 +20,7 @@
 #include "peerpaste/storage.hpp"
 #include "peerpaste/thread_pool.hpp"
 
-class MessageHandler : public ObserverBase
+class MessageHandler : public ObserverBase, public std::enable_shared_from_this<MessageHandler>
 {
 public:
 	typedef std::shared_ptr<Message> MessagePtr;
@@ -131,8 +131,9 @@ public:
 	{
 		std::shared_ptr<MessageType> Message = message_factory_->create_request<MessageType>(std::forward<ArgsT>(Args)...);
 
-		Message->Attach(this);
-		thread_pool_.submit(Message);
+		Message->Attach(weak_from_this());
+		//thread_pool_.submit(Message);
+		(*Message.get())();
 		active_messages_.push_back(std::move(Message));
 	}
 
@@ -169,8 +170,9 @@ public:
 			return;
 		}
 
-		message_object->Attach(this);
-		thread_pool_.submit(message_object);
+		message_object->Attach(weak_from_this());
+		(*message_object.get())();
+		//thread_pool_.submit(message_object);
 		active_messages_.push_back(std::move(message_object));
 	}
 
