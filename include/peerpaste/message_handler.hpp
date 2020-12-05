@@ -201,6 +201,10 @@ public:
 
 			return;
 		}
+		else
+		{
+			util::log(debug, "No active handler found");
+		}
 	}
 
 	std::tuple<Peer, Peer, Peer> get_routing_information()
