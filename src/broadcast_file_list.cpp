@@ -35,11 +35,14 @@ BroadcastFilelist::~BroadcastFilelist()
 
 void BroadcastFilelist::HandleNotification(const RequestObject &request_object, HandlerObject<HandlerFunction> handler)
 {
+	time_point_ = std::chrono::system_clock::now() + DURATION;
+
 	Notify(request_object, handler);
 }
 
 void BroadcastFilelist::HandleNotification()
 {
+	time_point_ = std::chrono::system_clock::now() + DURATION;
 	if(flag_ && std::all_of(dependencies_.begin(), dependencies_.end(), [](auto dep) { return dep.first->is_done(); }))
 	{
 		state_ = MESSAGE_STATE::DONE;
@@ -127,12 +130,10 @@ void BroadcastFilelist::handle_request()
 	{
 		if(!storage_->exists(file.file_name))
 		{
-			time_point_ = std::chrono::system_clock::now() + DURATION;
-
 			auto get_file_message = std::make_shared<GetFile>(storage_, peers.front(), file);
 			get_file_message->Attach(weak_from_this());
 
-			dependencies_.emplace_back(std::make_pair(get_file_message, true));
+			dependencies_.emplace_back(std::make_pair(get_file_message, false));
 			(*get_file_message.get())();
 		}
 	}
