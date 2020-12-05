@@ -30,7 +30,6 @@ BroadcastFilelist::BroadcastFilelist(BroadcastFilelist &&other)
 
 BroadcastFilelist::~BroadcastFilelist()
 {
-	// set_promise(state_);
 }
 
 void BroadcastFilelist::HandleNotification(const RequestObject &request_object, HandlerObject<HandlerFunction> handler)
