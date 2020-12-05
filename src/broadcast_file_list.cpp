@@ -51,7 +51,7 @@ void BroadcastFilelist::HandleNotification()
 
 void BroadcastFilelist::create_request()
 {
-	std::scoped_lock lk{mutex_};
+	//std::scoped_lock lk{mutex_};
 	Peer self;
 
 	if(not routing_table_->try_get_self(self))
@@ -90,7 +90,7 @@ void BroadcastFilelist::create_request()
 
 void BroadcastFilelist::handle_request()
 {
-	std::scoped_lock lk{mutex_};
+	//std::scoped_lock lk{mutex_};
 	if(!request_.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
