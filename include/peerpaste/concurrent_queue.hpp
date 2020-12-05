@@ -21,7 +21,7 @@ class ConcurrentQueue
 {
 	mutable std::mutex mutex_;
 	std::condition_variable condition_;
-	std::queue<std::unique_ptr<T>> queue_;
+	std::queue<std::shared_ptr<T>> queue_;
 
 public:
 	ConcurrentQueue()
@@ -50,7 +50,7 @@ public:
 		queue_.pop();
 	}
 
-	std::unique_ptr<T> wait_and_pop()
+	std::shared_ptr<T> wait_and_pop()
 	{
 		std::unique_lock lk(mutex_);
 		condition_.wait(lk, [this] { return not queue_.empty(); });
@@ -59,11 +59,10 @@ public:
 		return result;
 	}
 
-	std::unique_ptr<T> wait_for_and_pop(int dur = 1)
+	std::shared_ptr<T> wait_for_and_pop(int dur = 1)
 	{
-		std::chrono::duration<int> dur_ = std::chrono::seconds(dur);
 		std::unique_lock lk(mutex_);
-		if(condition_.wait_for(lk, dur_, [this] { return not queue_.empty(); }))
+		if(condition_.wait_for(lk, dur*1ms, [this] { return not queue_.empty(); }))
 		{
 			auto result = std::move(queue_.front());
 			queue_.pop();
@@ -82,7 +81,7 @@ public:
 	{
 		/* auto new_value_ptr = std::make_unique<T>(std::move(new_value)); */
 		std::scoped_lock lk(mutex_);
-		queue_.emplace(std::make_unique<std::remove_cv_t<T>>(std::forward<T>(new_value)));
+		queue_.emplace(std::make_shared<T>(std::forward<T>(new_value)));
 		condition_.notify_one();
 	}
 
@@ -90,7 +89,7 @@ public:
 	{
 		/* auto new_value_ptr = std::make_unique<T>(std::move(new_value)); */
 		std::scoped_lock lk(mutex_);
-		queue_.push(std::make_unique<T>(std::move(new_value)));
+		queue_.push(std::make_shared<T>(std::move(new_value)));
 		condition_.notify_one();
 	}
 };
