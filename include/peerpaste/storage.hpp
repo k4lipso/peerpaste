@@ -28,6 +28,35 @@ public:
 	{
 	}
 
+
+	std::optional<std::ofstream> create_file(const std::string& filename)
+	{
+		std::ofstream Output;
+		Output.open(storage_path_ + filename, std::ios_base::binary);
+		if (!Output) {
+			util::log(error, "Failed to create file");
+			return std::nullopt;
+		}
+
+		return Output;
+	}
+
+	std::optional<std::ifstream> read_file(const std::string& filename)
+	{
+		std::ifstream Input;
+		Input.open(storage_path_ + filename, std::ios_base::binary | std::ios_base::ate);
+
+		if(!Input)
+		{
+			util::log(error, "Failed to read file");
+			util::log(error, storage_path_ + filename);
+			return std::nullopt;
+		}
+
+		return Input;
+	}
+
+
 	void put(const std::string &data, const std::string &id)
 	{
 		std::ofstream out(storage_path_ + id);
