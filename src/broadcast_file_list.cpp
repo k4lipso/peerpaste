@@ -130,7 +130,7 @@ void BroadcastFilelist::handle_request()
 			time_point_ = std::chrono::system_clock::now() + DURATION;
 
 			auto get_file_message = std::make_shared<GetFile>(storage_, peers.front(), file);
-			get_file_message->Attach(this);
+			get_file_message->Attach(weak_from_this());
 
 			dependencies_.emplace_back(std::make_pair(get_file_message, true));
 			(*get_file_message.get())();

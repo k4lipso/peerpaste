@@ -132,7 +132,7 @@ void Stabilize::handle_get_pred_and_succ_list_notify(MessagingBase *MessagePtr)
 	if(util::between(self.get_id(), successors_predecessor.get_id(), successor.get_id()))
 	{
 		auto GetSelfAndSuccListMessage = std::make_shared<GetSelfAndSuccList>(successors_predecessor);
-		GetSelfAndSuccListMessage->Attach(this);
+		GetSelfAndSuccListMessage->Attach(weak_from_this());
 
 		dependencies_.emplace(dependencies_.begin(), std::make_pair(std::move(GetSelfAndSuccListMessage), true));
 		(*dependencies_.front().first)();
@@ -169,7 +169,7 @@ void Stabilize::handle_notification_notify(MessagingBase *MessagePtr)
 void Stabilize::create_notification()
 {
 	auto NotifyMessage = std::make_shared<Notification>(routing_table_);
-	NotifyMessage->Attach(this);
+	NotifyMessage->Attach(weak_from_this());
 
 	dependencies_.emplace(dependencies_.begin(), std::make_pair(std::move(NotifyMessage), true));
 	(*dependencies_.front().first)();
@@ -188,7 +188,7 @@ void Stabilize::create_request()
 	}
 
 	auto GetPredAndSuccListMessage = std::make_shared<GetPredAndSuccList>(target);
-	GetPredAndSuccListMessage->Attach(this);
+	GetPredAndSuccListMessage->Attach(weak_from_this());
 
 	dependencies_.emplace(dependencies_.begin(), std::make_pair(std::move(GetPredAndSuccListMessage), true));
 	(*dependencies_.front().first)();
