@@ -19,6 +19,11 @@ struct FileInfo
 	{
 	}
 
+	bool operator==(const std::string& other) const
+	{
+		return file_name == other;
+	}
+
 	std::string file_name;
 	size_t file_size = 0;
 };

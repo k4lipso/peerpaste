@@ -164,6 +164,7 @@ void GetFile::handle_response(RequestObject request_object)
 	static int i = 1;
 	std::cout << "Received File " << i++ << "\n";
 	m_output_file.flush();
+	storage_->finalize_file(file_info_.value().file_name);
 
 	state_ = MESSAGE_STATE::DONE;
 	RequestDestruction();
