@@ -54,12 +54,12 @@ private:
 		/* BOOST_LOG_FUNCTION(); */
 		util::log(debug, "Setting up endpoint");
 		tcp::endpoint endpoint(tcp::v4(), port);
-		util::log(debug, std::string("setting port to ") + std::to_string(port));
+		util::log(info, std::string("setting port to ") + std::to_string(port));
 		acceptor_.open(endpoint.protocol());
 		acceptor_.set_option(tcp::acceptor::reuse_address(true));
 		acceptor_.bind(endpoint);
 		acceptor_.listen();
-		util::log(debug, "started listening");
+		util::log(info, "started listening");
 	}
 
 	/**

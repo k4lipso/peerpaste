@@ -32,13 +32,33 @@ public:
 
 	void sync_files()
 	{
-		std::cout << "STORAGE_PATH: " << storage_path_ << "\n";
+		util::log(info, "start syncing storage...");
 		for(const auto &entry : std::filesystem::directory_iterator(storage_path_))
 		{
-			std::cout << "ADD " << entry.path().filename().string() << "\n";
-			files_.emplace_back(entry.path().filename().string(),
-															std::filesystem::file_size(entry.path()));
+			const std::string name = entry.path().filename().string();
+			util::log(info, std::string("add ") + name);
+
+			if(!add_file(name))
+			{
+				util::log(info, std::string("failed to add ") + name);
+			}
 		}
+
+		util::log(info, "done syncing storage");
+	}
+
+	bool add_file(const std::string& filename)
+	{
+		std::ifstream f(storage_path_ + filename);
+		if(!f.good())
+		{
+			return false;
+		}
+
+		std::scoped_lock lk{mutex_};
+		files_.emplace_back(filename, std::filesystem::file_size(storage_path_ + filename));
+
+		return true;
 	}
 
 	std::optional<std::ofstream> create_file(const std::string& filename)
@@ -84,8 +104,6 @@ public:
 																				[&filename](const auto& file){ return filename == file; }),
 												 blocked_files_.end());
 
-		std::cout << "FINALIZE FILE: " << storage_path_ + filename << " with size: " <<
-								 std::filesystem::file_size(storage_path_ + filename) << "\n";
 		files_.emplace_back(filename, std::filesystem::file_size(storage_path_ + filename));
 		return true;
 	}
