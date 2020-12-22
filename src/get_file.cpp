@@ -134,13 +134,6 @@ void GetFile::handle_response(RequestObject request_object)
 
 	const auto file_chunk = request_object.get_message()->get_file_chunk();
 
-	static int siz = 0;
-	siz += file_chunk.value().size;
-	std::stringstream sstr;
-	//sstr << "RECEIVED: " << siz << " bytes";
-	sstr << "RECEIVED: " << file_chunk.value().size << " bytes";
-	//util::log(debug, sstr.str());
-
 	if(!m_output_file)
 	{
 		util::log(error, "GetFIle::create_request could not open file");
@@ -160,25 +153,18 @@ void GetFile::handle_response(RequestObject request_object)
 		return;
 	}
 
-	//util::log(info, "Received File!");
-	static int i = 1;
-	std::cout << "Received File " << i++ << "\n";
+	util::log(info, std::string("received file ") + file_info_.value().file_name);
+	util::log(info, std::string("with size in mb: ") + std::to_string(static_cast<double>(m_file_size / 1048576.0)));
 	m_output_file.flush();
-	storage_->finalize_file(file_info_.value().file_name);
 
 	state_ = MESSAGE_STATE::DONE;
+
+	if(!storage_->finalize_file(file_info_.value().file_name))
+	{
+		state_ = MESSAGE_STATE::FAILED;
+	}
+
 	RequestDestruction();
-
-	//const auto data = request_object.get_message()->get_data();
-
-	//if(data.empty())
-	//{
-	//	state_ = MESSAGE_STATE::FAILED;
-	//	RequestDestruction();
-	//	return;
-	//}
-
-	//storage_->put(data, file_info_.value().file_name);
 }
 
 void GetFile::handle_failed()
