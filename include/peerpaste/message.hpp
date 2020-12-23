@@ -15,7 +15,22 @@ struct FileInfo
 {
 	FileInfo(std::string name, size_t size)
 		: file_name(std::move(name))
-		, file_size(std::move(size))
+		, file_size(size)
+	{
+	}
+
+	FileInfo(std::string name, std::string sha256sum_, size_t size)
+		: file_name(std::move(name))
+		, sha256sum(std::move(sha256sum_))
+		, file_size(size)
+	{
+	}
+
+	FileInfo(std::string name, std::string sha256sum_, size_t size, size_t offset_)
+		: file_name(std::move(name))
+		, sha256sum(std::move(sha256sum_))
+		, file_size(size)
+		, offset(offset_)
 	{
 	}
 
@@ -25,7 +40,9 @@ struct FileInfo
 	}
 
 	std::string file_name;
+	std::string sha256sum;
 	size_t file_size = 0;
+	size_t offset = 0;
 };
 
 struct FileChunk
@@ -200,6 +217,11 @@ public:
 	std::string get_data()
 	{
 		return data_;
+	}
+
+	void add_file(peerpaste::FileInfo file_info)
+	{
+		files_.push_back(std::move(file_info));
 	}
 
 	void add_file(const std::string &filename, int size = 0)

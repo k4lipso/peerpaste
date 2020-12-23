@@ -66,12 +66,26 @@ public:
 		for(int i = 0; i < protobuf_files_size; i++)
 		{
 			auto protobuf_file = protobuf_message->files(i);
+			std::string sha256sum{};
 			size_t size = 0;
+			size_t offset = 0;
+
 			if(protobuf_file.has_file_size())
 			{
 				size = protobuf_file.file_size();
 			}
-			message->add_file(protobuf_file.file_name(), size);
+
+			if(protobuf_file.has_sha256sum())
+			{
+				sha256sum = protobuf_file.sha256sum();
+			}
+
+			if(protobuf_file.has_offset())
+			{
+				offset = protobuf_file.offset();
+			}
+
+			message->add_file(peerpaste::FileInfo{protobuf_file.file_name(), sha256sum, size, offset});
 		}
 
 		if(protobuf_message->has_file_chunk())
@@ -79,7 +93,8 @@ public:
 			auto protobuf_file_chunk = protobuf_message->file_chunk();
 			peerpaste::FileChunk file_chunk;
 			file_chunk.size = protobuf_file_chunk.chunk_size();
-			file_chunk.data = std::vector<char>(protobuf_file_chunk.data().data(), protobuf_file_chunk.data().data() + file_chunk.size);
+			file_chunk.data = std::vector<char>(protobuf_file_chunk.data().data(),
+																					protobuf_file_chunk.data().data() + file_chunk.size);
 
 			message->set_file_chunk(std::move(file_chunk));
 		}
@@ -120,7 +135,9 @@ public:
 		{
 			auto protobuf_file_info = protobuf_message->add_files();
 			protobuf_file_info->set_file_name(file_info.file_name);
+			protobuf_file_info->set_sha256sum(file_info.sha256sum);
 			protobuf_file_info->set_file_size(file_info.file_size);
+			protobuf_file_info->set_offset(file_info.offset);
 		}
 
 		if(message->get_file_chunk().has_value())
