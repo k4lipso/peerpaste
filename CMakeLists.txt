@@ -56,7 +56,7 @@ add_library(libpeerpaste
     "src/message_factory.cpp"
     "src/concurrent_request_handler.cpp"
     "src/concurrent_set.cpp"
-    "include/peerpaste/storage.hpp"
+    "src/storage.cpp"
     "include/peerpaste/concurrent_queue.hpp"
     "include/peerpaste/concurrent_routing_table.hpp"
     "include/peerpaste/consumer.hpp"
