@@ -22,7 +22,6 @@ void StaticStorage::sync_files()
 	{
 		const std::string name = entry.path().filename().string();
 		util::log(info, std::string("add ") + name);
-		util::log(info, util::sha256_from_file(storage_path_ + name));
 
 		if(!add_file(name))
 		{
@@ -42,7 +41,8 @@ bool StaticStorage::add_file(const std::string& filename)
 	}
 
 	std::scoped_lock lk{mutex_};
-	files_.emplace_back(filename, std::filesystem::file_size(storage_path_ + filename));
+	files_.emplace_back(filename, util::sha256_from_file(storage_path_ + filename),
+											std::filesystem::file_size(storage_path_ + filename));
 
 	return true;
 }
@@ -89,7 +89,9 @@ bool StaticStorage::finalize_file(const std::string& filename)
 																			[&filename](const auto& file){ return filename == file; }),
 											 blocked_files_.end());
 
-	files_.emplace_back(filename, std::filesystem::file_size(storage_path_ + filename));
+	files_.emplace_back(filename, util::sha256_from_file(storage_path_ + filename),
+											std::filesystem::file_size(storage_path_ + filename));
+
 	return true;
 }
 

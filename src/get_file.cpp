@@ -45,6 +45,8 @@ void GetFile::create_request()
 
 	const auto message = std::make_shared<Message>();
 	message->set_header(Header(true, 0, 0, "get_file", "", "", ""));
+
+	//TODO: set peerpaste::FileInfo here, give offset if file is pending
 	message->set_data(file_info_.value().file_name);
 
 	const auto transaction_id = message->generate_transaction_id();

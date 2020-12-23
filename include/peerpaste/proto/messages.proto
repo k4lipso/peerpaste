@@ -61,7 +61,9 @@ message PeerInfo
 message FileInfo
 {
     required string file_name = 1;
-    optional int64 file_size = 2;
+    optional string sha256sum = 2;
+    optional int64 file_size = 3;
+    optional int64 offset = 4;
 }
 
 message FileChunk {
