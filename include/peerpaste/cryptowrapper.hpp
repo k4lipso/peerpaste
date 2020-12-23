@@ -15,6 +15,7 @@
 #include "cryptopp/filters.h"
 #include "cryptopp/hex.h"
 #include "cryptopp/sha.h"
+#include "cryptopp/files.h"
 #include "sodium.h"
 namespace logging = boost::log;
 namespace sinks = boost::log::sinks;
@@ -54,14 +55,15 @@ namespace util
 /**
  * Generates an SHA256 hash from the given string using crypto++
  */
-const std::string generate_sha256(const std::string &data);
-const std::string generate_sha256(const std::string &ip, const std::string &port);
-const std::string encrypt(const std::string &key_str, const std::string &data);
-const std::string decrypt(const std::string &key_str, const std::string &data);
+std::string generate_sha256(const std::string &data);
+std::string generate_sha256(const std::string &ip, const std::string &port);
+std::string sha256_from_file(const std::string& path);
+std::string encrypt(const std::string &key_str, const std::string &data);
+std::string decrypt(const std::string &key_str, const std::string &data);
 
-const bool between(const std::string &id_1, const std::string &id_2, const std::string &id_3);
-const size_t generate_hash(const std::string &data);
-const size_t generate_limited_hash(const std::string &data, const size_t limit);
+bool between(const std::string &id_1, const std::string &id_2, const std::string &id_3);
+size_t generate_hash(const std::string &data);
+size_t generate_limited_hash(const std::string &data, const size_t limit);
 
 void log(severity_level lvl, const std::string &message);
 

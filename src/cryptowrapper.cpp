@@ -1,12 +1,14 @@
 #include "peerpaste/cryptowrapper.hpp"
 
+#include <fstream>
+
 namespace util
 {
 
 /**
  * Generates an SHA256 hash from the given string using crypto++
  */
-const std::string generate_sha256(const std::string &data)
+std::string generate_sha256(const std::string &data)
 {
 	CryptoPP::SHA256 hash;
 	std::string digest;
@@ -17,7 +19,7 @@ const std::string generate_sha256(const std::string &data)
 	return digest;
 }
 
-const std::string generate_sha256(const std::string &ip, const std::string &port)
+std::string generate_sha256(const std::string &ip, const std::string &port)
 {
 	CryptoPP::SHA256 hash;
 	std::string digest;
@@ -28,7 +30,23 @@ const std::string generate_sha256(const std::string &ip, const std::string &port
 	return digest;
 }
 
-const std::string encrypt(const std::string &key_str, const std::string &data_str)
+std::string sha256_from_file( const std::string& path ) {
+	std::ifstream file_stream( path );
+	CryptoPP::FileSource fsource( file_stream, true );
+	CryptoPP::SHA256 sha;
+	unsigned char digest[sha.DigestSize()];
+	unsigned char *data = new unsigned char[ fsource.MaxRetrievable() ];
+	size_t size = fsource.Get( data, fsource.MaxRetrievable() );
+	sha.CalculateDigest( digest, data, size );
+	std::stringstream ss;
+	for(int i = 0; i < sha.DigestSize(); i++)
+		ss << std::hex << std::setw(2) << std::setfill('0') << (int) digest[i];
+	delete[] data;
+
+	return ss.str();
+}
+
+std::string encrypt(const std::string &key_str, const std::string &data_str)
 {
 	unsigned char message[data_str.length()];
 	std::copy(data_str.data(), data_str.data() + data_str.length(), message);
@@ -41,7 +59,7 @@ const std::string encrypt(const std::string &key_str, const std::string &data_st
 	return std::string(&ciphertext[0], &ciphertext[crypto_secretbox_MACBYTES + data_str.length()]);
 }
 
-const std::string decrypt(const std::string &key_str, const std::string &data_str)
+std::string decrypt(const std::string &key_str, const std::string &data_str)
 {
 	std::vector<uint8_t> key(key_str.begin(), key_str.end());
 	std::vector<uint8_t> nonce(crypto_secretbox_NONCEBYTES, 0);
@@ -59,7 +77,7 @@ const std::string decrypt(const std::string &key_str, const std::string &data_st
 	return std::string(&decrypted[0], &decrypted[data_str.length() - crypto_secretbox_MACBYTES]);
 }
 
-const bool between(const std::string &id_1, const std::string &id_2, const std::string &id_3)
+bool between(const std::string &id_1, const std::string &id_2, const std::string &id_3)
 {
 	if(id_1.compare(id_3) < 0)
 	{
@@ -69,12 +87,12 @@ const bool between(const std::string &id_1, const std::string &id_2, const std::
 	return (id_1.compare(id_2) < 0) || (id_2.compare(id_3) < 0);
 }
 
-const size_t generate_hash(const std::string &data)
+size_t generate_hash(const std::string &data)
 {
 	return std::hash<std::string>{}(data);
 }
 
-const size_t generate_limited_hash(const std::string &data, const size_t limit)
+size_t generate_limited_hash(const std::string &data, const size_t limit)
 {
 	return std::hash<std::string>{}(data) % limit;
 }
