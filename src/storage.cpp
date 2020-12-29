@@ -68,9 +68,11 @@ std::optional<std::ofstream> StaticStorage::create_file(const std::string& filen
 	return Output;
 }
 
-bool StaticStorage::finalize_file(const std::string& filename)
+bool StaticStorage::finalize_file(const peerpaste::FileInfo& file_info)
 {
 	std::scoped_lock lk{mutex_};
+
+	const auto& filename = file_info.file_name;
 
 	if(exists_internal(filename))
 	{
@@ -84,16 +86,26 @@ bool StaticStorage::finalize_file(const std::string& filename)
 		return false;
 	}
 
+	const auto sha256sum = util::sha256_from_file(storage_path_ + filename);
+
+	if(sha256sum != file_info.sha256sum)
+	{
+		util::log(error, "Received file has different sha256sum than requested file! Aborting");
+		return false;
+	}
+
+	std::cout << "finalizing file: " << sha256sum << '\n';
+
 
 	blocked_files_.erase(std::remove_if(blocked_files_.begin(), blocked_files_.end(),
-																			[&filename](const auto& file){ return filename == file; }),
-											 blocked_files_.end());
+										[&filename](const auto& file){ return filename == file; }),
+										blocked_files_.end());
 
-	files_.emplace_back(filename, util::sha256_from_file(storage_path_ + filename),
-											std::filesystem::file_size(storage_path_ + filename));
+	files_.emplace_back(filename, sha256sum, std::filesystem::file_size(storage_path_ + filename));
 
 	return true;
 }
+
 
 std::optional<std::ifstream> StaticStorage::read_file(const std::string& filename)
 {
