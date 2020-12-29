@@ -47,7 +47,7 @@ void GetFile::create_request()
 	message->set_header(Header(true, 0, 0, "get_file", "", "", ""));
 
 	//TODO: set peerpaste::FileInfo here, give offset if file is pending
-	message->set_data(file_info_.value().file_name);
+	message->add_file(file_info_.value());
 
 	const auto transaction_id = message->generate_transaction_id();
 
@@ -89,7 +89,8 @@ void GetFile::handle_request()
 
 		auto message = request_.value().get_message();
 
-		const auto file_name = message->get_data();
+		const auto file_infos = message->get_files();
+		const auto file_name = file_infos.front().file_name;
 
 		if(!storage_->exists(file_name))
 		{
@@ -115,11 +116,12 @@ void GetFile::handle_request()
 		const auto file_size = m_source_file.tellg();
 		m_source_file.seekg(0, m_source_file.beg);
 
+		util::log(info, std::string("Start sending file: ") + file_name);
 		std::stringstream sstr1;
 		sstr1 << "FileSize: " << file_size;
+		sstr1 << "\nSha256sum: " << file_infos.front().sha256sum;
 		util::log(debug, sstr1.str());
 
-		std::cout << "Start sending file " << file_name << " of size: " << file_size << " bytes\n";
 	}
 	write_file(false);
 }
@@ -161,7 +163,7 @@ void GetFile::handle_response(RequestObject request_object)
 
 	state_ = MESSAGE_STATE::DONE;
 
-	if(!storage_->finalize_file(file_info_.value().file_name))
+	if(!storage_->finalize_file(file_info_.value()))
 	{
 		state_ = MESSAGE_STATE::FAILED;
 	}

@@ -21,7 +21,7 @@ public:
 	void sync_files();
 	bool add_file(const std::string& filename);
 	std::optional<std::ofstream> create_file(const std::string& filename);
-	bool finalize_file(const std::string& filename);
+	bool finalize_file(const peerpaste::FileInfo& file_info);
 	std::optional<std::ifstream> read_file(const std::string& filename);
 
 	void put(const std::string &data, const std::string &id);
