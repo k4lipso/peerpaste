@@ -37,14 +37,14 @@ public:
 		return get_id() != peer.get_id() || get_ip() != peer.get_ip() || get_port() != peer.get_port();
 	}
 
-	const void print() const
+	void print() const
 	{
 		std::cout << "IP: " << get_ip() << '\n';
 		std::cout << "ID: " << get_id() << '\n';
 		std::cout << "Port: " << get_port() << std::endl;
 	}
 
-	const void set_id(const std::string &id)
+	void set_id(const std::string &id)
 	{
 		id_ = id;
 	}
@@ -54,7 +54,7 @@ public:
 		return id_;
 	}
 
-	const void set_ip(const std::string &ip)
+	void set_ip(const std::string &ip)
 	{
 		ip_ = ip;
 	}
@@ -64,7 +64,7 @@ public:
 		return ip_;
 	}
 
-	const void set_port(const std::string &port)
+	void set_port(const std::string &port)
 	{
 		port_ = port;
 	}

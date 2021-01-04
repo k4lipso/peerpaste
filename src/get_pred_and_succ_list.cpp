@@ -28,7 +28,7 @@ GetPredAndSuccList::~GetPredAndSuccList()
 {
 }
 
-void GetPredAndSuccList::HandleNotification(const RequestObject &request_object)
+void GetPredAndSuccList::HandleNotification(const RequestObject &)
 {
 }
 

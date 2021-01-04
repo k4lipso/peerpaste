@@ -99,12 +99,12 @@ void BoostSession::read()
 	do_read_header();
 }
 
-const std::string BoostSession::get_client_ip() const
+std::string BoostSession::get_client_ip() const
 {
 	return socket_.remote_endpoint().address().to_string();
 }
 
-const unsigned BoostSession::get_client_port() const
+unsigned BoostSession::get_client_port() const
 {
 	return socket_.remote_endpoint().port();
 }

@@ -28,7 +28,7 @@ Query::~Query()
 {
 }
 
-void Query::HandleNotification(const RequestObject &request_object)
+void Query::HandleNotification(const RequestObject &)
 {
 }
 

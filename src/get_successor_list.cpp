@@ -26,7 +26,7 @@ GetSuccessorList::~GetSuccessorList()
 {
 }
 
-void GetSuccessorList::HandleNotification(const RequestObject &request_object)
+void GetSuccessorList::HandleNotification(const RequestObject &)
 {
 }
 

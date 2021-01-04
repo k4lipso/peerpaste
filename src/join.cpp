@@ -124,7 +124,7 @@ void Join::handle_request()
 {
 }
 
-void Join::handle_response(RequestObject request_object)
+void Join::handle_response(RequestObject )
 {
 }
 
