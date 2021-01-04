@@ -14,7 +14,7 @@ option(SANITIZE "address sanitizers" OFF)
 find_package (Threads REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(CryptoPP REQUIRED)
-find_package(sqlite3 REQUIRED)
+find_package(SQLite3 REQUIRED)
 
 add_subdirectory(include/peerpaste/proto)
 
