@@ -281,9 +281,9 @@ public:
 
 private:
 	boost::asio::io_context io_context_;
+	std::shared_ptr<MessageHandler> msg_handler_;
 	std::shared_ptr<ConcurrentQueue<MsgBufPair>> input_queue_;
 	std::shared_ptr<ConcurrentQueue<RequestObject>> output_queue_;
-	std::shared_ptr<MessageHandler> msg_handler_;
 
 	std::vector<std::thread> thread_pool_deprecated_;
 	std::vector<std::thread> asio_pool_;

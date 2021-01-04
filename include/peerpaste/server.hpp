@@ -21,10 +21,10 @@ class Server
 {
 public:
 	Server(int thread_count, int port, boost::asio::io_context &io_context)
-		: port_(port)
+		: io_context_(io_context)
 		, thread_count_(thread_count)
-		, io_context_(io_context)
 		, acceptor_(io_context_)
+		, port_(port)
 	{
 	}
 

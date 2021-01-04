@@ -121,7 +121,7 @@ if(BUILD_TESTS)
 endif()
 
 
-set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -g3 -fno-omit-frame-pointer")
+set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -U_FORTIFY_SOURCE -O0 -Wall -Wextra -g3 -fno-omit-frame-pointer")
 
 if(SANITIZE)
   message("compiling with address sanitzers...")

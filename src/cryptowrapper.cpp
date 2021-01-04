@@ -39,7 +39,7 @@ std::string sha256_from_file( const std::string& path ) {
 	size_t size = fsource.Get( data, fsource.MaxRetrievable() );
 	sha.CalculateDigest( digest, data, size );
 	std::stringstream ss;
-	for(int i = 0; i < sha.DigestSize(); i++)
+	for(unsigned i = 0; i < sha.DigestSize(); i++)
 		ss << std::hex << std::setw(2) << std::setfill('0') << (int) digest[i];
 	delete[] data;
 

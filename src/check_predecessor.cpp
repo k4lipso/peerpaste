@@ -29,7 +29,7 @@ CheckPredecessor::~CheckPredecessor()
 	set_promise(state_);
 }
 
-void CheckPredecessor::HandleNotification(const RequestObject &request_object)
+void CheckPredecessor::HandleNotification(const RequestObject &)
 {
 }
 

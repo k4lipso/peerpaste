@@ -12,7 +12,7 @@ class ObserverBase
 public:
 	virtual ~ObserverBase();
 	virtual void HandleNotification(const RequestObject &request_object) = 0;
-	virtual void HandleNotification(const RequestObject &request_object, HandlerObject<HandlerFunction> handler)
+	virtual void HandleNotification(const RequestObject&, HandlerObject<HandlerFunction>)
 	{
 	}
 	virtual void HandleNotification()

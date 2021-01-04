@@ -56,7 +56,7 @@ public:
 	{
 	}
 
-	const void print() const
+	void print() const
 	{
 		std::cout << "t_flag: " << get_t_flag() << '\n';
 		std::cout << "ttl: " << get_ttl() << '\n';
@@ -68,7 +68,7 @@ public:
 		std::cout << "response_code: " << get_response_code() << '\n';
 	}
 
-	const void set_t_flag(const bool &t_flag)
+	void set_t_flag(const bool &t_flag)
 	{
 		t_flag_ = t_flag;
 	}
@@ -78,7 +78,7 @@ public:
 		return t_flag_;
 	}
 
-	const void set_ttl(const uint32_t &ttl)
+	void set_ttl(const uint32_t &ttl)
 	{
 		ttl_ = ttl;
 	}
@@ -88,7 +88,7 @@ public:
 		return ttl_;
 	}
 
-	const void set_message_length(const uint64_t &message_length)
+	void set_message_length(const uint64_t &message_length)
 	{
 		message_length_ = message_length;
 	}
@@ -98,7 +98,7 @@ public:
 		return message_length_;
 	}
 
-	const void set_request_type(const std::string &request_type)
+	void set_request_type(const std::string &request_type)
 	{
 		request_type_ = request_type;
 	}
@@ -108,7 +108,7 @@ public:
 		return request_type_;
 	}
 
-	const void set_transaction_id(const std::string &transaction_id)
+	void set_transaction_id(const std::string &transaction_id)
 	{
 		transaction_id_ = transaction_id;
 	}
@@ -118,7 +118,7 @@ public:
 		return transaction_id_;
 	}
 
-	const void set_correlational_id(const std::string &correlational_id)
+	void set_correlational_id(const std::string &correlational_id)
 	{
 		correlational_id_ = correlational_id;
 	}
@@ -128,7 +128,7 @@ public:
 		return correlational_id_;
 	}
 
-	const void set_version(const std::string &version)
+	void set_version(const std::string &version)
 	{
 		version_ = version;
 	}
@@ -138,7 +138,7 @@ public:
 		return version_;
 	}
 
-	const void set_response_code(const std::string &response_code)
+	void set_response_code(const std::string &response_code)
 	{
 		response_code_ = response_code;
 	}
@@ -174,7 +174,7 @@ public:
 		return response_header;
 	}
 
-	const bool is_request() const
+	bool is_request() const
 	{
 		return t_flag_;
 	}

@@ -125,7 +125,7 @@ void Notification::handle_request()
 	RequestDestruction();
 }
 
-void Notification::handle_response(RequestObject request_object)
+void Notification::handle_response(RequestObject )
 {
 	std::scoped_lock lk{mutex_};
 	state_ = MESSAGE_STATE::DONE;
@@ -137,7 +137,7 @@ void Notification::handle_failed()
 	state_ = MESSAGE_STATE::FAILED;
 }
 
-void Notification::HandleNotification(const RequestObject &request_object)
+void Notification::HandleNotification(const RequestObject &)
 {
 }
 

@@ -160,7 +160,7 @@ void Stabilize::handle_get_self_and_succ_list_notify(MessagingBase *MessagePtr)
 	create_notification();
 }
 
-void Stabilize::handle_notification_notify(MessagingBase *MessagePtr)
+void Stabilize::handle_notification_notify(MessagingBase *)
 {
 	state_ = MESSAGE_STATE::DONE;
 	RequestDestruction();
@@ -197,7 +197,7 @@ void Stabilize::create_request()
 void Stabilize::handle_request()
 {
 }
-void Stabilize::handle_response(RequestObject request_object)
+void Stabilize::handle_response(RequestObject )
 {
 }
 void Stabilize::handle_failed()

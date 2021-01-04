@@ -171,7 +171,7 @@ void BroadcastFilelist::handle_request()
 	}
 }
 
-void BroadcastFilelist::handle_response(RequestObject request_object)
+void BroadcastFilelist::handle_response(RequestObject )
 {
 }
 
@@ -180,7 +180,7 @@ void BroadcastFilelist::handle_failed()
 	state_ = MESSAGE_STATE::FAILED;
 }
 
-void BroadcastFilelist::HandleNotification(const RequestObject &request_object)
+void BroadcastFilelist::HandleNotification(const RequestObject &)
 {
 }
 

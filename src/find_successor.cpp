@@ -37,7 +37,7 @@ FindSuccessor::~FindSuccessor()
 {
 }
 
-void FindSuccessor::HandleNotification(const RequestObject &request_object)
+void FindSuccessor::HandleNotification(const RequestObject &)
 {
 }
 

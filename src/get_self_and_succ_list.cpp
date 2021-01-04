@@ -28,7 +28,7 @@ GetSelfAndSuccList::~GetSelfAndSuccList()
 {
 }
 
-void GetSelfAndSuccList::HandleNotification(const RequestObject &request_object)
+void GetSelfAndSuccList::HandleNotification(const RequestObject &)
 {
 }
 

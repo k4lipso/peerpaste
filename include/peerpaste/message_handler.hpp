@@ -29,11 +29,11 @@ public:
 	typedef std::shared_ptr<Peer> PeerPtr;
 
 	MessageHandler(short port)
-		: routing_table_()
+		: thread_pool_(0)
+		, routing_table_()
 		, static_storage_(nullptr)
 		, stabilize_flag_(false)
 		, check_predecessor_flag_(false)
-		, thread_pool_(0)
 		, message_factory_{nullptr}
 	{
 		// TODO: setup self more accurate

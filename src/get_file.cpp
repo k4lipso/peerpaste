@@ -29,7 +29,7 @@ GetFile::~GetFile()
 {
 }
 
-void GetFile::HandleNotification(const RequestObject &request_object)
+void GetFile::HandleNotification(const RequestObject &)
 {
 }
 
@@ -180,7 +180,7 @@ void GetFile::write_buffer()
 {
 	time_point_ = std::chrono::system_clock::now() + DURATION;
 	auto response = request_->get_message()->generate_response();
-	response->set_file_chunk(peerpaste::FileChunk{m_buf.data(), m_source_file.gcount()});
+	response->set_file_chunk(peerpaste::FileChunk{m_buf.data(), static_cast<size_t>(m_source_file.gcount())});
 	response->generate_transaction_id();
 
 

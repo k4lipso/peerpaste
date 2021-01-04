@@ -15,8 +15,8 @@ MessagingBase::MessagingBase(MessagingBase &&other)
 	, request_(std::move(other.request_))
 	, dependencies_(std::move(other.dependencies_))
 	, time_point_(std::move(other.time_point_))
-	, is_request_handler_(other.is_request_handler_.load())
 	, is_done_(other.is_done_.load())
+	, is_request_handler_(other.is_request_handler_.load())
 {
 }
 
