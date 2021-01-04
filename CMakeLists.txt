@@ -14,6 +14,7 @@ option(SANITIZE "address sanitizers" OFF)
 find_package (Threads REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(CryptoPP REQUIRED)
+find_package(sqlite3 REQUIRED)
 
 add_subdirectory(include/peerpaste/proto)
 
@@ -67,6 +68,7 @@ set_target_properties(libpeerpaste PROPERTIES LINKER_LANGUAGE CXX)
 
 target_include_directories(libpeerpaste
     PUBLIC
+        "external/sqlite_modern_cpp/hdr"
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
         ${Boost_INCLUDE_DIRS}
@@ -86,6 +88,7 @@ target_link_libraries(libpeerpaste
 	      proto
         ${PROTOBUF_LIBRARIES}
         ${CRYPTOPP_LIBRARIES}
+        ${SQLITE3_LIBRARY}
         -lsodium
     )
 
