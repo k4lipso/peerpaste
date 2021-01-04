@@ -73,7 +73,7 @@ target_include_directories(libpeerpaste
         $<INSTALL_INTERFACE:include>
         ${Boost_INCLUDE_DIRS}
         ${CRYPTOPP_INCLUDE_DIR}
-	      "${CMAKE_CURRENT_BINARY_DIR}/include/peerpaste"
+        "${CMAKE_CURRENT_BINARY_DIR}/include/peerpaste"
     )
 
 target_link_libraries(libpeerpaste
@@ -85,10 +85,10 @@ target_link_libraries(libpeerpaste
         Boost::thread
         Boost::regex
         Boost::filesystem
-	      proto
+        proto
         ${PROTOBUF_LIBRARIES}
         ${CRYPTOPP_LIBRARIES}
-        ${SQLITE3_LIBRARY}
+        ${SQLite3_LIBRARIES}
         -lsodium
     )
 
