@@ -41,7 +41,7 @@ public:	OfstreamWrapper(const peerpaste::FileInfo& file_info, const std::string&
 		m_ofstream_.write(s, count);
 	}
 
-	size_t tellp()
+	std::ofstream::traits_type::pos_type tellp()
 	{
 		return m_ofstream_.tellp();
 	}
