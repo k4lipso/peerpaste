@@ -76,6 +76,7 @@ public:
 	std::string get(const std::string &id);
 	bool is_blocked(const std::string& id) const;
 	bool exists(const std::string &id) const;
+	bool exists(const peerpaste::FileInfo &id) const;
 	std::vector<peerpaste::FileInfo> get_files();
 
 private:

@@ -165,9 +165,14 @@ bool StaticStorage::exists(const std::string &id) const
 {
 	std::scoped_lock lk{mutex_};
 	return exists_internal(id);
-	//std::ifstream f(storage_path_ + id);
-	//return f.good();
 }
+
+bool StaticStorage::exists(const peerpaste::FileInfo &id) const
+{
+	std::scoped_lock lk{mutex_};
+	return exists_internal(id.file_name);
+}
+
 
 std::vector<peerpaste::FileInfo> StaticStorage::get_files()
 {
