@@ -47,10 +47,11 @@ bool StaticStorage::add_file(const std::string& filename)
 	return true;
 }
 
-std::optional<std::ofstream> StaticStorage::create_file(const std::string& filename)
+std::optional<std::ofstream> StaticStorage::create_file(const peerpaste::FileInfo& file_info)
 {
-	std::scoped_lock lk{mutex_};
+	const std::string& filename = file_info.file_name;
 
+	std::scoped_lock lk{mutex_};
 	if(exists_internal(filename) || is_blocked_internal(filename))
 	{
 		util::log(error, "Tried creating existing file"); return std::nullopt;
@@ -107,8 +108,10 @@ bool StaticStorage::finalize_file(const peerpaste::FileInfo& file_info)
 }
 
 
-std::optional<std::ifstream> StaticStorage::read_file(const std::string& filename)
+std::optional<std::ifstream> StaticStorage::read_file(const peerpaste::FileInfo& file_info)
 {
+	const std::string& filename = file_info.file_name;
+
 	if(!exists(filename))
 	{
 		util::log(error, "Tried reading nonexisting file");
