@@ -35,7 +35,7 @@ private:
 	std::optional<Peer> target_;
 	std::optional<peerpaste::FileInfo> file_info_;
 	std::ifstream m_source_file;
-	std::ofstream m_output_file;
+	std::optional<OfstreamWrapper> m_output_file;
 	static constexpr size_t m_buffer_size = 1024;
 	std::array<char, m_buffer_size> m_buf;
 	size_t m_file_size = 0;

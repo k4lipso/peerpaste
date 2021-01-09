@@ -11,6 +11,53 @@
 
 #include "peerpaste/cryptowrapper.hpp"
 #include "peerpaste/message.hpp"
+#include "sqlite_modern_cpp.h"
+
+class OfstreamWrapper
+{
+public:	OfstreamWrapper(const peerpaste::FileInfo& file_info, const std::string& db_path)
+		: m_file_info_(file_info)
+		, m_database_(db_path)
+	{
+	}
+
+	bool operator!() const
+	{
+		return !m_ofstream_;
+	}
+
+	void open(const std::string& filename, std::ios_base::openmode mode = std::ios_base::out)
+	{
+		m_ofstream_.open(filename.c_str(), mode);
+	}
+
+	void open(const char *filename, std::ios_base::openmode mode = std::ios_base::out)
+	{
+		m_ofstream_.open(filename, mode);
+	}
+
+	void write(const char* s, std::streamsize count)
+	{
+		m_ofstream_.write(s, count);
+	}
+
+	size_t tellp()
+	{
+		return m_ofstream_.tellp();
+	}
+
+	void flush()
+	{
+		m_ofstream_.flush();
+	}
+
+private:
+
+	peerpaste::FileInfo m_file_info_;
+	std::ofstream m_ofstream_;
+	sqlite::database m_database_;
+	bool m_is_valid_ = true;
+};
 
 class StaticStorage
 {
@@ -20,7 +67,7 @@ public:
 
 	void sync_files();
 	bool add_file(const std::string& filename);
-	std::optional<std::ofstream> create_file(const peerpaste::FileInfo& file_info);
+	std::optional<OfstreamWrapper> create_file(const peerpaste::FileInfo& file_info);
 	bool finalize_file(const peerpaste::FileInfo& file_info);
 	std::optional<std::ifstream> read_file(const peerpaste::FileInfo& file_info);
 

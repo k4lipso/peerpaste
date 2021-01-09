@@ -53,7 +53,7 @@ void GetFile::create_request()
 
 	const auto handler = std::bind(&GetFile::handle_response, this, std::placeholders::_1);
 
-	auto output_file = storage_->create_file(file_info_.value().file_name);
+	auto output_file = storage_->create_file(file_info_.value());
 	m_file_size = file_info_.value().file_size;
 
 	if(!output_file.has_value())
@@ -90,9 +90,9 @@ void GetFile::handle_request()
 		auto message = request_.value().get_message();
 
 		const auto file_infos = message->get_files();
-		const auto file_name = file_infos.front().file_name;
+		const auto file_info = file_infos.front();
 
-		if(!storage_->exists(file_name))
+		if(!storage_->exists(file_info))
 		{
 			util::log(error, "Cant send file, it does no exists");
 			state_ = MESSAGE_STATE::FAILED;
@@ -100,7 +100,7 @@ void GetFile::handle_request()
 			return;
 		}
 
-		auto source_file = storage_->read_file(file_name);
+		auto source_file = storage_->read_file(file_info);
 
 		if(!source_file.has_value())
 		{
@@ -116,7 +116,7 @@ void GetFile::handle_request()
 		const auto file_size = m_source_file.tellg();
 		m_source_file.seekg(0, m_source_file.beg);
 
-		util::log(info, std::string("Start sending file: ") + file_name);
+		util::log(info, std::string("Start sending file: ") + file_info.file_name);
 		std::stringstream sstr1;
 		sstr1 << "FileSize: " << file_size;
 		sstr1 << "\nSha256sum: " << file_infos.front().sha256sum;
@@ -129,7 +129,7 @@ void GetFile::handle_request()
 void GetFile::handle_response(RequestObject request_object)
 {
 	std::scoped_lock lk{mutex_};
-	if(request_object.is_request())
+	if(request_object.is_request() || !m_output_file.has_value())
 	{
 		state_ = MESSAGE_STATE::FAILED;
 		RequestDestruction();
@@ -138,7 +138,7 @@ void GetFile::handle_response(RequestObject request_object)
 
 	const auto file_chunk = request_object.get_message()->get_file_chunk();
 
-	if(!m_output_file)
+	if(!m_output_file.value())
 	{
 		util::log(error, "GetFIle::create_request could not open file");
 		state_ = MESSAGE_STATE::FAILED;
@@ -146,9 +146,9 @@ void GetFile::handle_response(RequestObject request_object)
 		return;
 	}
 
-	m_output_file.write(file_chunk.value().data.data(), file_chunk.value().size);
+	m_output_file.value().write(file_chunk.value().data.data(), file_chunk.value().size);
 
-	if(m_output_file.tellp() < static_cast<std::streamsize>(m_file_size))
+	if(m_output_file.value().tellp() < static_cast<std::streamsize>(m_file_size))
 	{
 		time_point_ = std::chrono::system_clock::now() + DURATION;
 		Notify();
@@ -159,7 +159,7 @@ void GetFile::handle_response(RequestObject request_object)
 
 	util::log(info, std::string("received file ") + file_info_.value().file_name);
 	util::log(info, std::string("with size in mb: ") + std::to_string(static_cast<double>(m_file_size / 1048576.0)));
-	m_output_file.flush();
+	m_output_file.value().flush();
 
 	state_ = MESSAGE_STATE::DONE;
 

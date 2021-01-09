@@ -47,7 +47,7 @@ bool StaticStorage::add_file(const std::string& filename)
 	return true;
 }
 
-std::optional<std::ofstream> StaticStorage::create_file(const peerpaste::FileInfo& file_info)
+std::optional<OfstreamWrapper> StaticStorage::create_file(const peerpaste::FileInfo& file_info)
 {
 	const std::string& filename = file_info.file_name;
 
@@ -57,7 +57,7 @@ std::optional<std::ofstream> StaticStorage::create_file(const peerpaste::FileInf
 		util::log(error, "Tried creating existing file"); return std::nullopt;
 	}
 
-	std::ofstream Output;
+	OfstreamWrapper Output(file_info, "");
 	Output.open(storage_path_ + filename, std::ios_base::binary);
 	if (!Output) {
 		util::log(error, "Failed to create file");
@@ -95,8 +95,7 @@ bool StaticStorage::finalize_file(const peerpaste::FileInfo& file_info)
 		return false;
 	}
 
-	std::cout << "finalizing file: " << sha256sum << '\n';
-
+	util::log(info, std::string("finalizing file: ") + sha256sum);
 
 	blocked_files_.erase(std::remove_if(blocked_files_.begin(), blocked_files_.end(),
 										[&filename](const auto& file){ return filename == file; }),
