@@ -61,6 +61,7 @@ struct FileChunk
 	{
 	}
 
+	static constexpr size_t DEFAULT_BUF_SIZE = 1024;
 	size_t size = 0;
 	size_t offset = 0;
 	std::vector<char> data;

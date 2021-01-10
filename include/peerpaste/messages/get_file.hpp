@@ -27,7 +27,7 @@ private:
 	void handle_response(RequestObject request_object) override;
 	void handle_failed() override;
 
-	void write_buffer();
+	void write_buffer(size_t offset = 0);
 	void write_file(bool failed);
 
 
@@ -36,7 +36,7 @@ private:
 	std::optional<peerpaste::FileInfo> file_info_;
 	std::ifstream m_source_file;
 	std::optional<OfstreamWrapper> m_output_file;
-	static constexpr size_t m_buffer_size = 1024;
+	static constexpr size_t m_buffer_size = peerpaste::FileChunk::DEFAULT_BUF_SIZE;
 	std::array<char, m_buffer_size> m_buf;
 	size_t m_file_size = 0;
 };
