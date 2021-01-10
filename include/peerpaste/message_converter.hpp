@@ -92,6 +92,7 @@ public:
 		{
 			auto protobuf_file_chunk = protobuf_message->file_chunk();
 			peerpaste::FileChunk file_chunk;
+			file_chunk.offset = protobuf_file_chunk.offset();
 			file_chunk.size = protobuf_file_chunk.chunk_size();
 			file_chunk.data = std::vector<char>(protobuf_file_chunk.data().data(),
 																					protobuf_file_chunk.data().data() + file_chunk.size);
@@ -143,6 +144,7 @@ public:
 		if(message->get_file_chunk().has_value())
 		{
 			auto protobuf_file_chunk = protobuf_message->mutable_file_chunk();
+			protobuf_file_chunk->set_offset(message->get_file_chunk().value().offset);
 			protobuf_file_chunk->set_chunk_size(message->get_file_chunk().value().size);
 			protobuf_file_chunk->set_data(message->get_file_chunk().value().data.data(), message->get_file_chunk().value().size);
 		}

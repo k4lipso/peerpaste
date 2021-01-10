@@ -48,13 +48,21 @@ struct FileInfo
 struct FileChunk
 {
 	FileChunk() = default;
-	explicit FileChunk(char* data_ptr, size_t data_size)
+	FileChunk(char* data_ptr, size_t data_size)
 		: size(data_size)
 		,	data{data_ptr, data_ptr + data_size}
 	{
 	}
 
-	size_t size;
+	FileChunk(char* data_ptr, size_t data_size, size_t data_offset)
+		: size(data_size)
+		, offset(data_offset)
+		,	data{data_ptr, data_ptr + data_size}
+	{
+	}
+
+	size_t size = 0;
+	size_t offset = 0;
 	std::vector<char> data;
 };
 
