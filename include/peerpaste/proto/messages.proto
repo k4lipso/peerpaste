@@ -67,7 +67,7 @@ message FileInfo
 }
 
 message FileChunk {
-   //required int64 offset = 1;
+   required int64 offset = 1;
    required int64 chunk_size = 2;
    required bytes data = 3;
 }
