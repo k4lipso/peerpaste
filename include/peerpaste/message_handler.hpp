@@ -28,7 +28,7 @@ public:
 	typedef std::shared_ptr<RequestObject> RequestObjectSPtr;
 	typedef std::shared_ptr<Peer> PeerPtr;
 
-	MessageHandler(short port)
+	MessageHandler(const std::string& ip, short port)
 		: thread_pool_(0)
 		, routing_table_()
 		, static_storage_(nullptr)
@@ -37,7 +37,7 @@ public:
 		, message_factory_{nullptr}
 	{
 		// TODO: setup self more accurate
-		auto self_ip = "127.0.0.1";
+		auto self_ip = ip;
 		auto self_port = std::to_string(port);
 		auto self_id = util::generate_sha256(self_ip, self_port);
 		routing_table_.set_self(Peer(self_id, self_ip, self_port));

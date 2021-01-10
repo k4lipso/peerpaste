@@ -28,7 +28,10 @@ int main(int argc, char **argv)
 
 	po::options_description description("peerpaste, a chord based p2p pastebin");
 
-	description.add_options()("help,h", "Display help message")("port,p", po::value<unsigned>(), "Port to listen on")(
+	description.add_options()(
+		"help,h", "Display help message")(
+		"address,a", po::value<std::string>(), "Address to listen on")(
+		"port,p", po::value<unsigned>(), "Port to listen on")(
 		"join,j", po::value<std::vector<std::string>>()->multitoken()->composing(), "IP and Port of Host to connect to")(
 		"verbose", "show additional information")("create", "create new ring")("log-messages", "log messages to files")(
 		"debug", "Send routing information to localhost");
@@ -101,13 +104,14 @@ int main(int argc, char **argv)
 
 		peerpaste::PeerPaste peerpaste;
 
-		if(vm.count("port"))
+		if(vm.count("port") && vm.count("address"))
 		{
-			peerpaste.init(vm["port"].as<unsigned>(), 4);
+			peerpaste.init(vm["address"].as<std::string>(), vm["port"].as<unsigned>(), 4);
 		}
 		else
 		{
-			util::log(info, "You have to specify a port using the --port option");
+			peerpaste.wait_till_finish();
+			util::log(info, "You have to specify address and port using the --address,-a and --port,-p option");
 			return 0;
 		}
 

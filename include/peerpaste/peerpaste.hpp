@@ -19,9 +19,9 @@ public:
 		stop();
 	}
 
-	void init(unsigned port, size_t thread_count)
+	void init(const std::string& ip, unsigned port, size_t thread_count)
 	{
-		handler_ = std::make_shared<MessageHandler>(port);
+		handler_ = std::make_shared<MessageHandler>(ip, port);
 		dispatcher_ = std::make_unique<peerpaste::MessageDispatcher>(handler_);
 		server_ = std::make_unique<Server>(thread_count, port, dispatcher_->get_context());
 		server_->set_queue(dispatcher_->get_receive_queue());
