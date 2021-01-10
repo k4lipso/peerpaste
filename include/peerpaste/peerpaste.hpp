@@ -46,9 +46,20 @@ public:
 
 	void stop()
 	{
-		server_->stop();
-		handler_->stop();
-		dispatcher_->stop();
+		if(server_ != nullptr)
+		{
+			server_->stop();
+		}
+
+		if(handler_ != nullptr)
+		{
+			handler_->stop();
+		}
+
+		if(dispatcher_ != nullptr)
+		{
+			dispatcher_->stop();
+		}
 	}
 
 	void join(const std::string &ip, const std::string &port)
@@ -74,7 +85,10 @@ public:
 
 	void wait_till_finish()
 	{
-		dispatcher_->join();
+		if(dispatcher_ != nullptr)
+		{
+			dispatcher_->join();
+		}
 	}
 
 private:
