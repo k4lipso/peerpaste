@@ -71,7 +71,9 @@ void GetFile::create_request()
 	request.set_message(message);
 	request.set_connection(std::make_shared<Peer>(target_.value()));
 
-	std::cout << "Requesting file: " << file_info_.value().file_name <<  " of size: " << m_file_size << " bytes\n";
+	std::stringstream sstr;
+	sstr << "requesting file: " << file_info_.value().file_name <<  " of size: " << m_file_size << " bytes\n";
+	util::log(info, sstr.str());
 
 	create_handler_object(transaction_id, handler, true);
 	Notify(request, *handler_object_);
