@@ -1,4 +1,5 @@
 #include "peerpaste/messages/get_file.hpp"
+
 namespace peerpaste::message
 {
 
@@ -46,19 +47,19 @@ void GetFile::create_request()
 	const auto message = std::make_shared<Message>();
 	message->set_header(Header(true, 0, 0, "get_file", "", "", ""));
 
-	//TODO: set peerpaste::FileInfo here, give offset if file is pending
-	message->add_file(file_info_.value());
-
 	const auto transaction_id = message->generate_transaction_id();
 
 	const auto handler = std::bind(&GetFile::handle_response, this, std::placeholders::_1);
 
 	auto output_file = storage_->create_file(file_info_.value());
+
+	message->add_file(file_info_.value());
+
 	m_file_size = file_info_.value().file_size;
 
 	if(!output_file.has_value())
 	{
-		util::log(error, "GetFIle::create_request could not open file");
+		util::log(error, "GetFile::create_request could not open file");
 		state_ = MESSAGE_STATE::FAILED;
 		RequestDestruction();
 		return;
@@ -114,7 +115,7 @@ void GetFile::handle_request()
 
 		m_source_file.seekg(0, m_source_file.end);
 		const auto file_size = m_source_file.tellg();
-		m_source_file.seekg(0, m_source_file.beg);
+		m_source_file.seekg(file_info.offset, m_source_file.beg);
 
 		util::log(info, std::string("Start sending file: ") + file_info.file_name);
 		std::stringstream sstr1;
@@ -146,7 +147,7 @@ void GetFile::handle_response(RequestObject request_object)
 		return;
 	}
 
-	m_output_file.value().write(file_chunk.value().data.data(), file_chunk.value().size);
+	m_output_file.value().write(file_chunk.value());
 
 	if(m_output_file.value().tellp() < static_cast<std::streamsize>(m_file_size))
 	{
@@ -176,13 +177,12 @@ void GetFile::handle_failed()
 	state_ = MESSAGE_STATE::FAILED;
 }
 
-void GetFile::write_buffer()
+void GetFile::write_buffer(size_t offset /* = 0 */)
 {
 	time_point_ = std::chrono::system_clock::now() + DURATION;
 	auto response = request_->get_message()->generate_response();
-	response->set_file_chunk(peerpaste::FileChunk{m_buf.data(), static_cast<size_t>(m_source_file.gcount())});
+	response->set_file_chunk(peerpaste::FileChunk{m_buf.data(), static_cast<size_t>(m_source_file.gcount()), offset});
 	response->generate_transaction_id();
-
 
 	auto response_object = RequestObject(request_.value());
 	response_object.set_message(response);
@@ -196,7 +196,7 @@ void GetFile::write_file(bool failed)
 	std::scoped_lock lk{mutex_};
 	if(!failed && m_source_file)
 	{
-
+		const size_t offset = m_source_file.tellg();
 		m_source_file.read(m_buf.data(), m_buf.size());
 
 		if(m_source_file.fail() && !m_source_file.eof())
@@ -212,7 +212,7 @@ void GetFile::write_file(bool failed)
 		sstr << "GetFile::handle_req Sending " << m_source_file.gcount() << "bytes, total: "
 				 << m_source_file.tellg() << " bytes.";
 
-		write_buffer();
+		write_buffer(offset);
 	}
 	else
 	{
