@@ -3,12 +3,17 @@
 StaticStorage::StaticStorage(const std::string &id)
 	: id_(id)
 	, storage_path_("/tmp/peerpaste/" + id_ + '/')
+	, database_("")
 {
 	if(not boost::filesystem::create_directories(storage_path_))
 	{
 		util::log(error, "Cant create directory");
 	}
+
+	database_ = sqlite::database(storage_path_ + std::string("db.sqlite"));
+	init_db();
 	sync_files(); //if on creation some files are not completed this causes problems
+
 }
 
 StaticStorage::~StaticStorage()
@@ -21,6 +26,24 @@ void StaticStorage::sync_files()
 	for(const auto &entry : std::filesystem::directory_iterator(storage_path_))
 	{
 		const std::string name = entry.path().filename().string();
+
+		if(name == "db.sqlite" || name == "db.sqlite-journal")
+		{
+			continue;
+		}
+
+		bool IsInProgress = false;
+		database_ << "select bytes_written from file_transfer where file_name = ? ;"
+					<< name
+					>> [&]([[maybe_unused]] long int bytes_written) {
+						 IsInProgress = true;
+					};
+
+		if(IsInProgress)
+		{
+			continue;
+		}
+
 		util::log(info, std::string("add ") + name);
 
 		if(!add_file(name))
@@ -30,6 +53,17 @@ void StaticStorage::sync_files()
 	}
 
 	util::log(info, "done syncing storage");
+}
+
+void StaticStorage::init_db()
+{
+  database_ <<
+    "create table if not exists file_transfer ("
+    "   file_name text not null unique,"
+    "   sha256sum text,"
+    "   file_size int,"
+    "   bytes_written int"
+    ");";
 }
 
 bool StaticStorage::add_file(const std::string& filename)
@@ -47,7 +81,7 @@ bool StaticStorage::add_file(const std::string& filename)
 	return true;
 }
 
-std::optional<OfstreamWrapper> StaticStorage::create_file(const peerpaste::FileInfo& file_info)
+std::optional<OfstreamWrapper> StaticStorage::create_file(peerpaste::FileInfo& file_info)
 {
 	const std::string& filename = file_info.file_name;
 
@@ -57,14 +91,54 @@ std::optional<OfstreamWrapper> StaticStorage::create_file(const peerpaste::FileI
 		util::log(error, "Tried creating existing file"); return std::nullopt;
 	}
 
-	OfstreamWrapper Output(file_info, "");
-	Output.open(storage_path_ + filename, std::ios_base::binary);
+
+	//Update FileInfo::offset, this way GetFile::create_request requests with correct offset
+	//if file was partly received before
+	bool file_exists = false;
+	database_ << "select bytes_written from file_transfer where file_name = ? ;"
+						<< file_info.file_name
+						>> [&](long int bytes_written) {
+
+							 std::stringstream sstr;
+							 sstr << "Found File: " << filename << ", setting offset to " << bytes_written << "bytes";
+							 util::log(info, sstr.str());
+
+							 file_exists = true;
+							 file_info.offset = bytes_written;
+						};
+
+	OfstreamWrapper Output(file_info, storage_path_ + "db.sqlite");
+
+	if(file_exists)
+	{
+		Output.open(storage_path_ + filename, std::ios::in|std::ios::out|std::ios::binary);
+	}
+	else
+	{
+		Output.open(storage_path_ + filename, std::ios::out|std::ios::binary);
+	}
+
+
+
 	if (!Output) {
 		util::log(error, "Failed to create file");
 		return std::nullopt;
 	}
 
-	blocked_files_.push_back(filename);
+
+	Output.m_ofstream_.seekp(file_info.offset, Output.m_ofstream_.beg);
+
+	database_ << "begin;";
+	database_ << "insert or ignore into file_transfer (file_name,sha256sum,file_size,bytes_written) values (?,?,?,?);"
+					 << filename
+					 << file_info.sha256sum
+					 << file_info.file_size
+					 << file_info.offset;
+	database_ << "commit;";
+
+	auto token = std::make_shared<std::atomic<bool>>(true);
+	Output.set_token(token);
+	blocked_files_.emplace_back(filename, std::move(token));
 
 	return Output;
 }
@@ -98,10 +172,16 @@ bool StaticStorage::finalize_file(const peerpaste::FileInfo& file_info)
 	util::log(info, std::string("finalizing file: ") + sha256sum);
 
 	blocked_files_.erase(std::remove_if(blocked_files_.begin(), blocked_files_.end(),
-										[&filename](const auto& file){ return filename == file; }),
+										[&filename](const auto& file){ return filename == file.first; }),
 										blocked_files_.end());
 
 	files_.emplace_back(filename, sha256sum, std::filesystem::file_size(storage_path_ + filename));
+
+
+	database_ << "begin;";
+	database_ << "delete from file_transfer where file_name = ? ;"
+						<< filename;
+	database_ << "commit;";
 
 	return true;
 }
@@ -196,7 +276,7 @@ std::vector<peerpaste::FileInfo> StaticStorage::get_files()
 bool StaticStorage::is_blocked_internal(const std::string& id) const
 {
 	return std::any_of(blocked_files_.begin(), blocked_files_.end(),
-										 [&id](const auto& file_name){ return file_name == id; });
+										 [&id](const auto& file_name){ return file_name.first == id && *file_name.second.get() == true; });
 }
 
 bool StaticStorage::exists_internal(const std::string &id) const
