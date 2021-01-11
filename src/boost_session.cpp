@@ -3,9 +3,6 @@
 #include "peerpaste/message_converter.hpp"
 
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/future.hpp>
 
 #include <iostream>
 #include <memory>

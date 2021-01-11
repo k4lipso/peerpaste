@@ -2,9 +2,6 @@
 #define SERVER_H
 
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/property_tree/json_parser.hpp>
-#include <boost/property_tree/ptree.hpp>
 #include <functional>
 #include <sstream>
 #include <string>

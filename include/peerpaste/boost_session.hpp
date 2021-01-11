@@ -2,9 +2,7 @@
 #define BOOSTSESSION_HPP
 
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/future.hpp>
+
 #include <iostream>
 #include <memory>
 #include <string>
