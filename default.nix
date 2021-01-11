@@ -1,8 +1,10 @@
 { pkgs ? import <nixpkgs> {}, stdenv }:
-with pkgs;
+with pkgs; 
 
-mkShell {
-  nativeBuildInputs = [ pkgconfig python3 python37Packages.klein cmake gnumake42 lldb gdb ];
+stdenv.mkDerivation {
+  name = "peerpaste";
+  src = ./.;
+  nativeBuildInputs = [ pkgconfig python3 python37Packages.klein cmake gnumake lldb gdb ];
   depsBuildBuild = [ ccls ];
   buildInputs = [ sqlite protobuf3_7 boost172 cryptopp clang-tools boost-build libsodium doxygen catch2 ];
 }
