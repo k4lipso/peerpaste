@@ -16,6 +16,9 @@ target_link_libraries(test
     PUBLIC
         libpeerpaste
         -fsanitize=address
+    PRIVATE
+        Catch2::Catch2
+
 )
 
 enable_testing()

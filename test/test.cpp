@@ -11,14 +11,10 @@
 #include <string>
 #include <thread>
 
-#include <boost/array.hpp>
 #include <boost/asio.hpp>
-#include <boost/bind.hpp>
-#include <boost/thread.hpp>
-#include <boost/thread/future.hpp>
 
 #define CATCH_CONFIG_MAIN // This tells Catch to provide a main() - only do this in one cpp file
-#include <catch.hpp>
+#include <catch2/catch.hpp>
 
 TEST_CASE("Testing Header Object", "[peerpaste::message::header]")
 {
