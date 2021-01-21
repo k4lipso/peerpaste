@@ -20,6 +20,7 @@ public:
 	~GetFile() override;
 
 	void HandleNotification(const RequestObject &request_object) override;
+	void write_file(bool failed);
 
 private:
 	void create_request() override;
@@ -28,7 +29,6 @@ private:
 	void handle_failed() override;
 
 	void write_buffer(size_t offset = 0);
-	void write_file(bool failed);
 
 
 	StaticStorage *storage_;
