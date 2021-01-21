@@ -189,14 +189,41 @@ void GetFile::write_buffer(size_t offset /* = 0 */)
 	auto response_object = RequestObject(request_.value());
 	response_object.set_message(response);
 	//response_object.set_on_write_handler(std::bind(&GetFile::write_file, this, std::placeholders::_1));
-	response_object.set_on_write_handler([this](bool Failed){ this->write_file(Failed); });
+
+	response_object.set_on_write_handler([weak = weak_from_this()](bool failed)
+	{
+		if(auto shared = weak.lock())
+		{
+			const auto casted_shared = std::dynamic_pointer_cast<GetFile>(shared);
+
+			if(casted_shared)
+			{
+				casted_shared->write_file(failed);
+			}
+			else
+			{
+				util::log(error, "Could not cast to GetFile");
+			}
+
+			return;
+		}
+	});
+
 	Notify(response_object);
 }
 
 void GetFile::write_file(bool failed)
 {
 	std::scoped_lock lk{mutex_};
-	if(!failed && m_source_file)
+
+	if(failed)
+	{
+	  state_ = MESSAGE_STATE::FAILED;
+	  util::log(debug, "GetFile::write_file error occured");
+	  RequestDestruction();
+	}
+
+	if(m_source_file)
 	{
 		const size_t offset = m_source_file.tellg();
 		m_source_file.read(m_buf.data(), m_buf.size());
@@ -205,22 +232,13 @@ void GetFile::write_file(bool failed)
 		{
 			state_ = MESSAGE_STATE::FAILED;
 			util::log(debug, "GetFile::handle_request Failed reading file");
+
 			//TODO: send "abort filetransfer message"
 			RequestDestruction();
 			return;
 		}
 
-		std::stringstream sstr;
-		sstr << "GetFile::handle_req Sending " << m_source_file.gcount() << "bytes, total: "
-				 << m_source_file.tellg() << " bytes.";
-
 		write_buffer(offset);
-	}
-	else
-	{
-		state_ = MESSAGE_STATE::FAILED;
-		util::log(debug, "GetFile::write_file error occured");
-		RequestDestruction();
 	}
 }
 
