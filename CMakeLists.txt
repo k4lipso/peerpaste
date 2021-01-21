@@ -10,6 +10,7 @@ project("PeerPaste" CXX)
 option(BUILD_TESTS "test will be build" OFF)
 option(BUILD_DOC "build documentation" OFF)
 option(SANITIZE "address sanitizers" OFF)
+option(USE_SUBMODULES "built using submodules. this is only needed when building without nix" OFF)
 
 find_package (Threads REQUIRED)
 find_package(Protobuf REQUIRED)
@@ -68,7 +69,9 @@ set_target_properties(libpeerpaste PROPERTIES LINKER_LANGUAGE CXX)
 
 target_include_directories(libpeerpaste
     PUBLIC
+    if(USE_SUBMODULES)
         "external/sqlite_modern_cpp/hdr"
+    endif()
         $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
         $<INSTALL_INTERFACE:include>
         ${Boost_INCLUDE_DIRS}
