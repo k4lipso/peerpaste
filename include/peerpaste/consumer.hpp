@@ -1,5 +1,4 @@
-#ifndef MESSAGE_DISPATCHER
-#define CONSUMER_DISPATCHER
+#pragma once
 
 #define BOOST_BIND_GLOBAL_PLACEHOLDERS
 #include <boost/property_tree/json_parser.hpp>
@@ -295,4 +294,3 @@ private:
 };
 
 } // namespace peerpaste
-#endif /* ifndef MESSAGE_DISPATCHER */

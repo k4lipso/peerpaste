@@ -1,5 +1,4 @@
-#ifndef PEERPASTE
-#define PEERPASTE
+#pragma once
 
 #include <memory>
 #include <string>
@@ -100,5 +99,3 @@ private:
 };
 
 } // namespace peerpaste
-
-#endif /* ifndef PEERPASTE */

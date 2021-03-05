@@ -1,4 +1,5 @@
 #include "peerpaste/storage.hpp"
+#include "peerpaste/cryptowrapper.hpp"
 
 StaticStorage::StaticStorage(const std::string &id)
 	: id_(id)

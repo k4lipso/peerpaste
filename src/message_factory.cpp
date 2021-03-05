@@ -69,22 +69,6 @@ std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const Request
 		return std::make_unique<GetFile>(storage_, request);
 	}
 
-	if(type == "put")
-	{
-	}
-	if(type == "store")
-	{
-	}
-	if(type == "get")
-	{
-	}
-	if(type == "get_internal")
-	{
-	}
-	if(type == "backup")
-	{
-	}
-
 	return nullptr;
 }
 

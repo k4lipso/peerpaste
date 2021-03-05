@@ -9,9 +9,8 @@
 #include <map>
 #include <mutex>
 
-#include "peerpaste/cryptowrapper.hpp"
-#include "peerpaste/message.hpp"
 #include "sqlite_modern_cpp.h"
+#include "peerpaste/message.hpp"
 
 class OfstreamWrapper
 {
