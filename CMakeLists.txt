@@ -12,10 +12,11 @@ option(BUILD_DOC "build documentation" OFF)
 option(SANITIZE "address sanitizers" OFF)
 option(USE_SUBMODULES "built using submodules. this is only needed when building without nix" OFF)
 
-find_package (Threads REQUIRED)
+find_package(Threads REQUIRED)
 find_package(Protobuf REQUIRED)
 find_package(CryptoPP REQUIRED)
 find_package(SQLite3 REQUIRED)
+find_package(spdlog REQUIRED)
 
 add_subdirectory(include/peerpaste/proto)
 
@@ -92,6 +93,7 @@ target_link_libraries(libpeerpaste
         ${PROTOBUF_LIBRARIES}
         ${CRYPTOPP_LIBRARIES}
         ${SQLite3_LIBRARIES}
+        spdlog::spdlog
         -lsodium
     )
 
