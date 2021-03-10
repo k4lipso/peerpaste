@@ -26,7 +26,7 @@ std::unique_ptr<MessagingBase> MessageFactory::create_from_request(const Request
 {
 	if(!request.is_request())
 	{
-		util::log(debug, "MessageFactory could net create. RequestObject is a Response");
+		spdlog::debug("MessageFactory could net create. RequestObject is a Response");
 		return nullptr;
 	}
 

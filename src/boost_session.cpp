@@ -58,9 +58,7 @@ void BoostSession::write_direct(const DataBuffer& encoded_message, const std::fu
 		{
 			if(ec)
 			{
-				std::stringstream sstr;
-				sstr << "BoostSession::write_direct failed, reason: " << ec << '\n';
-				util::log(error, sstr.str());
+				spdlog::error("BoostSession::write_direct failed, reason: {}", ec.message());
 			}
 
 			handler(static_cast<bool>(ec));

@@ -39,7 +39,7 @@ public:
 	void stop()
 	{
 		acceptor_.close();
-		util::log(debug, "[Server] closed acceptor");
+		spdlog::debug("[Server] closed acceptor");
 	}
 
 private:
@@ -49,14 +49,14 @@ private:
 	void start_listening(uint16_t port)
 	{
 		/* BOOST_LOG_FUNCTION(); */
-		util::log(debug, "Setting up endpoint");
+		spdlog::debug("Setting up endpoint");
 		tcp::endpoint endpoint(tcp::v4(), port);
-		util::log(info, std::string("setting port to ") + std::to_string(port));
+		spdlog::info("Setting port to {}", port);
 		acceptor_.open(endpoint.protocol());
 		acceptor_.set_option(tcp::acceptor::reuse_address(true));
 		acceptor_.bind(endpoint);
 		acceptor_.listen();
-		util::log(info, "started listening");
+		spdlog::info("started listening");
 	}
 
 	/**
@@ -73,7 +73,7 @@ private:
 	{
 		if(ec)
 		{
-			util::log(error, "handle_accept with error");
+			spdlog::error("handle_accept with error: {}", ec.message());
 			return;
 		}
 		if(!acceptor_.is_open())

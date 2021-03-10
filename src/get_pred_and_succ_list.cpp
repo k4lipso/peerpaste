@@ -72,7 +72,7 @@ void GetPredAndSuccList::handle_request()
 	if(message->get_peers().size() != 0)
 	{
 		// TODO: handle_invalid_message!
-		util::log(warning, "Invalid message handle_get_predecessor_req");
+		spdlog::warn("Invalid message handle_get_predecessor_req");
 	}
 
 	auto response = message->generate_response();

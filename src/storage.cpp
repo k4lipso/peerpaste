@@ -8,7 +8,7 @@ StaticStorage::StaticStorage(const std::string &id)
 {
 	if(not boost::filesystem::create_directories(storage_path_))
 	{
-		util::log(error, "Cant create directory");
+		spdlog::debug("Cant create directory");
 	}
 
 	database_ = sqlite::database(storage_path_ + std::string("db.sqlite"));
@@ -23,7 +23,7 @@ StaticStorage::~StaticStorage()
 
 void StaticStorage::sync_files()
 {
-	util::log(info, "start syncing storage...");
+	spdlog::info("start syncing storage...");
 	for(const auto &entry : std::filesystem::directory_iterator(storage_path_))
 	{
 		const std::string name = entry.path().filename().string();
@@ -45,15 +45,15 @@ void StaticStorage::sync_files()
 			continue;
 		}
 
-		util::log(info, std::string("add ") + name);
+		spdlog::info("add {}", name);
 
 		if(!add_file(name))
 		{
-			util::log(info, std::string("failed to add ") + name);
+			spdlog::info("failed to add {}", name);
 		}
 	}
 
-	util::log(info, "done syncing storage");
+	spdlog::info("done syncing storage");
 }
 
 void StaticStorage::init_db()
@@ -89,7 +89,8 @@ std::optional<OfstreamWrapper> StaticStorage::create_file(peerpaste::FileInfo& f
 	std::scoped_lock lk{mutex_};
 	if(exists_internal(filename) || is_blocked_internal(filename))
 	{
-		util::log(error, "Tried creating existing file"); return std::nullopt;
+		spdlog::debug("Tried creating existing file");
+		return std::nullopt;
 	}
 
 
@@ -100,9 +101,7 @@ std::optional<OfstreamWrapper> StaticStorage::create_file(peerpaste::FileInfo& f
 						<< file_info.file_name
 						>> [&](long int bytes_written) {
 
-							 std::stringstream sstr;
-							 sstr << "Found File: " << filename << ", setting offset to " << bytes_written << "bytes";
-							 util::log(info, sstr.str());
+							 spdlog::info("Found File: {}, setting offset to {} bytes", filename, bytes_written);
 
 							 file_exists = true;
 							 file_info.offset = bytes_written;
@@ -122,7 +121,7 @@ std::optional<OfstreamWrapper> StaticStorage::create_file(peerpaste::FileInfo& f
 
 
 	if (!Output) {
-		util::log(error, "Failed to create file");
+		spdlog::debug("Failed to create file");
 		return std::nullopt;
 	}
 
@@ -152,13 +151,13 @@ bool StaticStorage::finalize_file(const peerpaste::FileInfo& file_info)
 
 	if(exists_internal(filename))
 	{
-		util::log(error, "Tried finalizing file that already exists");
+		spdlog::debug("Tried finalizing file that already exists");
 		return false;
 	}
 
 	if(!is_blocked_internal(filename))
 	{
-		util::log(error, "Tried finalizing file that was not blocked");
+		spdlog::debug("Tried finalizing file that was not blocked");
 		return false;
 	}
 
@@ -166,11 +165,11 @@ bool StaticStorage::finalize_file(const peerpaste::FileInfo& file_info)
 
 	if(sha256sum != file_info.sha256sum)
 	{
-		util::log(error, "Received file has different sha256sum than requested file! Aborting");
+		spdlog::warn("Received file has different sha256sum than requested file! Aborting");
 		return false;
 	}
 
-	util::log(info, std::string("finalizing file: ") + sha256sum);
+	spdlog::info("finalizing file: {}", sha256sum);
 
 	blocked_files_.erase(std::remove_if(blocked_files_.begin(), blocked_files_.end(),
 										[&filename](const auto& file){ return filename == file.first; }),
@@ -194,7 +193,7 @@ std::optional<std::ifstream> StaticStorage::read_file(const peerpaste::FileInfo&
 
 	if(!exists(filename))
 	{
-		util::log(error, "Tried reading nonexisting file");
+		spdlog::debug("Tried reading nonexisting file");
 		return std::nullopt;
 	}
 
@@ -203,8 +202,8 @@ std::optional<std::ifstream> StaticStorage::read_file(const peerpaste::FileInfo&
 
 	if(!Input)
 	{
-		util::log(error, "Failed to read file");
-		util::log(error, storage_path_ + filename);
+		spdlog::error("Failed to read file");
+		spdlog::error("{}",storage_path_ + filename);
 		return std::nullopt;
 	}
 
@@ -225,7 +224,7 @@ void StaticStorage::remove(const std::string &id)
 	{
 		std::remove(std::string(storage_path_ + id).c_str());
 	}
-	util::log(debug, "[storage] could not remove file");
+	spdlog::debug("[storage] could not remove file");
 }
 
 std::string StaticStorage::get(const std::string &id)

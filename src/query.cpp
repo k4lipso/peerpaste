@@ -38,7 +38,7 @@ void Query::create_request()
 	Peer self;
 	if(not routing_table_->try_get_self(self))
 	{
-		util::log(warning, "Cant join, self not set");
+		spdlog::warn("Cant join, self not set");
 	}
 
 	// Generate Query
@@ -101,7 +101,7 @@ void Query::handle_response(RequestObject request_object)
 	}
 	else
 	{
-		util::log(warning, "Wrong Message_Size");
+		spdlog::warn("Wrong Message_Size");
 		// TODO: handle invalid message
 		state_ = MESSAGE_STATE::FAILED;
 		set_promise({});

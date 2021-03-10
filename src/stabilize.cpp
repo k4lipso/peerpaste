@@ -99,7 +99,7 @@ void Stabilize::handle_get_pred_and_succ_list_notify(MessagingBase *MessagePtr)
 	Peer self;
 	if(not routing_table_->try_get_self(self))
 	{
-		util::log(warning, "Cant handle stabilize: self not set");
+		spdlog::warn("Cant handle stabilize: self not set");
 		state_ = MESSAGE_STATE::FAILED;
 		*stabilize_flag_ = false;
 		RequestDestruction();
@@ -117,7 +117,7 @@ void Stabilize::handle_get_pred_and_succ_list_notify(MessagingBase *MessagePtr)
 	Peer successor;
 	if(not routing_table_->try_get_successor(successor))
 	{
-		util::log(warning, "Cant handle stabilize: successor not set");
+		spdlog::warn("Cant handle stabilize: successor not set");
 		state_ = MESSAGE_STATE::FAILED;
 		*stabilize_flag_ = false;
 		RequestDestruction();

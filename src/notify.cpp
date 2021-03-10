@@ -78,7 +78,7 @@ void Notification::handle_request()
 	if(message->get_peers().size() != 1)
 	{
 		// TODO: handle invalid msg
-		util::log(warning, "handle notify invalid message");
+		spdlog::warn("handle notify invalid message");
 		state_ = MESSAGE_STATE::FAILED;
 		return;
 	}
@@ -98,11 +98,11 @@ void Notification::handle_request()
 	// check the rectify operation in how_to_make_chord_correct.pdf
 	if(not routing_table_->try_get_predecessor(predecessor))
 	{
-		util::log(warning, "cant handle notify: no predecessor set");
+		spdlog::warn("cant handle notify: no predecessor set");
 	}
 	if(not routing_table_->try_get_self(self))
 	{
-		util::log(warning, "cant handle notify: self not set");
+		spdlog::warn("cant handle notify: self not set");
 	}
 
 	auto predecessor_id = predecessor.get_id();

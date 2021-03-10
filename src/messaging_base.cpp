@@ -90,8 +90,7 @@ MESSAGE_STATE MessagingBase::check_state()
 
 	if(std::chrono::system_clock::now() > time_point_)
 	{
-		util::log(debug, "Message Timed Out");
-		util::log(debug, std::to_string(static_cast<int>(type_)));
+		spdlog::debug("Message Timed Out, type: {}", static_cast<int>(type_));
 		state_ = MESSAGE_STATE::TIMEDOUT;
 		is_done_ = true;
 		handle_failed();
@@ -109,8 +108,7 @@ MESSAGE_STATE MessagingBase::check_state()
 
 	if(std::any_of(dependencies_.begin(), dependencies_.end(), already_timed_out))
 	{
-		util::log(debug, "Message Timed Out");
-		util::log(debug, std::to_string(static_cast<int>(type_)));
+		spdlog::debug("Message Timed Out, type: {}", static_cast<int>(type_));
 		handle_failed();
 		is_done_ = true;
 		return MESSAGE_STATE::TIMEDOUT;

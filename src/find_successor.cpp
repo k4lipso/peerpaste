@@ -183,7 +183,7 @@ void FindSuccessor::handle_response(RequestObject request_object)
 	{
 		// TODO: handle invalid message
 		state_ = MESSAGE_STATE::FAILED;
-		util::log(debug, "invalid find_successor response");
+		spdlog::debug("invalid find_successor response");
 	}
 
 	state_ = MESSAGE_STATE::DONE;
@@ -201,7 +201,7 @@ std::unique_ptr<Peer> FindSuccessor::find_successor(const std::string &id) const
 	Peer self;
 	if(not routing_table_->try_get_self(self))
 	{
-		util::log(warning, "Cant find successor, self was not set");
+		spdlog::warn("Cant find successor, self was not set");
 		return nullptr;
 	}
 
@@ -220,7 +220,7 @@ std::unique_ptr<Peer> FindSuccessor::find_successor(const std::string &id) const
 	Peer successor;
 	if(not routing_table_->try_get_successor(successor))
 	{
-		util::log(warning, "Cant find successor, successor was not set");
+		spdlog::warn("Cant find successor, successor was not set");
 		return nullptr;
 	}
 	auto succ_id = successor.get_id();
@@ -244,7 +244,7 @@ std::unique_ptr<Peer> FindSuccessor::closest_preceding_node(const std::string &i
 	Peer self;
 	if(not routing_table_->try_get_self(self))
 	{
-		util::log(warning, "Cant find closest_preceding_node, self was not set");
+		spdlog::warn("Cant find closest_preceding_node, self was not set");
 		return nullptr;
 	}
 	auto peers = routing_table_->get_peers();

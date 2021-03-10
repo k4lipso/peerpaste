@@ -61,6 +61,8 @@ int main(int argc, char **argv)
 											 << std::this_thread::get_id()
 											 /* << "] [" << expr::format_named_scope("Scope", keywords::format = "%n (%f:%l)") */
 											 << "] <" << expr::attr<severity_level>("Severity") << "> " << expr::message);
+
+				spdlog::set_level(spdlog::level::debug);
 		}
 		else
 		{
@@ -111,7 +113,7 @@ int main(int argc, char **argv)
 		else
 		{
 			peerpaste.wait_till_finish();
-			util::log(info, "You have to specify address and port using the --address,-a and --port,-p option");
+			spdlog::info("You have to specify address and port using the --address,-a and --port,-p option");
 			return 0;
 		}
 

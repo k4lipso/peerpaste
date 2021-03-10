@@ -56,7 +56,7 @@ public:
 		}
 		else
 		{
-			util::log(error, "MessageHandler could not init. Self was not set");
+			spdlog::error("MessageHandler could not init. Self was not set");
 		}
 	}
 
@@ -166,7 +166,7 @@ public:
 
 		if(!message_object)
 		{
-			util::log(warning, "Handle_request: couldnt create from tranport object");
+			spdlog::warn("Handle_request: couldnt create from tranport object");
 			return;
 		}
 
@@ -196,14 +196,14 @@ public:
 			}
 			else
 			{
-				util::log(info, "weak_ptr expired");
+				spdlog::info("weak_ptr expired");
 			}
 
 			return;
 		}
 		else
 		{
-			util::log(debug, "No active handler found");
+			spdlog::debug("No active handler found");
 		}
 	}
 

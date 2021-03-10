@@ -137,7 +137,7 @@ public:
 
 	void handle_timeouts()
 	{
-		util::log(debug, "RequestHandler::handle_timeouts()");
+		spdlog::debug("RequestHandler::handle_timeouts()");
 		std::unique_lock lk(mutex_);
 		for(auto iter = requests_.begin(); iter != requests_.end();)
 		{

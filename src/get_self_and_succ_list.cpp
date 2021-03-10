@@ -76,7 +76,7 @@ void GetSelfAndSuccList::handle_request()
 	Peer self;
 	if(not routing_table_->try_get_self(self))
 	{
-		util::log(warning, "Could not get self in handle_get_self_and_successor_list_request");
+		spdlog::warn("Could not get self in handle_get_self_and_successor_list_request");
 	}
 
 	succ_list.insert(succ_list.begin(), self);

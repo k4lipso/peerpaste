@@ -75,17 +75,17 @@ public:
 		io_context_.stop();
 		for(auto &thread_pool : thread_pool_deprecated_)
 		{
-			util::log(debug, "joining thread of thread_pool_deprecated_");
+			spdlog::debug("joining thread of thread_pool_deprecated_");
 			thread_pool.join();
 		}
 		while(not io_context_.stopped())
 		{
-			util::log(debug, "wait for io_context to stop");
+			spdlog::debug("wait for io_context to stop");
 			std::this_thread::sleep_for(std::chrono::seconds(1));
 		}
 		for(auto &asio_pool : asio_pool_)
 		{
-			util::log(debug, "joining thread of asio_pool_");
+			spdlog::debug("joining thread of asio_pool_");
 			asio_pool.join();
 		}
 	}

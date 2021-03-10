@@ -71,7 +71,7 @@ std::string decrypt(const std::string &key_str, const std::string &data_str)
 
 	if(crypto_secretbox_open_easy(decrypted, ciphertext, data_str.length(), nonce.data(), key.data()) != 0)
 	{
-		util::log(notify, "Message forged, or wrong Key. It cant be decrypted");
+		spdlog::info("Message forged, or wrong Key. It cant be decrypted");
 	}
 
 	return std::string(&decrypted[0], &decrypted[data_str.length() - crypto_secretbox_MACBYTES]);

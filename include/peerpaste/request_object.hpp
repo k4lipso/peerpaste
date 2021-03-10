@@ -185,7 +185,7 @@ public:
 	{
 		if(not has_promise())
 		{
-			util::log(debug, "request_object::set_promise_value: has no promise");
+			spdlog::debug("request_object::set_promise_value: has no promise");
 			return false;
 		}
 		data_promise_deprecated_.value()->set_value(value);

@@ -59,7 +59,7 @@ void GetFile::create_request()
 
 	if(!output_file.has_value())
 	{
-		util::log(error, "GetFile::create_request could not open file");
+		spdlog::debug("GetFile::create_request could not open file");
 		state_ = MESSAGE_STATE::FAILED;
 		RequestDestruction();
 		return;
@@ -71,9 +71,7 @@ void GetFile::create_request()
 	request.set_message(message);
 	request.set_connection(std::make_shared<Peer>(target_.value()));
 
-	std::stringstream sstr;
-	sstr << "requesting file: " << file_info_.value().file_name <<  " of size: " << m_file_size << " bytes\n";
-	util::log(info, sstr.str());
+	spdlog::info("requesting file: {} of size: {} bytes", file_info_.value().file_name, m_file_size);
 
 	create_handler_object(transaction_id, handler, true);
 	Notify(request, *handler_object_);
@@ -97,7 +95,7 @@ void GetFile::handle_request()
 
 		if(!storage_->exists(file_info))
 		{
-			util::log(error, "Cant send file, it does no exists");
+			spdlog::error("Cant send file, it does no exists");
 			state_ = MESSAGE_STATE::FAILED;
 			RequestDestruction();
 			return;
@@ -107,7 +105,7 @@ void GetFile::handle_request()
 
 		if(!source_file.has_value())
 		{
-			util::log(error, "Cant read file");
+			spdlog::error("Cant read file");
 			state_ = MESSAGE_STATE::FAILED;
 			RequestDestruction();
 			return;
@@ -119,11 +117,8 @@ void GetFile::handle_request()
 		const auto file_size = m_source_file.tellg();
 		m_source_file.seekg(file_info.offset, m_source_file.beg);
 
-		util::log(info, std::string("Start sending file: ") + file_info.file_name);
-		std::stringstream sstr1;
-		sstr1 << "FileSize: " << file_size;
-		sstr1 << "\nSha256sum: " << file_infos.front().sha256sum;
-		util::log(debug, sstr1.str());
+		spdlog::info("Start sending file: {}", file_info.file_name);
+		spdlog::debug("FileSize: {}, Sha256sum: {}", file_size, file_infos.front().sha256sum);
 
 	}
 	write_file(false);
@@ -143,7 +138,7 @@ void GetFile::handle_response(RequestObject request_object)
 
 	if(!m_output_file.value())
 	{
-		util::log(error, "GetFIle::create_request could not open file");
+		spdlog::error("GetFIle::create_request could not open file");
 		state_ = MESSAGE_STATE::FAILED;
 		RequestDestruction();
 		return;
@@ -160,8 +155,9 @@ void GetFile::handle_response(RequestObject request_object)
 		return;
 	}
 
-	util::log(info, std::string("received file ") + file_info_.value().file_name);
-	util::log(info, std::string("with size in mb: ") + std::to_string(static_cast<double>(m_file_size / 1048576.0)));
+	spdlog::info("received file {}", file_info_.value().file_name);
+	spdlog::info("with size in mb: {}", static_cast<double>(m_file_size / 1048576.0));
+
 	m_output_file.value().flush();
 
 	state_ = MESSAGE_STATE::DONE;
@@ -202,7 +198,7 @@ void GetFile::write_buffer(size_t offset /* = 0 */)
 			}
 			else
 			{
-				util::log(error, "Could not cast to GetFile");
+				spdlog::error("Could not cast to GetFile");
 			}
 
 			return;
@@ -219,8 +215,8 @@ void GetFile::write_file(bool failed)
 	if(failed)
 	{
 	  state_ = MESSAGE_STATE::FAILED;
-	  util::log(debug, "GetFile::write_file error occured");
-	  RequestDestruction();
+		spdlog::debug("GetFile::write_file error occured");
+		RequestDestruction();
 	}
 
 	if(m_source_file)
@@ -231,7 +227,7 @@ void GetFile::write_file(bool failed)
 		if(m_source_file.fail() && !m_source_file.eof())
 		{
 			state_ = MESSAGE_STATE::FAILED;
-			util::log(debug, "GetFile::handle_request Failed reading file");
+			spdlog::debug("GetFile::handle_request Failed reading file");
 
 			//TODO: send "abort filetransfer message"
 			RequestDestruction();

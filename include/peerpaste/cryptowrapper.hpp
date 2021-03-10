@@ -17,6 +17,9 @@
 #include "cryptopp/sha.h"
 #include "cryptopp/files.h"
 #include "sodium.h"
+
+#include "spdlog/spdlog.h"
+
 namespace logging = boost::log;
 namespace sinks = boost::log::sinks;
 namespace attrs = boost::log::attributes;
